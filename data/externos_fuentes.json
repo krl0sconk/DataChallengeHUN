@@ -1,0 +1,8 @@
+{
+  "generado": "2026-09-29T20:34:04",
+  "fuentes": {
+    "calendario": "ok",
+    "clima": "PENDIENTE: correr build con internet (API bloqueada en el entorno donde se generó)",
+    "epidemiologia": "PENDIENTE: correr build con internet (API bloqueada en el entorno donde se generó)"
+  }
+}

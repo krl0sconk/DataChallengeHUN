@@ -1,0 +1,8 @@
+pandas>=2.1
+numpy>=1.26
+pyarrow>=14
+requests>=2.31
+holidays>=0.60
+python-dateutil>=2.8
+openpyxl>=3.1
+pytest>=8
