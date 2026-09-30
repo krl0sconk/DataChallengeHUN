@@ -1,0 +1,103 @@
+# =====================================================================
+# Data Challenge HUN 2026 - .gitignore
+# Los datos del hospital son CONFIDENCIALES: nunca se suben al repo.
+# =====================================================================
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+.venv/
+venv/
+env/
+.python-version
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ---------- Jupyter ----------
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# ---------- Entornos y secretos ----------
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+credentials*.json
+*credenciales*
+client_secret*.json
+service_account*.json
+secrets/
+
+# ---------- Datos (carpetas) ----------
+# Se ignora todo el contenido excepto .gitkeep y README.md
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/README.md
+data/interim/*
+!data/interim/.gitkeep
+!data/interim/README.md
+data/processed/*
+!data/processed/.gitkeep
+!data/processed/README.md
+data/external/*
+!data/external/.gitkeep
+!data/external/README.md
+
+# ---------- Formatos de datos (en cualquier parte del repo) ----------
+*.csv
+*.tsv
+*.xlsx
+*.xlsm
+*.xls
+*.parquet
+*.feather
+*.sav
+*.dta
+*.db
+*.sqlite
+*.sqlite3
+
+# ---------- Modelos entrenados ----------
+models/*
+!models/.gitkeep
+!models/README.md
+*.pkl
+*.pickle
+*.joblib
+*.h5
+*.onnx
+
+# ---------- Power BI ----------
+# Solo se permiten plantillas .pbit (sin datos)
+*.pbix
+
+# ---------- IDEs y sistema operativo ----------
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Node (por si la web lo usa) ----------
+node_modules/
+dist/
+build/
+.next/
+npm-debug.log*
+
+# ---------- Herramientas locales ----------
+# Índice de búsqueda local que no forma parte del proyecto
+docs/index.bleve/
