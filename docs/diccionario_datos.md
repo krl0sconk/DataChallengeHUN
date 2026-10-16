@@ -1,16 +1,16 @@
 # Diccionario de datos · resumen y consecuencias para el proyecto
 
-> El diccionario oficial lo enviaron los organizadores el 2026-10-09 (`Diccionario_datos 1.md`, enlace de
-> SharePoint en el correo "Data Challenge HUN 2026."). **Pendiente:** copiarlo tal cual a
-> `docs/diccionario_datos/Diccionario_datos.md`. Es lo único del hospital que se puede versionar.
-> Este archivo resume lo que importa para el modelo; si algo no coincide, manda el oficial y la base.
+> El diccionario oficial (enviado por los organizadores el 2026-10-09) está tal cual en
+> [`diccionario_datos/Diccionario_datos.md`](diccionario_datos/Diccionario_datos.md). Es lo único del
+> hospital que se versiona. Este archivo resume lo que importa para el modelo; si algo no coincide,
+> mandan el oficial y la base.
 
 ## Conexión
 
 - **Motor:** PostgreSQL, por VPN (FortiClient), base de datos de **solo consulta**.
-- **Esquema:** el diccionario dice `uninorte_omop`; el correo dice `uninorte_omo`.
-  `python -m hun.data.conexion` lista las tablas del esquema configurado en `.env` (`HUN_DB_SCHEMA`):
-  si sale vacío, probar con el otro nombre.
+- **Base:** `uhn_i` · **Esquema:** `uninorte_omop` (lo confirma el diccionario oficial; el correo dice
+  `uninorte_omo`, que parece un error de tipeo). `python -m hun.data.conexion` lista las tablas del
+  esquema configurado en `.env` (`HUN_DB_SCHEMA`) para verificarlo.
 - **Credenciales:** servidor, puerto, base, usuario y contraseña solo en `.env` (ver `.env.example`).
 - **Una persona conectada a la vez.** Avisar en el grupo antes y después.
 
