@@ -19,11 +19,11 @@
 | Tabla | Columnas |
 |---|---|
 | `person` | `person_id`, `gender_concept_id`, `year_of_birth`, `race_concept_id`, `ethnicity_concept_id` |
-| `visit_occurrence` | `visit_occurrence_id`, `person_id`, `visit_concept_id`, `visit_start_datetime`, `visit_end_datetime`, `visit_type_concept_id`, `provider_id` |
+| `visit_occurrence` | `visit_occurrence_id`, `person_id`, `visit_concept_id`, `visit_start_datetime`, `visit_end_datetime`, `provider_id` |
 | `visit_detail` | `visit_detail_id`, `visit_occurrence_id`, `visit_detail_concept_id`, `visit_detail_start_datetime`, `visit_detail_end_datetime`, `provider_id` |
-| `condition_occurrence` | `condition_occurrence_id`, `person_id`, `visit_occurrence_id`, `condition_concept_id`, `condition_start_datetime` |
-| `procedure_occurrence` | `procedure_occurrence_id`, `person_id`, `visit_occurrence_id`, `procedure_concept_id`, `procedure_datetime`, `procedure_type_concept_id` |
-| `measurement` | `measurement_id`, `person_id`, `visit_occurrence_id`, `measurement_concept_id`, `measurement_datetime`, `value_as_number`, `unit_concept_id`, `measurement_type_concept_id` |
+| `condition_occurrence` | `condition_occurrence_id`, `person_id`, `visit_occurrence_id`, `condition_concept_id`, `condition_start_datetime`, `condition_type_concept_id` |
+| `procedure_occurrence` | `procedure_occurrence_id`, `person_id`, `visit_occurrence_id`, `procedure_concept_id`, `procedure_date` (solo fecha, sin hora) |
+| `measurement` | `measurement_id`, `person_id`, `visit_occurrence_id`, `measurement_concept_id`, `measurement_datetime`, `value_as_number`, `measurement_source_value_extended` (texto) |
 | `concept` | `concept_id`, `concept_name`, `domain_id`, `vocabulary_id` |
 
 Todas las columnas `*_concept_id` se traducen uniendo con `concept.concept_id` → `concept_name`.
@@ -33,7 +33,9 @@ Todas las columnas `*_concept_id` se traducen uniendo con `concept.concept_id` �
 | Lo que decían las bases | Lo que hay | Qué hacemos |
 |---|---|---|
 | `visit_occurrence.preceding_visit_occurrence_id` | No existe | La visita previa se reconstruye ordenando las visitas de cada `person_id` por fecha (reingresos, visitas frecuentes). |
-| `condition_occurrence.condition_type_concept_id` | No existe | No afecta el modelo de demanda. |
+| `visit_occurrence.visit_type_concept_id` | No existe | No se usa. |
+| `procedure_occurrence.procedure_datetime` / `procedure_type_concept_id` | Solo `procedure_date` (fecha), sin tipo | No hay hora del procedimiento. |
+| `measurement.unit_concept_id` / `measurement_type_concept_id` | No existen; hay `measurement_source_value_extended` (texto) | Las unidades no se pueden traducir con `concept`. |
 | `visit_detail.person_id` | No existe | Se obtiene uniendo con `visit_occurrence`. |
 
 ## Consecuencias para el modelo

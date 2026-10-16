@@ -56,7 +56,7 @@ Si una decisión reemplaza a otra, no borres la anterior: márcala como **Reempl
 - **Fecha:** 2026-10-15
 - **Sprint:** 1
 - **Responsable:** Krlos
-- **Estado:** Propuesta (se cierra con el inventario de la base)
+- **Estado:** Aceptada (2026-10-15, cerrada con el inventario de la base)
 - **Decisión:** Predecir llegadas por tipo de visita por día (horizonte 1–7 días) con intervalo p10–p90,
   y el censo horario reconstruido con entradas y salidas como medida de saturación. Detalle en
   [objetivo_prediccion.md](objetivo_prediccion.md).
@@ -66,6 +66,12 @@ Si una decisión reemplaza a otra, no borres la anterior: márcala como **Reempl
 - **Alternativas consideradas:** Solo modelo horario: depende de que las horas de la base sean reales
   (se verifica con `06_precision_horas.sql`).
 - **Consecuencias:** Las extracciones son agregados por hora (`04` y `05`), sin filas de pacientes.
+- **Resultado del inventario:** datos del 2023-01-01 al 2026-07-17 (corte detectado automáticamente); horas
+  reales en urgencias, así que se mantiene el modelo horario con el día como unidad principal; se modelan
+  rehabilitación, urgencias y urgencia-tratamiento, y se agrupan hospitalización (< 1 llegada/día) y
+  "sin concepto". **Cambio:** `visit_end_datetime` = `visit_start_datetime` en toda la base, así que el
+  censo no se reconstruye con `visit_occurrence`; se hará con las etapas de `visit_detail`. Línea base
+  (mediana de 8 semanas): WAPE 29,4 % por hora y 18,0 % por día; ver `docs/resultados/`.
 
 ### DEC-001 · Estructura inicial del repositorio y protección de datos
 

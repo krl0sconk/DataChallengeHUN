@@ -1,6 +1,6 @@
 # Objetivo de predicción
 
-- **Estado:** borrador. Se cierra con la primera sesión de base de datos (sección *Pendiente de los datos*).
+- **Estado:** Cerrado (2026-10-15, con el inventario de la base; ver *Resultado del inventario*).
 - **Responsable:** Krlos · se comparte con Daniel (web y validación) y Juan (análisis).
 - **Fecha:** 2026-10-15 · Sprint 1
 
@@ -12,7 +12,7 @@
 |---|---|
 | **Variable** | Número de visitas que **empiezan** (`visit_start_datetime`) por tipo de visita (`visit_concept_id`) |
 | **Unidad principal** | Por **día** |
-| **Unidad secundaria** | Por **hora**, solo si las horas de la base son reales (ver pendientes) |
+| **Unidad secundaria** | Por **hora**: las horas de urgencias son reales (ver inventario); en rehabilitación son citas programadas |
 | **Horizonte** | 1 a 7 días desde el momento de la predicción |
 | **Salida** | Valor esperado + intervalo p10–p90 ("entre 40 y 55 pacientes") |
 
@@ -66,13 +66,49 @@ Depende de la **fecha de corte** de la base:
   predicción para cualquier fecha dentro del rango de los datos (re-simulando "qué habría dicho el modelo
   ese día") y el simulador "¿qué pasa si?" para fechas futuras con valores que el usuario elige.
 
-## Pendiente de los datos (cierra esta tarea)
+## Resultado del inventario (resuelto el 2026-10-15)
 
-Se resuelve con `python -m hun.data.extraer inventario` (una sesión corta de VPN):
+Cifras agregadas de `python -m hun.data.extraer inventario` y `flujo_horario`.
 
-- [ ] Fecha de inicio y de corte de `visit_occurrence` → decide si se predice el futuro real.
-- [ ] Tipos de visita que existen y su volumen → qué series se modelan (las de muy poco volumen se agrupan).
-- [ ] Si las horas son reales (`precision_horas`) → si existe el modelo horario.
-- [ ] Huecos o cambios bruscos por mes → qué periodo se usa para entrenar.
-- [ ] Duración p50 / p90 por tipo → calentamiento del censo y si el censo tiene sentido por servicio.
-- [ ] Si `visit_detail` trae etapas finas → si hay censo por etapa (triage, observación…).
+- [x] **Inicio y corte.** `visit_occurrence` va del 2023-01-01 al **2026-07-17** (último día a medias; último
+  día completo 2026-07-16): unos 3,5 años. Después hay unas pocas visitas sueltas hasta 2026-08-13 que se
+  descartan (`fecha_corte` en `src/hun/data/agregados.py`), o se leerían como semanas de ceros.
+  Como la base termina ~3 meses antes de hoy, **la web no predice el futuro real con rezagos**: aplica la
+  segunda opción de *Predecir el futuro real* (re-simulación dentro del rango + simulador "¿qué pasa si?").
+- [x] **Tipos de visita y volumen.**
+
+  | Tipo | Visitas | Por día | Decisión |
+  |---|---|---|---|
+  | 581479 Ambulatory Rehabilitation Visit | 1 089 461 | ~827 | Se modela |
+  | 9203 Emergency Room Visit | 598 088 | ~443 | Se modela |
+  | 3045729 Treatment urgency {Diagnosis} | 17 858 | ~15 | Se modela por día; por hora es muy ruidoso |
+  | 9201 Inpatient Visit | 592 | ~0,5 | Se agrupa en "Otros", no se evalúa |
+  | 0 No matching concept | 2 | ~0 | Se agrupa en "Otros" |
+
+  "Otros" son los tipos con menos de 1 llegada al día (`agrupar_bajo_volumen`). Su WAPE no tiene sentido
+  (el real es casi siempre 0) y no entra al promedio de decisión.
+- [x] **¿Horas reales?** En urgencias sí: 0,0003 % de inicios a medianoche y 1,7 % en minuto 0 (lo esperado
+  por azar, 1,7 %), con el perfil de un servicio de urgencias (pico 8–11 h, mínimo 3–4 h). En rehabilitación
+  el 34 % empieza en minuto 0: son citas programadas, la hora es real pero cuadriculada. **Existe el modelo
+  horario** (urgencias), con el día como unidad principal.
+- [x] **Huecos y cambios por mes.** No hay meses vacíos entre 2023-01 y 2026-06; julio de 2026 está
+  incompleto (corte el 17). Hospitalización (9201) tuvo entre 6 y 52 visitas al mes hasta 2025-01 y casi ninguna
+  desde 2025-02. Las fechas no parecen desplazadas: urgencias tiene 11 % de visitas en domingo y
+  rehabilitación 0,08 %. Se entrena con todo el rango.
+- [x] **Duración p50 / p90 por tipo.** En `visit_occurrence` **la mediana y el p90 son 0 h en todos los
+  tipos y no hay registros sin fin**: `visit_end_datetime` es igual a `visit_start_datetime`. Las salidas por
+  hora coinciden con las entradas en todas las horas, así que **el censo reconstruido con `visit_occurrence`
+  vale 0 siempre y no sirve para saturación**. Las duraciones reales están en `visit_detail`: mediana de
+  ~16 h (hospitalización dentro de visitas de hospitalización) a ~46 h (dentro de urgencias), ~1,3 h en
+  la etapa de urgencia-tratamiento de urgencias y ~3 min en la etapa de urgencias.
+- [x] **¿`visit_detail` trae etapas finas?** Solo 4 conceptos, los mismos 4 tipos de visita
+  (urgencias, urgencia-tratamiento, hospitalización, rehabilitación): no hay triage ni observación.
+  Sí permite el censo "por etapa" (cuánto tiempo está un paciente en cada tipo de etapa dentro de una visita).
+
+### Ajustes al objetivo
+
+1. **Demanda:** sin cambios. Día como unidad principal; modelo horario solo para urgencias.
+2. **Ocupación:** el censo ya no se reconstruye desde `visit_occurrence`. Pasa a `visit_detail`
+   (inicio y fin de cada etapa), que requiere una extracción nueva en la próxima sesión de VPN.
+   Mientras tanto, la saturación se aproxima con las llegadas por hora.
+3. **Tiempos:** la duración de la visita no existe como tal; se predice la duración de las etapas.
