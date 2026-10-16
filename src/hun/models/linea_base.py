@@ -148,7 +148,7 @@ def reporte_markdown(
 
 def main() -> None:
     from hun import config
-    from hun.data.agregados import serie_llegadas
+    from hun.data.agregados import OTROS, agrupar_bajo_volumen, fecha_corte, serie_llegadas
 
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter
@@ -160,13 +160,25 @@ def main() -> None:
         choices=["h", "D"],
         help="h: llegadas por hora · D: llegadas por día",
     )
+    parser.add_argument(
+        "--hasta", help="fin exclusivo de los datos (AAAA-MM-DD); por defecto se detecta el corte"
+    )
+    parser.add_argument(
+        "--min-por-dia",
+        type=float,
+        default=1.0,
+        help="tipos con menos llegadas diarias que esto se agrupan en 'Otros'",
+    )
     parser.add_argument("--semanas", type=int, nargs="+", default=[1, 4, 8])
     parser.add_argument("--salida", default=str(config.ROOT_DIR / "docs/resultados/linea_base.md"))
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(message)s")
 
     entradas = pd.read_parquet(args.entrada)
-    serie = serie_llegadas(entradas, freq=args.frecuencia)
+    corte = pd.Timestamp(args.hasta) if args.hasta else fecha_corte(entradas)
+    entradas = entradas[pd.to_datetime(entradas["hora"]) < corte]
+    log.info("Datos hasta %s (exclusivo)", f"{corte:%Y-%m-%d %H:%M}")
+    serie = agrupar_bajo_volumen(serie_llegadas(entradas, freq=args.frecuencia), args.min_por_dia)
     pliegues = pliegues_walk_forward(serie["ts"])
     nombres = None
     tipos = config.RAW_DIR / "tipos_visita.parquet"
@@ -176,6 +188,8 @@ def main() -> None:
             zip(t["visit_concept_id"], t["concept_name"].fillna("(sin nombre)"), strict=False)
         )
 
+    if nombres is not None:
+        nombres[OTROS] = f"Otros (< {args.min_por_dia:g} llegadas/día, agrupados)"
     resultados = {}
     for k in args.semanas:
         resultados[f"media de {k} semana{'s' if k > 1 else ''}"] = evaluar(serie, pliegues, k)

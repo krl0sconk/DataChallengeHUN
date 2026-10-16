@@ -212,3 +212,36 @@ def test_placebo_corre_las_fechas():
 def test_prueba_de_signo():
     assert ef.prueba_signo(10, 10) == pytest.approx(1 / 1024)
     assert ef.prueba_signo(0, 10) == pytest.approx(1.0)
+
+
+def test_fecha_corte_descarta_registros_tardios_y_dia_a_medias():
+    from hun.data.agregados import fecha_corte
+
+    dias = pd.date_range("2026-01-01", "2026-03-09", freq="D")
+    base = pd.DataFrame(
+        {"hora": dias + pd.Timedelta("23h"), "visit_concept_id": 1, "entradas": 100}
+    )
+    parcial = pd.DataFrame(
+        {"hora": [pd.Timestamp("2026-03-10 15:00")], "visit_concept_id": 1, "entradas": 60}
+    )
+    tardio = pd.DataFrame(
+        {"hora": [pd.Timestamp("2026-04-20 09:00")], "visit_concept_id": 1, "entradas": 2}
+    )
+    entradas = pd.concat([base, parcial, tardio], ignore_index=True)
+    assert fecha_corte(entradas) == pd.Timestamp("2026-03-10")
+
+
+def test_agrupar_bajo_volumen_junta_los_tipos_raros():
+    from hun.data.agregados import OTROS, agrupar_bajo_volumen
+
+    ts = pd.date_range("2026-01-01", periods=10, freq="D")
+    df = pd.concat(
+        [
+            pd.DataFrame({"ts": ts, "serie": 1, "y": 50}),
+            pd.DataFrame({"ts": ts, "serie": 2, "y": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]}),
+            pd.DataFrame({"ts": ts, "serie": 3, "y": [0, 0, 0, 0, 0, 0, 0, 0, 0, 1]}),
+        ]
+    )
+    r = agrupar_bajo_volumen(df, min_por_dia=1.0)
+    assert set(r["serie"]) == {1, OTROS}
+    assert r.loc[r["serie"] == OTROS, "y"].sum() == 2

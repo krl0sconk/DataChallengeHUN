@@ -14,6 +14,53 @@ from __future__ import annotations
 import pandas as pd
 
 COLUMNAS = ["ts", "serie", "y"]
+OTROS = -1  # código de la serie que agrupa los tipos de visita de bajo volumen
+
+
+def fecha_corte(
+    entradas: pd.DataFrame, minimo: float = 0.25, ventana: int = 60, hueco: int = 7
+) -> pd.Timestamp:
+    """Primer instante SIN datos confiables (exclusivo): fin real de la base.
+
+    Tras la fecha de corte quedan visitas sueltas (registros tardíos) que, en una grilla
+    regular, se leerían como semanas de ceros. Un día es válido si tiene al menos `minimo`
+    veces la mediana diaria de los `ventana` días previos. El corte es el último día válido
+    anterior al primer hueco de `hueco` días inválidos seguidos (así los registros tardíos
+    no cuentan aunque la mediana previa ya haya caído); si ese día quedó a medias (la última
+    hora con datos es anterior a las 23:00) también se descarta.
+    """
+    e = entradas.assign(hora=pd.to_datetime(entradas["hora"]))
+    diario = e.groupby(e["hora"].dt.floor("D"))["entradas"].sum()
+    diario = diario.reindex(pd.date_range(diario.index.min(), diario.index.max()), fill_value=0)
+    referencia = diario.rolling(ventana, min_periods=ventana).median().shift(1)
+    malo = (diario < minimo * referencia).to_numpy()
+    corrida = 0
+    ultimo = diario.index[-1]
+    for i, m in enumerate(malo):
+        corrida = corrida + 1 if m else 0
+        if corrida == hueco:
+            ultimo = diario.index[i - hueco]
+            break
+    else:
+        while malo[diario.index.get_loc(ultimo)]:
+            ultimo -= pd.Timedelta("1D")
+    horas = e.loc[e["hora"].dt.floor("D") == ultimo, "hora"]
+    return ultimo + pd.Timedelta("1D") if horas.max().hour >= 23 else ultimo
+
+
+def agrupar_bajo_volumen(df: pd.DataFrame, min_por_dia: float = 1.0) -> pd.DataFrame:
+    """Suma en la serie `OTROS` los tipos con menos de `min_por_dia` llegadas diarias.
+
+    Con tan pocas llegadas el WAPE de un tipo no significa nada (la mayoría de los días
+    el real es 0). Se agrupan para no ensuciar el promedio y se reportan aparte.
+    """
+    dias = max((df["ts"].max() - df["ts"].min()) / pd.Timedelta("1D"), 1)
+    prom = df.groupby("serie")["y"].sum() / dias
+    bajos = prom[prom < min_por_dia].index
+    if len(bajos) == 0:
+        return df
+    out = df.assign(serie=df["serie"].where(~df["serie"].isin(bajos), OTROS))
+    return out.groupby(["ts", "serie"], as_index=False)["y"].sum()
 
 
 def grilla_regular(df: pd.DataFrame, freq: str, inicio=None, fin=None) -> pd.DataFrame:
@@ -50,6 +97,13 @@ def serie_censo(
     y salen después aparecen como salidas sin entrada: el censo sale subestimado (incluso
     negativo) al comienzo. Por eso se descarta un periodo de `calentamiento`; debe ser mayor
     que casi todas las estancias (revisar el p99 de duración por tipo antes de fijarlo).
+
+    En la base real (inventario 2026-10-15) `visit_end_datetime` es igual a `visit_start_datetime`
+    en todos los tipos de visita (mediana y p90 de duración = 0 h; el p99 no se extrajo): las
+    salidas coinciden con las entradas hora a hora y este censo sale 0. Por eso el
+    calentamiento por defecto no se cambia (30 días cubren con holgura medianas de hasta
+    ~3 días de las etapas de `visit_detail`, pero su p99 sigue sin medirse); hay que revisarlo
+    cuando el censo se calcule con `visit_detail`.
     """
     e = entradas.rename(
         columns={"hora": "ts", "visit_concept_id": "serie", "entradas_con_salida": "y"}
