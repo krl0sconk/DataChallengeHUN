@@ -119,3 +119,19 @@ def serie_censo(
     df["y"] = df.groupby("serie")["y_in"].cumsum() - df.groupby("serie")["y_out"].cumsum()
     df = df[df["ts"] >= inicio + pd.Timedelta(calentamiento)]
     return df[COLUMNAS].reset_index(drop=True)
+
+
+def serie_censo_etapas(
+    entradas: pd.DataFrame, salidas: pd.DataFrame, calentamiento: str = "30D"
+) -> pd.DataFrame:
+    """Censo horario por tipo de ETAPA desde `etapas_entradas_por_hora` / `etapas_salidas_por_hora`.
+
+    Es el censo que sí sirve en esta base (en `visit_occurrence` el fin es igual al inicio).
+    La `serie` es `visit_detail_concept_id`: pacientes adentro de cada área a cada hora.
+    Antes de fijar `calentamiento`, revisar el p99 de duración de las etapas en
+    `docs/calidad_datos.md`.
+    """
+    renombrar = {"visit_detail_concept_id": "visit_concept_id"}
+    return serie_censo(
+        entradas.rename(columns=renombrar), salidas.rename(columns=renombrar), calentamiento
+    )

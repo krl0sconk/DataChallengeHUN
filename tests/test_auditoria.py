@@ -94,6 +94,27 @@ def test_serie_diaria_rellena_dias_vacios():
 
 
 def test_consultas_de_auditoria_son_de_solo_lectura_y_estan_registradas():
-    for nombre in GRUPOS["auditoria"]:
+    for nombre in GRUPOS["auditoria"] + GRUPOS["agregados"]:
         sql = leer_sql(EXTRACCIONES[nombre].sql).replace("{esquema}", "uninorte_omop")
         validar_solo_lectura(sql)
+
+
+def test_censo_por_etapa_cuenta_pacientes_adentro():
+    from hun.data.agregados import serie_censo_etapas
+
+    horas = pd.date_range("2024-01-01", periods=48, freq="h")
+    entradas = pd.DataFrame(
+        {
+            "hora": horas[:2],
+            "visit_detail_concept_id": 9203,
+            "entradas": 2,
+            "entradas_con_salida": 2,
+        }
+    )
+    # 2 entran a las 0 h y 2 a la 1 h; salen 2 a las 5 h y 2 a las 10 h
+    salidas = pd.DataFrame(
+        {"hora": [horas[5], horas[10]], "visit_detail_concept_id": 9203, "salidas": [2, 2]}
+    )
+    censo = serie_censo_etapas(entradas, salidas, calentamiento="0h").set_index("ts")["y"]
+    assert censo[horas[0]] == 2 and censo[horas[3]] == 4 and censo[horas[7]] == 2
+    assert censo[horas[10]] == 0

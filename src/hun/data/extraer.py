@@ -9,6 +9,7 @@ Uso (con la VPN conectada y avisando en el grupo que te vas a conectar):
     python -m hun.data.extraer inventario            # 00-03 y 06: tamaños, cobertura, tipos, horas
     python -m hun.data.extraer flujo_horario          # 04-05: entradas y salidas por hora
     python -m hun.data.extraer auditoria              # 07-12: calidad de datos (tarea #12)
+    python -m hun.data.extraer agregados              # 13-18: perfil, etapas y esperas (tarea #10)
     python -m hun.data.extraer flujo_horario --desde 2023-01-01 --hasta 2025-01-01
 
 Las extracciones por ventana se hacen mes a mes: consultas cortas, que no saturan la
@@ -55,6 +56,12 @@ EXTRACCIONES = {
         Extraccion("auditoria_personas", "10_auditoria_personas.sql"),
         Extraccion("auditoria_llegadas_diarias", "11_auditoria_llegadas_diarias.sql"),
         Extraccion("auditoria_etapas_diarias", "12_auditoria_etapas_diarias.sql"),
+        Extraccion("llegadas_diarias_perfil", "13_llegadas_diarias_perfil.sql", por_ventana=True),
+        Extraccion("etapas_entradas_por_hora", "14_etapas_entradas_por_hora.sql", por_ventana=True),
+        Extraccion("etapas_salidas_por_hora", "15_etapas_salidas_por_hora.sql", por_ventana=True),
+        Extraccion("duracion_etapas_diaria", "16_duracion_etapas_diaria.sql", por_ventana=True),
+        Extraccion("duracion_etapas_por_franja", "17_duracion_etapas_por_franja.sql"),
+        Extraccion("transiciones_etapas", "18_transiciones_etapas.sql", por_ventana=True),
     ]
 }
 
@@ -74,6 +81,14 @@ GRUPOS = {
         "auditoria_personas",
         "auditoria_llegadas_diarias",
         "auditoria_etapas_diarias",
+    ],
+    "agregados": [
+        "llegadas_diarias_perfil",
+        "etapas_entradas_por_hora",
+        "etapas_salidas_por_hora",
+        "duracion_etapas_diaria",
+        "duracion_etapas_por_franja",
+        "transiciones_etapas",
     ],
 }
 
@@ -133,7 +148,9 @@ def main() -> None:
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument(
-        "objetivos", nargs="*", help="extracciones o grupos (inventario, flujo_horario, auditoria)"
+        "objetivos",
+        nargs="*",
+        help="extracciones o grupos (inventario, flujo_horario, auditoria, agregados)",
     )
     parser.add_argument("--desde", type=date.fromisoformat)
     parser.add_argument("--hasta", type=date.fromisoformat)
