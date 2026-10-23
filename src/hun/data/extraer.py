@@ -8,6 +8,7 @@ Uso (con la VPN conectada y avisando en el grupo que te vas a conectar):
     python -m hun.data.extraer --lista
     python -m hun.data.extraer inventario            # 00-03 y 06: tamaños, cobertura, tipos, horas
     python -m hun.data.extraer flujo_horario          # 04-05: entradas y salidas por hora
+    python -m hun.data.extraer auditoria              # 07-12: calidad de datos (tarea #12)
     python -m hun.data.extraer flujo_horario --desde 2023-01-01 --hasta 2025-01-01
 
 Las extracciones por ventana se hacen mes a mes: consultas cortas, que no saturan la
@@ -48,6 +49,12 @@ EXTRACCIONES = {
         Extraccion("precision_horas", "06_precision_horas.sql"),
         Extraccion("entradas_por_hora", "04_entradas_por_hora.sql", por_ventana=True),
         Extraccion("salidas_por_hora", "05_salidas_por_hora.sql", por_ventana=True),
+        Extraccion("auditoria_nulos", "07_auditoria_nulos.sql"),
+        Extraccion("auditoria_duplicados", "08_auditoria_duplicados.sql"),
+        Extraccion("auditoria_etapas", "09_auditoria_etapas.sql"),
+        Extraccion("auditoria_personas", "10_auditoria_personas.sql"),
+        Extraccion("auditoria_llegadas_diarias", "11_auditoria_llegadas_diarias.sql"),
+        Extraccion("auditoria_etapas_diarias", "12_auditoria_etapas_diarias.sql"),
     ]
 }
 
@@ -60,6 +67,14 @@ GRUPOS = {
         "precision_horas",
     ],
     "flujo_horario": ["entradas_por_hora", "salidas_por_hora"],
+    "auditoria": [
+        "auditoria_nulos",
+        "auditoria_duplicados",
+        "auditoria_etapas",
+        "auditoria_personas",
+        "auditoria_llegadas_diarias",
+        "auditoria_etapas_diarias",
+    ],
 }
 
 
@@ -118,7 +133,7 @@ def main() -> None:
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument(
-        "objetivos", nargs="*", help="extracciones o grupos (inventario, flujo_horario)"
+        "objetivos", nargs="*", help="extracciones o grupos (inventario, flujo_horario, auditoria)"
     )
     parser.add_argument("--desde", type=date.fromisoformat)
     parser.add_argument("--hasta", type=date.fromisoformat)

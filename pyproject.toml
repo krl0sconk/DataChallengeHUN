@@ -19,6 +19,8 @@ dependencies = [
     "matplotlib",
     "seaborn",
     "pyarrow",
+    "holidays",
+    "python-dateutil",
 ]
 
 [project.optional-dependencies]
