@@ -130,3 +130,24 @@ def test_traducir_conceptos_prioriza_espanol_y_no_deja_vacios():
     df = pd.DataFrame({"visit_concept_id": [9203, 4000, 123]})
     out = traducir(df, "visit_concept_id", mapa)
     assert out["visit_concept_nombre"].tolist() == ["Urgencias", "Dengue fever", "Concepto 123"]
+
+
+def test_borrar_datos_simula_por_defecto_y_conserva_archivos_del_repo(tmp_path):
+    from hun.data.borrar_datos import borrar
+
+    raw = tmp_path / "raw"
+    (raw / "partes").mkdir(parents=True)
+    (raw / "partes" / "2024-01.parquet").write_bytes(b"x")
+    (raw / "a.parquet").write_bytes(b"x")
+    (raw / ".gitkeep").write_text("")
+    (raw / "README.md").write_text("")
+    env = tmp_path / ".env"
+    env.write_text("HUN_DB_PASSWORD=x")
+
+    lista = borrar([raw, env])
+    assert {p.name for p in lista} == {"partes", "a.parquet", ".env"}
+    assert env.exists() and (raw / "a.parquet").exists()  # simulación: nada borrado
+
+    borrar([raw, env], confirmar=True)
+    assert sorted(p.name for p in raw.iterdir()) == [".gitkeep", "README.md"]
+    assert not env.exists()
