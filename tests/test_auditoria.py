@@ -94,7 +94,7 @@ def test_serie_diaria_rellena_dias_vacios():
 
 
 def test_consultas_de_auditoria_son_de_solo_lectura_y_estan_registradas():
-    for nombre in GRUPOS["auditoria"] + GRUPOS["agregados"]:
+    for nombre in GRUPOS["auditoria"] + GRUPOS["agregados"] + GRUPOS["conceptos"]:
         sql = leer_sql(EXTRACCIONES[nombre].sql).replace("{esquema}", "uninorte_omop")
         validar_solo_lectura(sql)
 
@@ -118,3 +118,15 @@ def test_censo_por_etapa_cuenta_pacientes_adentro():
     censo = serie_censo_etapas(entradas, salidas, calentamiento="0h").set_index("ts")["y"]
     assert censo[horas[0]] == 2 and censo[horas[3]] == 4 and censo[horas[7]] == 2
     assert censo[horas[10]] == 0
+
+
+def test_traducir_conceptos_prioriza_espanol_y_no_deja_vacios():
+    from hun.data.conceptos import cargar, traducir
+
+    tabla = pd.DataFrame(
+        {"concept_id": [9203, 4000], "concept_name": ["Emergency Room Visit", "Dengue fever"]}
+    )
+    mapa = cargar(tabla)
+    df = pd.DataFrame({"visit_concept_id": [9203, 4000, 123]})
+    out = traducir(df, "visit_concept_id", mapa)
+    assert out["visit_concept_nombre"].tolist() == ["Urgencias", "Dengue fever", "Concepto 123"]

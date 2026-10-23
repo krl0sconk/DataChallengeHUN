@@ -10,6 +10,7 @@ Uso (con la VPN conectada y avisando en el grupo que te vas a conectar):
     python -m hun.data.extraer flujo_horario          # 04-05: entradas y salidas por hora
     python -m hun.data.extraer auditoria              # 07-12: calidad de datos (tarea #12)
     python -m hun.data.extraer agregados              # 13-18: perfil, etapas y esperas (tarea #10)
+    python -m hun.data.extraer conceptos              # 19-22: nombres de conceptos (tarea #11)
     python -m hun.data.extraer flujo_horario --desde 2023-01-01 --hasta 2025-01-01
 
 Las extracciones por ventana se hacen mes a mes: consultas cortas, que no saturan la
@@ -62,6 +63,10 @@ EXTRACCIONES = {
         Extraccion("duracion_etapas_diaria", "16_duracion_etapas_diaria.sql", por_ventana=True),
         Extraccion("duracion_etapas_por_franja", "17_duracion_etapas_por_franja.sql"),
         Extraccion("transiciones_etapas", "18_transiciones_etapas.sql", por_ventana=True),
+        Extraccion("conceptos_visitas", "19_conceptos_visitas.sql"),
+        Extraccion("conceptos_diagnosticos", "20_conceptos_diagnosticos.sql"),
+        Extraccion("conceptos_procedimientos", "21_conceptos_procedimientos.sql"),
+        Extraccion("conceptos_mediciones", "22_conceptos_mediciones.sql"),
     ]
 }
 
@@ -89,6 +94,12 @@ GRUPOS = {
         "duracion_etapas_diaria",
         "duracion_etapas_por_franja",
         "transiciones_etapas",
+    ],
+    "conceptos": [
+        "conceptos_visitas",
+        "conceptos_diagnosticos",
+        "conceptos_procedimientos",
+        "conceptos_mediciones",
     ],
 }
 
@@ -150,7 +161,7 @@ def main() -> None:
     parser.add_argument(
         "objetivos",
         nargs="*",
-        help="extracciones o grupos (inventario, flujo_horario, auditoria, agregados)",
+        help="extracciones o grupos (inventario, flujo_horario, auditoria, agregados, conceptos)",
     )
     parser.add_argument("--desde", type=date.fromisoformat)
     parser.add_argument("--hasta", type=date.fromisoformat)

@@ -79,3 +79,4 @@ agregados; ninguna trae filas de pacientes.
 | `16_duracion_etapas_diaria.sql` | `duracion_etapas_diaria` | Duración de las etapas por día (media, p50, p90) |
 | `17_duracion_etapas_por_franja.sql` | `duracion_etapas_por_franja` | Duración de las etapas por día de la semana y hora de inicio |
 | `18_transiciones_etapas.sql` | `transiciones_etapas` | Esperas entre una etapa y la siguiente, por mes |
+| `19`–`22` `conceptos_*.sql` | grupo `conceptos` | Nombres de los conceptos usados (visitas, etapas, sexo, top de diagnósticos, procedimientos y mediciones). `python -m hun.data.conceptos` los une en `data/processed/conceptos.parquet` |
