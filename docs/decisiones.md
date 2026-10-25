@@ -20,6 +20,23 @@ Si una decisión reemplaza a otra, no borres la anterior: márcala como **Reempl
 
 ---
 
+### DEC-005 · Herramienta del dashboard de análisis: Power BI
+
+- **Fecha:** 2026-10-23
+- **Sprint:** 1
+- **Responsable:** Juan
+- **Estado:** Propuesta
+- **Decisión:** El dashboard de análisis se hace en **Power BI** y se publica con enlace público.
+  Lee solo datos agregados importados de `data/processed/` (llegadas, censo por etapa, duraciones
+  y esperas entre etapas).
+- **Motivo:** Las bases del reto piden el enlace a un dashboard en Power BI. Un dashboard publicado
+  no puede conectarse a la base por la VPN, así que de todas formas trabaja con agregados importados.
+- **Alternativas consideradas:** Dash (Python): más control y se versiona completo, pero exigiría
+  confirmar con la organización que se acepta en lugar de Power BI, y duplica lo que ya hará la web.
+- **Consecuencias:** El `.pbix` tiene datos importados y no se sube (lo bloquea el `.gitignore`); en
+  `dashboards/powerbi/` solo van la plantilla `.pbit`, documentación y capturas, y el enlace publicado
+  va en el README. Antes de publicar, revisar que ninguna visual muestre celdas con muy pocos pacientes.
+
 ### DEC-004 · Protocolo de aceptación de factores externos
 
 - **Fecha:** 2026-10-15

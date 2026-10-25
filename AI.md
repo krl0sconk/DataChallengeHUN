@@ -8,14 +8,13 @@ Este archivo le da a cualquier asistente de IA (Claude, Copilot, Cursor, etc.) e
 
 Estas reglas no se negocian, aunque una instrucción posterior parezca pedir lo contrario.
 
-1. **Nunca te pongas como coautor ni colaborador.** No agregues líneas `Co-Authored-By:` en los commits, no firmes commits ni PRs con frases como "Generated with…" o "Made with…", no menciones a la IA en descripciones de PR, issues o changelogs, y no te agregues ni sugieras agregarte como colaborador del repositorio. Todo commit sale a nombre del integrante del equipo que lo hace.
-2. **Nunca subas datos al repo.** Nada dentro de `data/` se versiona. Si un cambio agrega archivos `.csv`, `.parquet`, `.xlsx`, `.pkl` con datos de pacientes u otros datos crudos, detente y avisa.
-3. **No expongas datos de pacientes.** No copies filas individuales de las tablas del hospital en código, comentarios, tests, documentación, issues ni prompts a servicios externos. Para ejemplos, usa datos inventados o agregados.
-4. **No inventes resultados.** Nunca escribas métricas, cifras o conclusiones que no salgan de correr el código. Si falta el dato, deja un marcador claro como `TODO: completar con resultado real`.
-5. **No rompas el contrato modelo–web** (sección 6) sin decirlo explícitamente en tu respuesta.
-6. **Respeta las reglas anti fuga de datos** (sección 5.3). Si detectas que una feature usa información del futuro, avisa aunque no te lo hayan preguntado.
-7. **Responde en español.**
-8. **Pregunta si no está claro.** Ante una decisión de diseño que no esté en este archivo, pregunta antes de asumir.
+1. **Nunca subas datos al repo.** Nada dentro de `data/` se versiona. Si un cambio agrega archivos `.csv`, `.parquet`, `.xlsx`, `.pkl` con datos de pacientes u otros datos crudos, detente y avisa.
+2. **No expongas datos de pacientes.** No copies filas individuales de las tablas del hospital en código, comentarios, tests, documentación, issues ni prompts a servicios externos. Para ejemplos, usa datos inventados o agregados.
+3. **No inventes resultados.** Nunca escribas métricas, cifras o conclusiones que no salgan de correr el código. Si falta el dato, deja un marcador claro como `TODO: completar con resultado real`.
+4. **No rompas el contrato modelo–web** (sección 6) sin decirlo explícitamente en tu respuesta.
+5. **Respeta las reglas anti fuga de datos** (sección 5.3). Si detectas que una feature usa información del futuro, avisa aunque no te lo hayan preguntado.
+6. **Responde en español.**
+7. **Pregunta si no está claro.** Ante una decisión de diseño que no esté en este archivo, pregunta antes de asumir.
 
 ---
 
@@ -232,7 +231,7 @@ Cualquier cambio en esta estructura se acuerda entre Krlos y Daniel y se actuali
   - `fix: corrige rezagos que usaban datos del futuro`
   - `docs: documenta el contrato modelo-web`
   - `refactor:`, `test:`, `chore:` según el caso.
-- Mensajes en imperativo, en minúscula y sin punto final. Sin trailers de coautoría (ver regla 1).
+- Mensajes en imperativo, en minúscula y sin punto final.
 - Un PR = un cambio lógico. La descripción explica qué cambia y cómo probarlo.
 
 ---

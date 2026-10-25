@@ -9,6 +9,8 @@ requests
 matplotlib
 seaborn
 pyarrow
+holidays
+python-dateutil
 
 # Conexión a la base del hospital (PostgreSQL)
 sqlalchemy>=2.0

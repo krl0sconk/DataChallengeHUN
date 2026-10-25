@@ -72,3 +72,11 @@ agregados; ninguna trae filas de pacientes.
 | `06_precision_horas.sql` | `precision_horas` | Si las horas son reales y si las fechas parecen desplazadas |
 | `04_entradas_por_hora.sql` | `entradas_por_hora` | Llegadas por hora y tipo de visita (modelo de demanda) |
 | `05_salidas_por_hora.sql` | `salidas_por_hora` | Salidas por hora (censo / saturación) |
+| `07`–`12` `auditoria_*.sql` | grupo `auditoria` | Calidad de datos: nulos, duplicados, etapas, edades y series diarias para la prueba de fechas (`docs/calidad_datos.md`) |
+| `13_llegadas_diarias_perfil.sql` | `llegadas_diarias_perfil` | Llegadas por día, servicio, sexo y grupo de edad |
+| `14_etapas_entradas_por_hora.sql` | `etapas_entradas_por_hora` | Entradas a cada etapa por hora (censo por etapa) |
+| `15_etapas_salidas_por_hora.sql` | `etapas_salidas_por_hora` | Salidas de cada etapa por hora (censo por etapa) |
+| `16_duracion_etapas_diaria.sql` | `duracion_etapas_diaria` | Duración de las etapas por día (media, p50, p90) |
+| `17_duracion_etapas_por_franja.sql` | `duracion_etapas_por_franja` | Duración de las etapas por día de la semana y hora de inicio |
+| `18_transiciones_etapas.sql` | `transiciones_etapas` | Esperas entre una etapa y la siguiente, por mes |
+| `19`–`22` `conceptos_*.sql` | grupo `conceptos` | Nombres de los conceptos usados (visitas, etapas, sexo, top de diagnósticos, procedimientos y mediciones). `python -m hun.data.conceptos` los une en `data/processed/conceptos.parquet` |
