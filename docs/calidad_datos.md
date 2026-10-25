@@ -55,6 +55,16 @@ Carnaval y fin de año: TODO: describir el perfil de la sección 5.2.
 
 ## Reglas de limpieza
 
-Se deciden con los resultados de arriba y se aplican dentro del SQL de las extracciones:
+Se deciden con los resultados de arriba y se aplican dentro del SQL de las extracciones.
 
-- TODO: p. ej. descartar etapas sin fin o con fin antes del inicio, y marcar las de más de 30 días.
+Ya aplicadas (no dependen de los porcentajes; son fechas que no pueden ser ciertas):
+
+| Regla | Dónde se aplica | Por qué |
+|---|---|---|
+| Fuera las etapas sin fin o con fin antes del inicio | `14`/`15` (censo, vía `entradas_con_salida`), `16`, `17` y `18` | Sin un fin válido no hay duración, ni censo, ni espera hacia la etapa siguiente. En `18` se excluyen antes de ordenar, así que la "etapa siguiente" es la siguiente válida. |
+| Edad imposible → grupo `invalida` | `13` (perfil de llegadas) | Visita antes del año de nacimiento o más de 110 años, misma regla que `10`. Antes caían en `0-17` e inflaban a los menores. |
+
+Por decidir con los resultados:
+
+- TODO: qué hacer con las etapas de más de 30 días (¿se marcan o se descartan?).
+- TODO: si los nulos o duplicados superan el umbral de alerta (1 %), cómo se tratan.
