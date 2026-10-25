@@ -25,7 +25,7 @@ Si una decisión reemplaza a otra, no borres la anterior: márcala como **Reempl
 - **Fecha:** 2026-10-23
 - **Sprint:** 1
 - **Responsable:** Juan
-- **Estado:** Propuesta
+- **Estado:** Aceptada (2026-10-25, revisión del Sprint 1)
 - **Decisión:** El dashboard de análisis se hace en **Power BI** y se publica con enlace público.
   Lee solo datos agregados importados de `data/processed/` (llegadas, censo por etapa, duraciones
   y esperas entre etapas).
@@ -42,7 +42,7 @@ Si una decisión reemplaza a otra, no borres la anterior: márcala como **Reempl
 - **Fecha:** 2026-10-15
 - **Sprint:** 1
 - **Responsable:** Krlos (valida Daniel)
-- **Estado:** Propuesta
+- **Estado:** Aceptada (2026-10-25, revisión del Sprint 1)
 - **Decisión:** Un grupo de factores externos solo entra al modelo si pasa ablación, control de
   estacionalidad, placebo y estabilidad en validación walk-forward. Detalle y umbrales en
   [protocolo_factores_externos.md](protocolo_factores_externos.md).
@@ -58,7 +58,7 @@ Si una decisión reemplaza a otra, no borres la anterior: márcala como **Reempl
 - **Fecha:** 2026-10-15
 - **Sprint:** 1
 - **Responsable:** Krlos (valida Daniel)
-- **Estado:** Propuesta
+- **Estado:** Aceptada (2026-10-25, revisión del Sprint 1)
 - **Decisión:** Todo modelo se evalúa con pliegues walk-forward (orígenes cada 14 días en el último año,
   7 días de prueba) definidos en `src/hun/models/validacion.py`. Métrica principal: WAPE. La referencia a
   superar es la línea base (promedio del mismo día y hora en semanas anteriores).
