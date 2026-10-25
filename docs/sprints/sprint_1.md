@@ -15,7 +15,7 @@ de resultados, nunca de memoria.
 | #10 Extracción de agregados | Código listo; falta correr | `python -m hun.data.extraer agregados` (perfil de llegadas, censo por etapa, duraciones y esperas entre etapas) |
 | #11 Traducción de conceptos | Código listo; falta correr | `python -m hun.data.extraer conceptos` y `python -m hun.data.conceptos` |
 | #13 Exploración inicial del flujo | Notebook listo; falta correr | `01_exploracion_jn_flujo` → `docs/hallazgos.md` |
-| #19 Herramienta del dashboard | Propuesta: Power BI | DEC-005 en `docs/decisiones.md` |
+| #19 Herramienta del dashboard | Hecho: Power BI (aceptada) | DEC-005 en `docs/decisiones.md` |
 | #18 Subconjunto y tabla maestra | Por decidir con el equipo | Choca con la regla de trabajar solo con agregados (ver AI.md) |
 
 Correcciones de la revisión del PR (antes de correr las extracciones):
@@ -38,8 +38,11 @@ Resultados para mostrar (completar después de correr):
 
 ## Daniel · web y validación
 
-- TODO (lo completa Daniel)
+- Sin entregas en el Sprint 1. Pasan al Sprint 2: esqueleto de la web, maqueta con datos simulados
+  y contrato modelo–web (`docs/contrato_modelo_web.md`).
 
 ## Decisiones y plan del Sprint 2
 
-- TODO
+- Aceptadas el 2026-10-25: DEC-003 (validación walk-forward y WAPE), DEC-004 (protocolo de
+  factores externos) y DEC-005 (dashboard en Power BI). Ver `docs/decisiones.md`.
+- TODO: plan del Sprint 2
