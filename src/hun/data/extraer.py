@@ -15,7 +15,9 @@ Uso (con la VPN conectada y avisando en el grupo que te vas a conectar):
 
 Las extracciones por ventana se hacen mes a mes: consultas cortas, que no saturan la
 base y que, si algo falla a mitad, se pueden retomar (los meses ya bajados se saltan
-salvo con --refrescar).
+salvo con --refrescar). Solo se guardan en caché los meses completos: si --desde o
+--hasta cortan un mes a la mitad, ese trozo se consulta pero no se guarda. El archivo
+final contiene exactamente el rango pedido.
 """
 
 from __future__ import annotations
@@ -105,11 +107,18 @@ GRUPOS = {
 
 
 def _meses(desde: date, hasta: date) -> list[tuple[pd.Timestamp, pd.Timestamp]]:
-    inicios = pd.date_range(pd.Timestamp(desde).to_period("M").to_timestamp(), hasta, freq="MS")
-    return [
-        (max(i, pd.Timestamp(desde)), min(i + pd.offsets.MonthBegin(1), pd.Timestamp(hasta)))
-        for i in inicios
-    ]
+    """Ventanas mensuales [ini, fin) que cubren [desde, hasta), sin ventanas vacías.
+
+    La primera y la última pueden ser parciales si `desde` o `hasta` no caen en día 1.
+    """
+    desde, hasta = pd.Timestamp(desde), pd.Timestamp(hasta)
+    inicios = pd.date_range(desde.to_period("M").to_timestamp(), hasta, freq="MS")
+    return [(max(i, desde), min(i + pd.offsets.MonthBegin(1), hasta)) for i in inicios if i < hasta]
+
+
+def _es_mes_completo(ini: pd.Timestamp, fin: pd.Timestamp) -> bool:
+    """True si la ventana es un mes calendario entero (solo esas se guardan en caché)."""
+    return ini.is_month_start and ini.normalize() == ini and fin == ini + pd.offsets.MonthBegin(1)
 
 
 def _rango_por_defecto() -> tuple[date, date]:
@@ -139,16 +148,33 @@ def ejecutar(
         desde, hasta = _rango_por_defecto()
     partes_dir = config.RAW_DIR / f"{nombre}_partes"
     partes_dir.mkdir(exist_ok=True)
+    trozos: list[pd.DataFrame] = []
     for ini, fin in _meses(desde, hasta):
+        completo = _es_mes_completo(ini, fin)
         parte = partes_dir / f"{ini:%Y-%m}.parquet"
-        if parte.exists() and not refrescar:
+        if completo and parte.exists() and not refrescar:
+            trozos.append(pd.read_parquet(parte))
             continue
         t0 = time.time()
         df = consultar(sql, {"desde": ini.to_pydatetime(), "hasta": fin.to_pydatetime()})
-        df.to_parquet(parte, index=False)
+        if completo:
+            df.to_parquet(parte, index=False)
+        else:
+            # Un mes a medias no se guarda en caché: si se guardara, la próxima corrida con el
+            # mes completo lo daría por bajado y faltarían datos sin aviso.
+            log.info(
+                "%s %s: mes parcial (%s a %s), no se guarda en caché",
+                nombre,
+                f"{ini:%Y-%m}",
+                f"{ini:%Y-%m-%d}",
+                f"{fin:%Y-%m-%d}",
+            )
+        trozos.append(df)
         log.info("%s %s: %d filas en %.1fs", nombre, f"{ini:%Y-%m}", len(df), time.time() - t0)
-    partes = sorted(partes_dir.glob("*.parquet"))
-    total = pd.concat([pd.read_parquet(p) for p in partes], ignore_index=True)
+    if not trozos:
+        raise SystemExit(f"{nombre}: el rango {desde} a {hasta} no tiene ningún día.")
+    # Solo los meses del rango pedido: el archivo final refleja exactamente [desde, hasta).
+    total = pd.concat(trozos, ignore_index=True)
     total.to_parquet(destino, index=False)
     log.info("%s: %d filas en total → %s", nombre, len(total), destino.name)
     return total
