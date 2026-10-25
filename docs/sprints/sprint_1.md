@@ -18,6 +18,14 @@ de resultados, nunca de memoria.
 | #19 Herramienta del dashboard | Propuesta: Power BI | DEC-005 en `docs/decisiones.md` |
 | #18 Subconjunto y tabla maestra | Por decidir con el equipo | Choca con la regla de trabajar solo con agregados (ver AI.md) |
 
+Correcciones de la revisión del PR (antes de correr las extracciones):
+
+- Las extracciones por mes ya no guardan en caché meses a medias ni ventanas vacías: antes, correr
+  con `--hasta` a mitad de mes dejaba ese mes incompleto para siempre (`src/hun/data/extraer.py`,
+  pruebas en `tests/test_extraer.py`).
+- Edades imposibles salen como `invalida` en el perfil de llegadas, y las esperas entre etapas ya
+  no usan etapas con fechas inválidas (ver *Reglas de limpieza* en `docs/calidad_datos.md`).
+
 Resultados para mostrar (completar después de correr):
 
 - ¿Las fechas están corridas? TODO (`docs/calidad_datos.md`, sección 5)
