@@ -69,6 +69,11 @@ data/external/*
 *.sqlite
 *.sqlite3
 
+# Excepción: CSV curados a mano de datos externos públicos (vacaciones escolares, etc.).
+# No contienen datos del hospital y el pipeline de externos los necesita para funcionar.
+!data/external/manual/
+!data/external/manual/*.csv
+
 # ---------- Modelos entrenados ----------
 models/*
 !models/.gitkeep

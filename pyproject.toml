@@ -18,10 +18,14 @@ dependencies = [
     "requests",
     "matplotlib",
     "seaborn",
+    "pyarrow",
+    "holidays",
+    "python-dateutil",
 ]
 
 [project.optional-dependencies]
 notebooks = ["jupyter"]
+bd = ["sqlalchemy>=2.0", "psycopg[binary]>=3.1"]
 dev = ["pytest", "ruff", "pre-commit", "nbstripout"]
 
 [tool.setuptools.packages.find]
