@@ -2,6 +2,8 @@
 -- para visitas que empiezan en [:desde, :hasta).
 -- espera = inicio de la etapa siguiente − fin de la anterior. Negativa = se solapan.
 -- Es la medida directa de las esperas entre etapas. Solo agregados por par de etapas.
+-- Las etapas con fechas inválidas se excluyen ANTES de ordenar: la etapa siguiente es la
+-- siguiente válida (ver docs/calidad_datos.md, Reglas de limpieza).
 WITH ordenadas AS (
     SELECT
         v.visit_concept_id,
@@ -14,6 +16,10 @@ WITH ordenadas AS (
     JOIN {esquema}.visit_occurrence AS v ON v.visit_occurrence_id = d.visit_occurrence_id
     WHERE v.visit_start_datetime >= :desde
       AND v.visit_start_datetime < :hasta
+      -- misma regla que 16 y 17: fuera las etapas sin fin o con fin antes del inicio
+      -- (con esas fechas la espera hacia la siguiente etapa saldría inventada)
+      AND d.visit_detail_end_datetime IS NOT NULL
+      AND d.visit_detail_end_datetime >= d.visit_detail_start_datetime
     WINDOW w AS (
         PARTITION BY d.visit_occurrence_id
         ORDER BY d.visit_detail_start_datetime, d.visit_detail_id
