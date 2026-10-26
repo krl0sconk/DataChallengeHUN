@@ -11,7 +11,6 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
   const [carnaval, setCarnaval] = useState(false);
   const [postFestivo, setPostFestivo] = useState(false);
   const [vacaciones, setVacaciones] = useState(false);
-  // Fecha objetivo específica para la simulación (formato YYYY-MM-DD)
   const [fechaSimulacion, setFechaSimulacion] = useState(() => {
     return new Date().toISOString().split('T')[0];
   });
@@ -21,22 +20,26 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
   const proyeccion = useMemo(() => {
     const { mediaDiaria, p75, p90, p10Ratio, p90Ratio, id } = servicio;
     const esUrg = id === 'urgencias';
+    const esTratamiento = id === 'tratamiento_urgencia';
     const esRehab = id === 'rehabilitacion';
     const factoresEfecto = [];
     let variacion = 0;
 
-    // 1. Clima: Precipitación
+    // 1. Clima: Precipitación (Lluvias torrenciales en Barranquilla / arroyos)
     if (lluvia > 15) {
-      const factorLluvia = esUrg ? 0.16 : -0.25;
+      // Urgencias y Tratamiento suben por accidentes y cuadros agudos; consulta externa/rehabilitación baja
+      const factorLluvia = esUrg ? 0.16 : esTratamiento ? 0.12 : -0.25;
       const impacto = Math.round(mediaDiaria * (lluvia / 100) * factorLluvia);
       variacion += impacto;
       factoresEfecto.push({ nombre: `Lluvia (${lluvia}mm)`, aporte: impacto });
     }
 
-    // 2. Clima: Sensación Térmica
+    // 2. Clima: Sensación Térmica / Calor Extremo (>35°C p90 climatológico Open-Meteo)
     if (temperatura >= 36) {
-      const deltaCalor = (temperatura - 35) * 0.03;
-      const factorCalor = esUrg ? deltaCalor : -deltaCalor * 0.5;
+      const deltaCalor = (temperatura - 35) * 0.03; // +3% por cada grado sobre 35°C
+      // Tanto Urgencias como Tratamiento de Urgencias suben por cuadros agudos de deshidratación, golpe de calor y crisis hipertensivas
+      // Solo Rehabilitación (ambulatoria programada) disminuye porque los pacientes prefieren no salir bajo sol extremo
+      const factorCalor = (esUrg || esTratamiento) ? deltaCalor : -deltaCalor * 0.6;
       const impacto = Math.round(mediaDiaria * factorCalor);
       variacion += impacto;
       factoresEfecto.push({ nombre: `Calor extremo (${temperatura}°C)`, aporte: impacto });
@@ -44,21 +47,24 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
 
     // 3. Epidemiología: Dengue SIVIGILA
     if (alertaDengue) {
-      const impacto = Math.round(mediaDiaria * (esUrg ? 0.18 : 0.02));
+      // Pacientes que requieren hidratación IV e infusión en tratamiento de urgencias
+      const factorDengue = esUrg ? 0.18 : esTratamiento ? 0.20 : 0.02;
+      const impacto = Math.round(mediaDiaria * factorDengue);
       variacion += impacto;
       factoresEfecto.push({ nombre: 'Brote Dengue (SIVIGILA)', aporte: impacto });
     }
 
-    // 4. Calendario: Puente
+    // 4. Calendario: Puente festivo
     if (puente) {
-      const impacto = Math.round(mediaDiaria * (esUrg ? 0.12 : -0.7));
+      const factorPuente = esUrg ? 0.12 : esTratamiento ? 0.10 : -0.7;
+      const impacto = Math.round(mediaDiaria * factorPuente);
       variacion += impacto;
       factoresEfecto.push({ nombre: 'Puente festivo', aporte: impacto });
     }
 
     // 5. Calendario: Rebote post-festivo
     if (postFestivo) {
-      const impacto = Math.round(mediaDiaria * (esUrg ? 0.15 : 0.28));
+      const impacto = Math.round(mediaDiaria * (esRehab ? 0.28 : 0.15));
       variacion += impacto;
       factoresEfecto.push({ nombre: 'Rebote post-festivo', aporte: impacto });
     }
@@ -72,14 +78,15 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
 
     // 7. Calendario: Carnaval
     if (carnaval) {
-      const impacto = Math.round(mediaDiaria * (esUrg ? 0.22 : -0.6));
+      const factorCarnaval = esUrg ? 0.22 : esTratamiento ? 0.25 : -0.6;
+      const impacto = Math.round(mediaDiaria * factorCarnaval);
       variacion += impacto;
       factoresEfecto.push({ nombre: 'Carnaval Barranquilla', aporte: impacto });
     }
 
     // 8. Calendario: Vacaciones
     if (vacaciones) {
-      const impacto = Math.round(mediaDiaria * (esRehab ? -0.18 : -0.05));
+      const impacto = Math.round(mediaDiaria * (esRehab ? -0.18 : -0.04));
       variacion += impacto;
       factoresEfecto.push({ nombre: 'Vacaciones escolares', aporte: impacto });
     }
@@ -90,18 +97,16 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
 
     const semaforo = estimado > p90 ? 'rojo' : estimado >= p75 ? 'amarillo' : 'verde';
 
-    // Fecha base parseada para calcular la línea temporal
     const [y, m, d] = fechaSimulacion.split('-').map(Number);
     const baseFecha = new Date(y, m - 1, d);
 
-    // Curva comparativa de 7 días: Proyección simulada vs Volumen Habitual (Basal)
     const timeline = Array.from({ length: 7 }, (_, i) => {
       const fecha = new Date(baseFecha);
       fecha.setDate(baseFecha.getDate() + i);
       const diaSem = fecha.getDay();
 
       let ponderador = 1.0;
-      if (esUrg) {
+      if (esUrg || esTratamiento) {
         if (diaSem === 1) ponderador = 1.08;
         else if (diaSem === 0 || diaSem === 6) ponderador = 1.04;
       } else if (esRehab) {
@@ -116,7 +121,7 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
         dia: `${DIAS_SEMANA[diaSem]} ${fecha.getDate()}`,
         simulado: valorSimulado,
         habitual: valorHabitual,
-        prediccion: valorSimulado, // retrocompatibilidad
+        prediccion: valorSimulado,
         min: Math.round(valorSimulado * p10Ratio),
         max: Math.round(valorSimulado * p90Ratio),
         p75,
