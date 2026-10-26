@@ -85,25 +85,26 @@ export function SimulatorPanel({
   return (
     <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Controles del Simulador */}
-      <fieldset className="rounded-3xl p-6 border border-[#EDF3DC] dark:border-[#0E3B39] bg-white dark:bg-[#12544F] space-y-5 lg:col-span-1 shadow-xs transition-colors">
-        <legend className="border-b border-[#EDF3DC] dark:border-[#0E3B39] pb-3.5 w-full flex items-center justify-between">
+      <section className="rounded-3xl p-6 border border-[#EDF3DC] dark:border-[#0E3B39] bg-white dark:bg-[#12544F] space-y-5 lg:col-span-1 shadow-xs transition-colors">
+        <header className="border-b border-[#EDF3DC] dark:border-[#0E3B39] pb-4 flex items-center justify-between gap-3">
           <div>
             <h2 className="text-base font-bold font-heading flex items-center gap-2 text-[#4A4466] dark:text-[#8BBB92]">
               <Sparkles className="h-5 w-5 text-[#3B7D8C] dark:text-[#8BBB92]" />
-              Parámetros de Simulación
+              Variables de Entorno
             </h2>
             <p className="text-xs font-medium mt-0.5 text-[#4A4466]/80 dark:text-[#8BBB92]/70">
-              Ajusta fecha y variables para evaluar la respuesta
+              Modela condiciones climáticas y de calendario
             </p>
           </div>
           <button
             onClick={resetearEscenario}
-            title="Reiniciar a valores normales"
-            className="flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-lg border border-[#EDF3DC] dark:border-[#0E3B39] text-[#4A4466] dark:text-[#8BBB92] hover:bg-[#EDF3DC] dark:hover:bg-[#092328] transition-colors cursor-pointer"
+            title="Reiniciar todos los valores a condiciones normales"
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#FAFCF6] dark:bg-[#092328] text-[#4A4466] dark:text-[#8BBB92] hover:border-[#2A835F] hover:bg-white dark:hover:bg-[#12544F] transition-all cursor-pointer shadow-2xs shrink-0"
           >
-            <RotateCcw className="h-3 w-3" /> Reset
+            <RotateCcw className="h-3.5 w-3.5" />
+            <span>Restablecer</span>
           </button>
-        </legend>
+        </header>
 
         {/* 1. Selector de Fecha Específica */}
         <div className="space-y-1.5 p-3 rounded-2xl bg-[#FAFCF6] dark:bg-[#092328] border border-[#EDF3DC] dark:border-[#0E3B39]">
@@ -281,7 +282,7 @@ export function SimulatorPanel({
             />
           </label>
         </div>
-      </fieldset>
+      </section>
 
       {/* Panel de Visualización y Respuestas */}
       <article className="rounded-3xl p-6 border border-[#EDF3DC] dark:border-[#0E3B39] bg-white dark:bg-[#12544F] space-y-5 lg:col-span-2 shadow-xs flex flex-col justify-between transition-colors">
