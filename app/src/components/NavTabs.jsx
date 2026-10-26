@@ -8,7 +8,7 @@ const TABS = [
 
 export function NavTabs({ tabActiva, onCambiarTab }) {
   return (
-    <nav className="border-b border-[#FFEBB8] bg-[#FFF9ED] px-6">
+    <nav className="border-b border-[#EDF3DC] bg-[#F4F9EA]/60 px-6">
       <div className="max-w-7xl mx-auto flex gap-8 text-sm">
         {TABS.map(({ id, label, icon: Icon }) => {
           const activo = tabActiva === id;
@@ -18,8 +18,8 @@ export function NavTabs({ tabActiva, onCambiarTab }) {
               onClick={() => onCambiarTab(id)}
               className={`flex items-center gap-2 border-b-2 py-3.5 font-bold transition-colors ${
                 activo
-                  ? 'border-[#601D49] text-[#601D49]'
-                  : 'border-transparent text-[#BD5579] hover:text-[#601D49]'
+                  ? 'border-[#4A4466] text-[#4A4466]'
+                  : 'border-transparent text-[#6EADBC] hover:text-[#4A4466]'
               }`}
             >
               <Icon className="h-4 w-4" />

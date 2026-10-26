@@ -29,7 +29,7 @@ export default function App() {
   } = useDemandaSimulator('urgencias');
 
   return (
-    <div className="min-h-screen flex flex-col font-sans bg-[#FFFDF9] text-[#4A1538]">
+    <div className="min-h-screen flex flex-col font-sans bg-[#FAFCF6] text-[#4A4466]">
       <Header
         servicios={listaServicios}
         servicioActivoId={servicioSel}
@@ -70,7 +70,7 @@ export default function App() {
         {tabActiva === 'metodologia' && <Metodologia />}
       </main>
 
-      <footer className="border-t border-[#FFEBB8] py-5 px-6 text-center text-xs font-medium text-[#BD5579] bg-[#FFF9ED]">
+      <footer className="border-t border-[#EDF3DC] py-5 px-6 text-center text-xs font-medium text-[#4A4466]/70 bg-[#F4F9EA]/50">
         <p>Hospital Universidad del Norte · Monitoreo y Simulación de Demanda</p>
       </footer>
     </div>
