@@ -50,6 +50,8 @@ export default function App() {
     setPostFestivo,
     vacaciones,
     setVacaciones,
+    fechaSimulacion,
+    setFechaSimulacion,
     resetearEscenario,
     aplicarPreset,
     proyeccion,
@@ -109,6 +111,8 @@ export default function App() {
             setPostFestivo={setPostFestivo}
             vacaciones={vacaciones}
             setVacaciones={setVacaciones}
+            fechaSimulacion={fechaSimulacion}
+            setFechaSimulacion={setFechaSimulacion}
             resetearEscenario={resetearEscenario}
             aplicarPreset={aplicarPreset}
             proyeccion={proyeccion}

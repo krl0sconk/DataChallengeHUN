@@ -4,13 +4,17 @@ import { CONFIG_ALERTAS, DIAS_SEMANA, SERVICIOS } from '../constants/servicios';
 export function useDemandaSimulator(servicioDefault = 'urgencias') {
   const [servicioSel, setServicioSel] = useState(servicioDefault);
   const [lluvia, setLluvia] = useState(0);
-  const [temperatura, setTemperatura] = useState(31); // 26°C a 42°C (sensación térmica Soledad/Barranquilla)
-  const [alertaDengue, setAlertaDengue] = useState(false); // SIVIGILA brote dengue lag2s
+  const [temperatura, setTemperatura] = useState(31);
+  const [alertaDengue, setAlertaDengue] = useState(false);
   const [puente, setPuente] = useState(false);
   const [quincena, setQuincena] = useState(false);
   const [carnaval, setCarnaval] = useState(false);
-  const [postFestivo, setPostFestivo] = useState(false); // Efecto rebote primer día hábil post-puente
-  const [vacaciones, setVacaciones] = useState(false); // Vacaciones escolares calendario A
+  const [postFestivo, setPostFestivo] = useState(false);
+  const [vacaciones, setVacaciones] = useState(false);
+  // Fecha objetivo específica para la simulación (formato YYYY-MM-DD)
+  const [fechaSimulacion, setFechaSimulacion] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
 
   const servicio = SERVICIOS[servicioSel] ?? SERVICIOS.urgencias;
 
@@ -21,40 +25,38 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
     const factoresEfecto = [];
     let variacion = 0;
 
-    // 1. Clima: Precipitación (Open-Meteo Soledad)
+    // 1. Clima: Precipitación
     if (lluvia > 15) {
-      // Lluvia torrencial en Barranquilla (arroyos): retrasa consulta ambulatoria pero satura urgencias
       const factorLluvia = esUrg ? 0.16 : -0.25;
       const impacto = Math.round(mediaDiaria * (lluvia / 100) * factorLluvia);
       variacion += impacto;
       factoresEfecto.push({ nombre: `Lluvia (${lluvia}mm)`, aporte: impacto });
     }
 
-    // 2. Clima: Ola de calor / Sensación térmica extrema (>35°C p90 climatológico)
+    // 2. Clima: Sensación Térmica
     if (temperatura >= 36) {
-      const deltaCalor = (temperatura - 35) * 0.03; // +3% por cada grado sobre 35°C
+      const deltaCalor = (temperatura - 35) * 0.03;
       const factorCalor = esUrg ? deltaCalor : -deltaCalor * 0.5;
       const impacto = Math.round(mediaDiaria * factorCalor);
       variacion += impacto;
       factoresEfecto.push({ nombre: `Calor extremo (${temperatura}°C)`, aporte: impacto });
     }
 
-    // 3. Epidemiología: Alerta Dengue / Arbovirosis (SIVIGILA INS)
+    // 3. Epidemiología: Dengue SIVIGILA
     if (alertaDengue) {
-      // El pico de dengue satura urgencias con cuadros febriles pediátricos y adultos
       const impacto = Math.round(mediaDiaria * (esUrg ? 0.18 : 0.02));
       variacion += impacto;
       factoresEfecto.push({ nombre: 'Brote Dengue (SIVIGILA)', aporte: impacto });
     }
 
-    // 4. Calendario: Puente festivo
+    // 4. Calendario: Puente
     if (puente) {
       const impacto = Math.round(mediaDiaria * (esUrg ? 0.12 : -0.7));
       variacion += impacto;
       factoresEfecto.push({ nombre: 'Puente festivo', aporte: impacto });
     }
 
-    // 5. Calendario: Día post-festivo (efecto rebote acumulado)
+    // 5. Calendario: Rebote post-festivo
     if (postFestivo) {
       const impacto = Math.round(mediaDiaria * (esUrg ? 0.15 : 0.28));
       variacion += impacto;
@@ -68,14 +70,14 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
       factoresEfecto.push({ nombre: 'Día de quincena', aporte: impacto });
     }
 
-    // 7. Calendario: Temporada Carnaval (Atlántico)
+    // 7. Calendario: Carnaval
     if (carnaval) {
       const impacto = Math.round(mediaDiaria * (esUrg ? 0.22 : -0.6));
       variacion += impacto;
       factoresEfecto.push({ nombre: 'Carnaval Barranquilla', aporte: impacto });
     }
 
-    // 8. Calendario: Vacaciones escolares (Calendario A)
+    // 8. Calendario: Vacaciones
     if (vacaciones) {
       const impacto = Math.round(mediaDiaria * (esRehab ? -0.18 : -0.05));
       variacion += impacto;
@@ -88,28 +90,35 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
 
     const semaforo = estimado > p90 ? 'rojo' : estimado >= p75 ? 'amarillo' : 'verde';
 
-    // Proyección móvil a 7 días sincronizada
-    const hoy = new Date();
+    // Fecha base parseada para calcular la línea temporal
+    const [y, m, d] = fechaSimulacion.split('-').map(Number);
+    const baseFecha = new Date(y, m - 1, d);
+
+    // Curva comparativa de 7 días: Proyección simulada vs Volumen Habitual (Basal)
     const timeline = Array.from({ length: 7 }, (_, i) => {
-      const fecha = new Date(hoy);
-      fecha.setDate(hoy.getDate() + i);
-      const dia = fecha.getDay();
+      const fecha = new Date(baseFecha);
+      fecha.setDate(baseFecha.getDate() + i);
+      const diaSem = fecha.getDay();
 
       let ponderador = 1.0;
       if (esUrg) {
-        if (dia === 1) ponderador = 1.08;
-        else if (dia === 0 || dia === 6) ponderador = 1.04;
+        if (diaSem === 1) ponderador = 1.08;
+        else if (diaSem === 0 || diaSem === 6) ponderador = 1.04;
       } else if (esRehab) {
-        if (dia === 0) ponderador = 0.15;
-        else if (dia === 6) ponderador = 0.6;
+        if (diaSem === 0) ponderador = 0.15;
+        else if (diaSem === 6) ponderador = 0.6;
       }
 
-      const valorDia = Math.round(estimado * ponderador);
+      const valorSimulado = Math.round(estimado * ponderador);
+      const valorHabitual = Math.round(mediaDiaria * ponderador);
+
       return {
-        dia: `${DIAS_SEMANA[dia]} ${fecha.getDate()}`,
-        prediccion: valorDia,
-        min: Math.round(valorDia * p10Ratio),
-        max: Math.round(valorDia * p90Ratio),
+        dia: `${DIAS_SEMANA[diaSem]} ${fecha.getDate()}`,
+        simulado: valorSimulado,
+        habitual: valorHabitual,
+        prediccion: valorSimulado, // retrocompatibilidad
+        min: Math.round(valorSimulado * p10Ratio),
+        max: Math.round(valorSimulado * p90Ratio),
         p75,
         p90,
       };
@@ -123,6 +132,7 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
       factores: factoresEfecto,
       alerta: CONFIG_ALERTAS[semaforo],
       serie7d: timeline,
+      fechaBase: fechaSimulacion,
     };
   }, [
     servicio,
@@ -134,9 +144,9 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
     carnaval,
     postFestivo,
     vacaciones,
+    fechaSimulacion,
   ]);
 
-  // Función para resetear todos los controles a valores basales normales
   const resetearEscenario = () => {
     setLluvia(0);
     setTemperatura(31);
@@ -146,9 +156,9 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
     setCarnaval(false);
     setPostFestivo(false);
     setVacaciones(false);
+    setFechaSimulacion(new Date().toISOString().split('T')[0]);
   };
 
-  // Presets preconfigurados rápidos para estrés hospitalario
   const aplicarPreset = (tipo) => {
     resetearEscenario();
     if (tipo === 'arroyo_lluvia') {
@@ -187,6 +197,8 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
     setPostFestivo,
     vacaciones,
     setVacaciones,
+    fechaSimulacion,
+    setFechaSimulacion,
     resetearEscenario,
     aplicarPreset,
     proyeccion,
