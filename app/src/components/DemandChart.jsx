@@ -12,33 +12,43 @@ import {
 } from 'recharts';
 
 /**
- * Gráfico interactivo estilo Cozy Pastel con líneas y fondos cálidos.
+ * Gráfico interactivo adaptado a Modo Claro y Oscuro Cozy Pastel.
  */
-export const DemandChart = memo(function DemandChart({ serie7d, servicio }) {
+export const DemandChart = memo(function DemandChart({ serie7d, servicio, isDark }) {
   return (
     <section
       aria-label="Proyección de demanda semanal"
-      className="rounded-2xl p-6 border border-stone-200 bg-white shadow-xs"
+      className={`rounded-2xl p-6 border shadow-xs transition-colors ${
+        isDark ? 'border-[#2e3748] bg-[#1e2536]' : 'border-stone-200 bg-white'
+      }`}
     >
       <header className="flex flex-wrap items-center justify-between gap-4 mb-5">
         <div>
-          <h2 className="text-base font-bold text-stone-900 font-heading flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-sky-700" aria-hidden="true" />
+          <h2
+            className={`text-base font-bold font-heading flex items-center gap-2 ${
+              isDark ? 'text-white' : 'text-stone-900'
+            }`}
+          >
+            <TrendingUp className={`h-5 w-5 ${isDark ? 'text-indigo-400' : 'text-sky-700'}`} aria-hidden="true" />
             Curva de Demanda Semanal Proyectada
           </h2>
-          <p className="text-xs font-medium text-stone-600 mt-0.5">
+          <p
+            className={`text-xs font-medium mt-0.5 ${
+              isDark ? 'text-slate-300' : 'text-stone-600'
+            }`}
+          >
             Proyección horizonte 7 días con banda de tolerancia (p10 - p90)
           </p>
         </div>
         <div className="flex items-center gap-5 text-xs font-semibold" aria-hidden="true">
-          <span className="flex items-center gap-1.5 text-stone-700">
-            <span className="h-2.5 w-2.5 rounded-full bg-sky-600" /> Mediana esperada
+          <span className={`flex items-center gap-1.5 ${isDark ? 'text-slate-200' : 'text-stone-700'}`}>
+            <span className={`h-2.5 w-2.5 rounded-full ${isDark ? 'bg-indigo-400' : 'bg-sky-600'}`} /> Mediana esperada
           </span>
-          <span className="flex items-center gap-1.5 text-amber-800">
-            <span className="h-0.5 w-3 bg-amber-600 inline-block border-t border-dashed" /> Alerta (p75)
+          <span className={`flex items-center gap-1.5 ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>
+            <span className="h-0.5 w-3 bg-amber-500 inline-block border-t border-dashed" /> Alerta (p75)
           </span>
-          <span className="flex items-center gap-1.5 text-rose-800">
-            <span className="h-0.5 w-3 bg-rose-600 inline-block border-t border-dashed" /> Saturación (p90)
+          <span className={`flex items-center gap-1.5 ${isDark ? 'text-rose-200' : 'text-rose-800'}`}>
+            <span className="h-0.5 w-3 bg-rose-500 inline-block border-t border-dashed" /> Saturación (p90)
           </span>
         </div>
       </header>
@@ -48,19 +58,27 @@ export const DemandChart = memo(function DemandChart({ serie7d, servicio }) {
           <AreaChart data={serie7d} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="colorDemanda" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#0284c7" stopOpacity={0.25} />
-                <stop offset="95%" stopColor="#0284c7" stopOpacity={0.01} />
+                <stop
+                  offset="5%"
+                  stopColor={isDark ? '#818cf8' : '#0284c7'}
+                  stopOpacity={isDark ? 0.35 : 0.25}
+                />
+                <stop
+                  offset="95%"
+                  stopColor={isDark ? '#818cf8' : '#0284c7'}
+                  stopOpacity={0.01}
+                />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
-            <XAxis dataKey="dia" stroke="#57534e" fontSize={12} tickLine={false} />
-            <YAxis stroke="#57534e" fontSize={12} tickLine={false} domain={['auto', 'auto']} />
+            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#2e3748' : '#e7e5e4'} />
+            <XAxis dataKey="dia" stroke={isDark ? '#94a3b8' : '#57534e'} fontSize={12} tickLine={false} />
+            <YAxis stroke={isDark ? '#94a3b8' : '#57534e'} fontSize={12} tickLine={false} domain={['auto', 'auto']} />
             <Tooltip
               contentStyle={{
-                backgroundColor: '#ffffff',
-                borderColor: '#d6d3d1',
+                backgroundColor: isDark ? '#1a202c' : '#ffffff',
+                borderColor: isDark ? '#4a5568' : '#d6d3d1',
                 borderRadius: '12px',
-                color: '#1c1917',
+                color: isDark ? '#f8fafc' : '#1c1917',
                 fontSize: '12px',
                 boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                 fontFamily: 'var(--font-mono)',
@@ -69,22 +87,32 @@ export const DemandChart = memo(function DemandChart({ serie7d, servicio }) {
             />
             <ReferenceLine
               y={servicio.p75}
-              stroke="#d97706"
+              stroke={isDark ? '#fcd34d' : '#d97706'}
               strokeDasharray="4 4"
               strokeWidth={1.5}
-              label={{ value: `Alerta p75 (${servicio.p75})`, fill: '#92400e', fontSize: 11, position: 'right' }}
+              label={{
+                value: `Alerta p75 (${servicio.p75})`,
+                fill: isDark ? '#fef3c7' : '#92400e',
+                fontSize: 11,
+                position: 'right',
+              }}
             />
             <ReferenceLine
               y={servicio.p90}
-              stroke="#e11d48"
+              stroke={isDark ? '#fb7185' : '#e11d48'}
               strokeDasharray="4 4"
               strokeWidth={1.5}
-              label={{ value: `Saturación p90 (${servicio.p90})`, fill: '#9f1239', fontSize: 11, position: 'right' }}
+              label={{
+                value: `Saturación p90 (${servicio.p90})`,
+                fill: isDark ? '#ffe4e6' : '#9f1239',
+                fontSize: 11,
+                position: 'right',
+              }}
             />
             <Area
               type="monotone"
               dataKey="prediccion"
-              stroke="#0284c7"
+              stroke={isDark ? '#818cf8' : '#0284c7'}
               strokeWidth={3}
               fillOpacity={1}
               fill="url(#colorDemanda)"

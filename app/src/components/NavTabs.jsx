@@ -2,9 +2,9 @@ import React, { memo } from 'react';
 import { Activity, Info, Sparkles } from 'lucide-react';
 
 /**
- * Pestañas de navegación estilo cozy con alto contraste y estados táctiles suaves.
+ * Pestañas de navegación con soporte claro / oscuro cozy pastel.
  */
-export const NavTabs = memo(function NavTabs({ tabActiva, onCambiarTab }) {
+export const NavTabs = memo(function NavTabs({ tabActiva, onCambiarTab, isDark }) {
   const tabs = [
     { id: 'panel', label: 'Panel de Saturación', icon: Activity },
     { id: 'simulador', label: 'Simulador "¿Qué pasa si...?"', icon: Sparkles },
@@ -14,7 +14,9 @@ export const NavTabs = memo(function NavTabs({ tabActiva, onCambiarTab }) {
   return (
     <nav
       aria-label="Secciones del panel de control"
-      className="border-b border-stone-200 bg-[#f9f6f0] px-6"
+      className={`border-b px-6 transition-colors ${
+        isDark ? 'border-[#2e3748] bg-[#161c28]' : 'border-stone-200 bg-[#f9f6f0]'
+      }`}
     >
       <div role="tablist" className="max-w-7xl mx-auto flex gap-8 text-sm">
         {tabs.map((t) => {
@@ -30,7 +32,11 @@ export const NavTabs = memo(function NavTabs({ tabActiva, onCambiarTab }) {
               onClick={() => onCambiarTab(t.id)}
               className={`flex items-center gap-2.5 border-b-2 py-3.5 font-bold transition-colors ${
                 isSelected
-                  ? 'border-sky-600 text-sky-900'
+                  ? isDark
+                    ? 'border-indigo-400 text-indigo-300'
+                    : 'border-sky-600 text-sky-900'
+                  : isDark
+                  ? 'border-transparent text-slate-300 hover:text-white'
                   : 'border-transparent text-stone-600 hover:text-stone-900'
               }`}
             >

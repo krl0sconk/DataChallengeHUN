@@ -10,16 +10,13 @@
   body {
     margin: 0;
     font-family: var(--font-sans);
-    background-color: #faf8f5; /* Warm cozy paper */
-    color: #1e293b; /* Slate 800 - Contrast ratio > 12:1 */
-    min-height: 100vh;
+    transition: background-color 0.25s ease, color 0.25s ease;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
-    color: #0f172a;
   }
 }
 

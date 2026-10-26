@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   DemandChart,
   Header,
@@ -11,11 +11,25 @@ import { useDemandaSimulator } from './hooks/useDemandaSimulator';
 
 /**
  * Componente raíz:
- * - Tema Warm & Cozy (fondo cálido tipo papel #faf8f5, bordes suaves y tarjetas blancas)
- * - Contraste WCAG AAA (texto oscuro sobre fondo claro sin fatiga visual)
+ * - Soporte bimodal: Modo Claro Cozy Pastel (crema cálido) & Modo Oscuro Cozy Pastel (pizarra nocturno suave)
+ * - Contraste WCAG AAA en ambos temas, sin negros ni azules agresivos
  */
 export default function App() {
   const [tabActiva, setTabActiva] = useState('panel');
+  const [isDark, setIsDark] = useState(() => {
+    return localStorage.getItem('hun-theme') === 'dark';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hun-theme', isDark ? 'dark' : 'light');
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDark]);
+
+  const toggleTheme = () => setIsDark((prev) => !prev);
 
   const {
     servicio,
@@ -34,16 +48,24 @@ export default function App() {
   } = useDemandaSimulator('urgencias');
 
   return (
-    <div className="min-h-screen bg-[#faf8f5] text-stone-800 flex flex-col font-sans selection:bg-sky-200 selection:text-sky-900">
-      {/* 1. Header con selector de servicio */}
+    <div
+      className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${
+        isDark
+          ? 'bg-[#121620] text-slate-100 selection:bg-indigo-500/30 selection:text-indigo-200'
+          : 'bg-[#faf8f5] text-stone-800 selection:bg-sky-200 selection:text-sky-900'
+      }`}
+    >
+      {/* 1. Header con selector de servicio y toggle de tema */}
       <Header
         servicios={serviciosDisponibles}
         servicioActivoId={servicioActivoId}
         onSeleccionarServicio={setServicioActivoId}
+        isDark={isDark}
+        onToggleTheme={toggleTheme}
       />
 
       {/* 2. Pestañas de Navegación Semántica */}
-      <NavTabs tabActiva={tabActiva} onCambiarTab={setTabActiva} />
+      <NavTabs tabActiva={tabActiva} onCambiarTab={setTabActiva} isDark={isDark} />
 
       {/* 3. Contenedor Principal Semántico */}
       <main className="max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-6">
@@ -60,8 +82,9 @@ export default function App() {
               p10={resultado.p10}
               p90={resultado.p90}
               servicio={servicio}
+              isDark={isDark}
             />
-            <DemandChart serie7d={resultado.serie7d} servicio={servicio} />
+            <DemandChart serie7d={resultado.serie7d} servicio={servicio} isDark={isDark} />
           </section>
         )}
 
@@ -82,6 +105,7 @@ export default function App() {
               esCarnaval={esCarnaval}
               setEsCarnaval={setEsCarnaval}
               resultado={resultado}
+              isDark={isDark}
             />
           </section>
         )}
@@ -92,13 +116,19 @@ export default function App() {
             id="panel-metodologia"
             aria-labelledby="tab-metodologia"
           >
-            <Metodologia />
+            <Metodologia isDark={isDark} />
           </section>
         )}
       </main>
 
       {/* 4. Footer Semántico */}
-      <footer className="border-t border-stone-200 py-6 px-6 text-center text-xs font-semibold text-stone-500 bg-[#fdfbf7]">
+      <footer
+        className={`border-t py-6 px-6 text-center text-xs font-semibold transition-colors ${
+          isDark
+            ? 'border-[#2e3748] bg-[#161c28] text-slate-400'
+            : 'border-stone-200 bg-[#fdfbf7] text-stone-500'
+        }`}
+      >
         <p>
           Hospital Universidad del Norte · Predicción y Control de Flujo de Pacientes · Sprint 2 (Web & Validación)
         </p>
