@@ -6,13 +6,9 @@ const TABS = [
   { id: 'metodologia', label: 'Guía Operativa & OMOP', icon: Info },
 ];
 
-export function NavTabs({ tabActiva, onCambiarTab, isDark }) {
+export function NavTabs({ tabActiva, onCambiarTab }) {
   return (
-    <nav
-      className={`border-b px-6 transition-colors ${
-        isDark ? 'border-[#2e3748] bg-[#161c28]' : 'border-stone-200 bg-[#f9f6f0]'
-      }`}
-    >
+    <nav className="border-b border-[#FFEBB8] bg-[#FFF9ED] px-6">
       <div className="max-w-7xl mx-auto flex gap-8 text-sm">
         {TABS.map(({ id, label, icon: Icon }) => {
           const activo = tabActiva === id;
@@ -20,14 +16,10 @@ export function NavTabs({ tabActiva, onCambiarTab, isDark }) {
             <button
               key={id}
               onClick={() => onCambiarTab(id)}
-              className={`flex items-center gap-2.5 border-b-2 py-3.5 font-bold transition-colors ${
+              className={`flex items-center gap-2 border-b-2 py-3.5 font-bold transition-colors ${
                 activo
-                  ? isDark
-                    ? 'border-indigo-400 text-indigo-300'
-                    : 'border-sky-600 text-sky-900'
-                  : isDark
-                  ? 'border-transparent text-slate-300 hover:text-white'
-                  : 'border-transparent text-stone-600 hover:text-stone-900'
+                  ? 'border-[#601D49] text-[#601D49]'
+                  : 'border-transparent text-[#BD5579] hover:text-[#601D49]'
               }`}
             >
               <Icon className="h-4 w-4" />
