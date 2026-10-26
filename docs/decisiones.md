@@ -20,6 +20,19 @@ Si una decisión reemplaza a otra, no borres la anterior: márcala como **Reempl
 
 ---
 
+### DEC-006 · Framework de la aplicación web: React + Vite + Tailwind CSS
+
+- **Fecha:** 2026-10-25
+- **Sprint:** 2
+- **Responsable:** Daniel
+- **Estado:** Aceptada
+- **Decisión:** La aplicación web interactiva se desarrolla en **Vite + React + Tailwind CSS** dentro de la carpeta `app/`.
+- **Motivo:** Garantiza máxima velocidad de renderizado (0ms de latencia en el cliente para el simulador "¿qué pasa si?"), estética profesional SaaS/hospitalaria (Recharts, Lucide Icons, tema oscuro institucional) y desacoplamiento limpio.
+- **Alternativas consideradas:** Streamlit (descartada por limitaciones estéticas, look genérico y latencia al recargar componentes).
+- **Consecuencias:** Todo el desarrollo web vive en `app/` gestionado con `npm run dev`. No expone datos de pacientes y utiliza los parámetros del inventario OMOP.
+
+---
+
 ### DEC-005 · Herramienta del dashboard de análisis: Power BI
 
 - **Fecha:** 2026-10-23
