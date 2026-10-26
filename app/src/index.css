@@ -6,14 +6,21 @@
     --font-heading: 'Outfit', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
 
-    /* Paleta Mineral Salud Cozy */
-    --color-slate-violet: #4A4466; /* Base tipografía y títulos */
-    --color-teal: #6EADBC;         /* Acento interactivo y curvas */
-    --color-sage: #9FCBAD;         /* Verde salvia / estado normal */
-    --color-pistachio: #F1F7D4;    /* Fondo suave iluminado / badges */
-    --color-surface: #FAFCF6;      /* Fondo app principal */
-    --color-card: #FFFFFF;         /* Tarjetas */
-    --color-subtle: #EDF3DC;       /* Bordes y contenedores secundarios */
+    /* Paleta Mineral Salud Cozy - Claro */
+    --color-slate-violet: #4A4466;
+    --color-teal: #6EADBC;
+    --color-sage: #9FCBAD;
+    --color-pistachio: #F1F7D4;
+    --color-surface: #FAFCF6;
+    --color-card: #FFFFFF;
+    --color-subtle: #EDF3DC;
+
+    /* Paleta Modo Oscuro Cozy - #37353E / #44444E / #715A5A / #D3DAD9 */
+    --dark-bg: #37353E;       /* Fondo oscuro base ceniza */
+    --dark-card: #44444E;     /* Superficie tarjetas y barras */
+    --dark-accent: #715A5A;   /* Acento cálido tierra / moca suave */
+    --dark-text: #D3DAD9;     /* Texto claro menta hielo WCAG AAA */
+    --dark-border: #52525E;   /* Bordes definidos con contraste */
   }
 
   body {
@@ -21,12 +28,18 @@
     font-family: var(--font-sans);
     background-color: #FAFCF6;
     color: #4A4466;
+    transition: background-color 0.2s ease, color 0.2s ease;
     -webkit-font-smoothing: antialiased;
+  }
+
+  .dark body {
+    background-color: #37353E;
+    color: #D3DAD9;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
-    color: #4A4466;
+    color: inherit;
   }
 }
 

@@ -2,13 +2,13 @@ import { Info, Lock, ShieldCheck } from 'lucide-react';
 
 export function Metodologia() {
   return (
-    <article className="rounded-3xl p-6 border border-[#EDF3DC] bg-white space-y-5 text-sm text-[#4A4466] shadow-xs">
+    <article className="rounded-3xl p-6 border border-[#EDF3DC] dark:border-[#52525E] bg-white dark:bg-[#44444E] space-y-5 text-sm text-[#4A4466] dark:text-[#D3DAD9] shadow-xs transition-colors">
       <header>
-        <h2 className="text-lg font-bold font-heading flex items-center gap-2 text-[#4A4466]">
+        <h2 className="text-lg font-bold font-heading flex items-center gap-2 text-[#4A4466] dark:text-[#D3DAD9]">
           <Info className="h-5 w-5 text-[#6EADBC]" />
           Metodología, Arquitectura y Privacidad Clínica
         </h2>
-        <p className="text-xs font-semibold mt-1 text-[#4A4466]/80">
+        <p className="text-xs font-semibold mt-1 text-[#4A4466]/80 dark:text-[#D3DAD9]/70">
           Directrices oficiales del Hospital Universidad del Norte (HUN) · Data Challenge 2026
         </p>
       </header>
@@ -20,24 +20,24 @@ export function Metodologia() {
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
-        <section className="p-5 rounded-2xl border border-[#EDF3DC] bg-[#FAFCF6] space-y-2.5">
-          <h3 className="font-bold flex items-center gap-2 text-xs uppercase tracking-wider font-heading text-[#4A4466]">
+        <section className="p-5 rounded-2xl border border-[#EDF3DC] dark:border-[#52525E] bg-[#FAFCF6] dark:bg-[#37353E] space-y-2.5">
+          <h3 className="font-bold flex items-center gap-2 text-xs uppercase tracking-wider font-heading text-[#4A4466] dark:text-[#D3DAD9]">
             <Lock className="h-4 w-4 text-[#6EADBC]" />
             Privacidad Estricta y Reglas Anti-Fuga
           </h3>
-          <p className="text-xs leading-relaxed text-[#4A4466]/80 font-normal">
+          <p className="text-xs leading-relaxed text-[#4A4466]/80 dark:text-[#D3DAD9]/70 font-normal">
             Ningún registro médico individual ni fila de paciente sale de la infraestructura segura
             del hospital. La aplicación interactúa exclusivamente con series temporales agregadas y
             coeficientes validados mediante validación walk-forward.
           </p>
         </section>
 
-        <section className="p-5 rounded-2xl border border-[#EDF3DC] bg-[#FAFCF6] space-y-2.5">
-          <h3 className="font-semibold flex items-center gap-2 text-xs uppercase tracking-wider font-heading text-[#4A4466]">
+        <section className="p-5 rounded-2xl border border-[#EDF3DC] dark:border-[#52525E] bg-[#FAFCF6] dark:bg-[#37353E] space-y-2.5">
+          <h3 className="font-semibold flex items-center gap-2 text-xs uppercase tracking-wider font-heading text-[#4A4466] dark:text-[#D3DAD9]">
             <ShieldCheck className="h-4 w-4 text-[#6EADBC]" />
             Estándar OMOP Common Data Model
           </h3>
-          <p className="text-xs leading-relaxed text-[#4A4466]/80 font-normal">
+          <p className="text-xs leading-relaxed text-[#4A4466]/80 dark:text-[#D3DAD9]/70 font-normal">
             Los servicios evaluados corresponden a conceptos clínicos estandarizados:
             Urgencias (<code>9203</code>), Rehabilitación Ambulatoria (<code>581479</code>) y Tratamiento
             de Urgencias (<code>3045729</code>), permitiendo comparabilidad multicéntrica.

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   DemandChart,
   Header,
@@ -11,6 +11,20 @@ import { useDemandaSimulator } from './hooks/useDemandaSimulator';
 
 export default function App() {
   const [tabActiva, setTabActiva] = useState('panel');
+  const [isDark, setIsDark] = useState(() => {
+    return localStorage.getItem('hun-theme') === 'dark';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hun-theme', isDark ? 'dark' : 'light');
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDark]);
+
+  const toggleTheme = () => setIsDark((prev) => !prev);
 
   const {
     servicio,
@@ -29,11 +43,13 @@ export default function App() {
   } = useDemandaSimulator('urgencias');
 
   return (
-    <div className="min-h-screen flex flex-col font-sans bg-[#FAFCF6] text-[#4A4466]">
+    <div className="min-h-screen flex flex-col font-sans bg-[#FAFCF6] dark:bg-[#37353E] text-[#4A4466] dark:text-[#D3DAD9] transition-colors">
       <Header
         servicios={listaServicios}
         servicioActivoId={servicioSel}
         onSeleccionarServicio={setServicioSel}
+        isDark={isDark}
+        onToggleTheme={toggleTheme}
       />
 
       <NavTabs tabActiva={tabActiva} onCambiarTab={setTabActiva} />
@@ -48,7 +64,7 @@ export default function App() {
               p90={proyeccion.max}
               servicio={servicio}
             />
-            <DemandChart serie7d={proyeccion.serie7d} servicio={servicio} />
+            <DemandChart serie7d={proyeccion.serie7d} servicio={servicio} isDark={isDark} />
           </section>
         )}
 
@@ -64,13 +80,14 @@ export default function App() {
             carnaval={carnaval}
             setCarnaval={setCarnaval}
             proyeccion={proyeccion}
+            isDark={isDark}
           />
         )}
 
         {tabActiva === 'metodologia' && <Metodologia />}
       </main>
 
-      <footer className="border-t border-[#EDF3DC] py-5 px-6 text-center text-xs font-medium text-[#4A4466]/70 bg-[#F4F9EA]/50">
+      <footer className="border-t border-[#EDF3DC] dark:border-[#52525E] py-5 px-6 text-center text-xs font-medium text-[#4A4466]/70 dark:text-[#D3DAD9]/70 bg-[#F4F9EA]/50 dark:bg-[#44444E]/50 transition-colors">
         <p>Hospital Universidad del Norte · Monitoreo y Simulación de Demanda</p>
       </footer>
     </div>
