@@ -10,7 +10,6 @@ import {
 } from 'recharts';
 
 export function RadarPresionServicios({ servicios, servicioActivoId, isDark }) {
-  // Calcula el porcentaje de ocupación o presión relativa respecto al p90
   const data = Object.values(servicios).map((s) => {
     const presion = Math.round((s.mediaDiaria / s.p90) * 100);
     const margenSeguridad = Math.round(((s.p90 - s.mediaDiaria) / s.p90) * 100);
@@ -25,24 +24,27 @@ export function RadarPresionServicios({ servicios, servicioActivoId, isDark }) {
     };
   });
 
+  const radarFill = isDark ? '#2A835F' : '#6EADBC';
+  const radarStroke = isDark ? '#8BBB92' : '#3B7D8C';
+
   return (
     <section className="rounded-3xl p-6 border border-[#EDF3DC] dark:border-[#0E3B39] bg-white dark:bg-[#12544F] transition-colors">
       <header className="flex flex-wrap items-center justify-between gap-4 mb-4">
         <div>
           <h2 className="text-base font-bold font-heading flex items-center gap-2 text-[#4A4466] dark:text-[#8BBB92]">
-            <Compass className="h-5 w-5 text-[#3B7D8C] dark:text-[#9FCBAD]" />
-            Radar de Presión Asistencial Multi-Servicio
+            <Compass className="h-5 w-5 text-[#3B7D8C] dark:text-[#8BBB92]" />
+            Capacidad por Servicio
           </h2>
           <p className="text-xs font-medium mt-0.5 text-[#4A4466]/80 dark:text-[#8BBB92]/70">
-            Comparativa de carga operacional (% de capacidad frente a p90)
+            Comparación de ocupación simultánea frente al límite p90
           </p>
         </div>
         <div className="flex items-center gap-4 text-xs font-semibold">
-          <span className="flex items-center gap-1.5 text-[#3B7D8C] dark:text-[#9FCBAD]">
-            <span className="h-2 w-2 rounded-full bg-[#6EADBC]" /> Presión Actual
+          <span className="flex items-center gap-1.5 text-[#3B7D8C] dark:text-[#8BBB92]">
+            <span className="h-2 w-2 rounded-full bg-[#3B7D8C] dark:bg-[#8BBB92]" /> Actual
           </span>
-          <span className="flex items-center gap-1.5 text-[#D98A00]">
-            <span className="h-2 w-2 rounded-full bg-[#D98A00]" /> Umbral Alerta (p75)
+          <span className="flex items-center gap-1.5 text-[#D98A00] dark:text-[#F1F7D4]">
+            <span className="h-2 w-2 rounded-full bg-[#D98A00]" /> Alerta (p75)
           </span>
         </div>
       </header>
@@ -71,15 +73,15 @@ export function RadarPresionServicios({ servicios, servicioActivoId, isDark }) {
               }}
               formatter={(val, name) => [
                 `${val}%`,
-                name === 'presion' ? 'Presión Operativa' : 'Umbral Alerta',
+                name === 'presion' ? 'Ocupación' : 'Umbral Alerta',
               ]}
             />
             <Radar
               name="presion"
               dataKey="presion"
-              stroke="#6EADBC"
-              fill="#6EADBC"
-              fillOpacity={0.45}
+              stroke={radarStroke}
+              fill={radarFill}
+              fillOpacity={0.4}
             />
             <Radar
               name="umbralAlerta"
@@ -99,18 +101,18 @@ export function RadarPresionServicios({ servicios, servicioActivoId, isDark }) {
             key={item.id}
             className={`p-2 rounded-xl transition-all ${
               item.id === servicioActivoId
-                ? 'bg-[#F1F7D4]/50 dark:bg-[#2A835F]/50 border border-[#9FCBAD] dark:border-[#2A835F]'
+                ? 'bg-[#F1F7D4]/50 dark:bg-[#2A835F]/40 border border-[#9FCBAD] dark:border-[#2A835F]'
                 : 'bg-transparent'
             }`}
           >
             <span className="block font-bold truncate text-[#4A4466] dark:text-[#8BBB92]">
               {item.servicio}
             </span>
-            <span className="font-mono-num font-extrabold text-sm text-[#3B7D8C] dark:text-[#9FCBAD]">
+            <span className="font-mono-num font-extrabold text-sm text-[#3B7D8C] dark:text-[#8BBB92]">
               {item.presion}%
             </span>
             <span className="block text-[10px] text-[#4A4466]/70 dark:text-[#8BBB92]/60">
-              de p90 histórico
+              de p90
             </span>
           </div>
         ))}

@@ -1,9 +1,9 @@
 import { Activity, Info, Sparkles } from 'lucide-react';
 
 const TABS = [
-  { id: 'panel', label: 'Panel de Saturación', icon: Activity },
-  { id: 'simulador', label: 'Simulador "¿Qué pasa si...?"', icon: Sparkles },
-  { id: 'metodologia', label: 'Guía Operativa & OMOP', icon: Info },
+  { id: 'panel', label: 'Monitor', icon: Activity },
+  { id: 'simulador', label: 'Simulador', icon: Sparkles },
+  { id: 'metodologia', label: 'Guía HUN', icon: Info },
 ];
 
 export function NavTabs({ tabActiva, onCambiarTab }) {
