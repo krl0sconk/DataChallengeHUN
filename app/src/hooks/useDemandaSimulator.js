@@ -1,104 +1,90 @@
-import { useMemo, useState } from 'react';
-import { CONFIG_ALERTAS, DIAS_SEMANA, SERVICIOS } from '../constants/servicios';
+import { useState, useMemo } from 'react';
+import { SERVICIOS, CONFIG_ALERTAS, DIAS_SEMANA } from '../constants/servicios';
 
-/**
- * Custom Hook para encapsular el estado y los cálculos del simulador de demanda hospitalaria.
- * Aplica lógica de negocio, elasticidades empíricas y proyecciones a 7 días.
- *
- * @param {string} servicioInicialId - Identificador del servicio inicial
- * @returns {Object} Estado del simulador y resultados calculados
- */
-export function useDemandaSimulator(servicioInicialId = 'urgencias') {
-  const [servicioActivoId, setServicioActivoId] = useState(servicioInicialId);
+export function useDemandaSimulator(servicioInicial = 'urgencias') {
+  const [servicioId, setServicioId] = useState(servicioInicial);
   const [lluviaMm, setLluviaMm] = useState(0);
   const [esFestivo, setEsFestivo] = useState(false);
   const [esQuincena, setEsQuincena] = useState(false);
   const [esCarnaval, setEsCarnaval] = useState(false);
 
-  const servicio = SERVICIOS[servicioActivoId] || SERVICIOS.urgencias;
+  const servicio = SERVICIOS[servicioId] ?? SERVICIOS.urgencias;
 
   const resultado = useMemo(() => {
+    const { mediaDiaria, p75, p90, p10Ratio, p90Ratio, id } = servicio;
+    const esUrgencias = id === 'urgencias';
+    const desgloses = [];
     let delta = 0;
-    const factoresShap = [];
 
-    // 1. Efecto Festivo / Puente
+    // Ajustes por calendario y eventos locales (Barranquilla / Soledad)
     if (esFestivo) {
-      const fDelta =
-        servicio.id === 'urgencias'
-          ? Math.round(servicio.mediaDiaria * 0.12)
-          : -Math.round(servicio.mediaDiaria * 0.70);
-      delta += fDelta;
-      factoresShap.push({ nombre: 'Festivo / Puente', aporte: fDelta });
+      // Urgencias sube por accidentalidad/traslados; consulta externa y rehab caen
+      const val = Math.round(mediaDiaria * (esUrgencias ? 0.12 : -0.7));
+      delta += val;
+      desgloses.push({ nombre: 'Festivo / Puente', aporte: val });
     }
 
-    // 2. Efecto Precipitación (Lluvia en Soledad / Barranquilla)
     if (lluviaMm > 15) {
-      const lDelta = Math.round(servicio.mediaDiaria * (lluviaMm / 100) * 0.15);
-      delta += lDelta;
-      factoresShap.push({ nombre: `Lluvia (${lluviaMm}mm)`, aporte: lDelta });
+      // En aguaceros fuertes sube la demanda respiratoria y traumas
+      const val = Math.round(mediaDiaria * (lluviaMm / 100) * 0.15);
+      delta += val;
+      desgloses.push({ nombre: `Lluvia (${lluviaMm}mm)`, aporte: val });
     }
 
-    // 3. Efecto Pago de Quincena (Días 15 y 30)
     if (esQuincena) {
-      const qDelta = Math.round(servicio.mediaDiaria * 0.05);
-      delta += qDelta;
-      factoresShap.push({ nombre: 'Pago de Quincena', aporte: qDelta });
+      const val = Math.round(mediaDiaria * 0.05);
+      delta += val;
+      desgloses.push({ nombre: 'Pago de Quincena', aporte: val });
     }
 
-    // 4. Efecto Carnaval de Barranquilla
     if (esCarnaval) {
-      const cDelta =
-        servicio.id === 'urgencias'
-          ? Math.round(servicio.mediaDiaria * 0.20)
-          : -Math.round(servicio.mediaDiaria * 0.55);
-      delta += cDelta;
-      factoresShap.push({ nombre: 'Carnaval de Barranquilla', aporte: cDelta });
+      // Pico critico en urgencias durante 4 dias de fiesta
+      const val = Math.round(mediaDiaria * (esUrgencias ? 0.2 : -0.55));
+      delta += val;
+      desgloses.push({ nombre: 'Carnaval de Barranquilla', aporte: val });
     }
 
-    const prediccion = Math.max(1, servicio.mediaDiaria + delta);
-    const p10 = Math.round(prediccion * servicio.p10Ratio);
-    const p90 = Math.round(prediccion * servicio.p90Ratio);
+    const prediccion = Math.max(1, mediaDiaria + delta);
+    const p10 = Math.round(prediccion * p10Ratio);
+    const p90Val = Math.round(prediccion * p90Ratio);
 
-    // Nivel de alerta por percentiles históricos
-    let alertaId = 'verde';
-    if (prediccion > servicio.p90) alertaId = 'rojo';
-    else if (prediccion >= servicio.p75) alertaId = 'amarillo';
+    // Semáforo según umbrales de corte historicos
+    const nivelAlerta = prediccion > p90 ? 'rojo' : prediccion >= p75 ? 'amarillo' : 'verde';
 
-    const infoAlerta = CONFIG_ALERTAS[alertaId];
-
-    // Proyección de serie temporal a 7 días
-    const fechaBase = new Date();
+    // Curva semanal proyectada (horizonte t+1..t+7)
+    const hoy = new Date();
     const serie7d = Array.from({ length: 7 }, (_, i) => {
-      const fecha = new Date(fechaBase);
-      fecha.setDate(fechaBase.getDate() + i);
-      const diaNum = fecha.getDay();
+      const f = new Date(hoy);
+      f.setDate(hoy.getDate() + i);
+      const diaSem = f.getDay();
 
-      let factorEstacional = 1.0;
-      if (servicio.id === 'urgencias') {
-        if (diaNum === 1) factorEstacional = 1.08; // Lunes pico
-        else if (diaNum === 0 || diaNum === 6) factorEstacional = 1.04;
-      } else if (servicio.id === 'rehabilitacion') {
-        if (diaNum === 0) factorEstacional = 0.15; // Cierre domingo
-        else if (diaNum === 6) factorEstacional = 0.60; // Sábado reducido
+      // Curva estacional de urgencias vs ambulatorio
+      let peso = 1.0;
+      if (esUrgencias) {
+        if (diaSem === 1) peso = 1.08; // Lunes rebote
+        else if (diaSem === 0 || diaSem === 6) peso = 1.04;
+      } else if (id === 'rehabilitacion') {
+        if (diaSem === 0) peso = 0.15; // Domingo cerrado
+        else if (diaSem === 6) peso = 0.6; // Sabado horario corto
       }
 
-      const pDia = Math.round(prediccion * factorEstacional);
+      const pDia = Math.round(prediccion * peso);
       return {
-        dia: `${DIAS_SEMANA[diaNum]} ${fecha.getDate()}`,
+        dia: `${DIAS_SEMANA[diaSem]} ${f.getDate()}`,
         prediccion: pDia,
-        min: Math.round(pDia * servicio.p10Ratio),
-        max: Math.round(pDia * servicio.p90Ratio),
-        p75: servicio.p75,
-        p90: servicio.p90,
+        min: Math.round(pDia * p10Ratio),
+        max: Math.round(pDia * p90Ratio),
+        p75,
+        p90,
       };
     });
 
     return {
       prediccion,
       p10,
-      p90,
-      alerta: infoAlerta,
-      factores: factoresShap.sort((a, b) => Math.abs(b.aporte) - Math.abs(a.aporte)),
+      p90: p90Val,
+      alerta: CONFIG_ALERTAS[nivelAlerta],
+      factores: desgloses.sort((a, b) => Math.abs(b.aporte) - Math.abs(a.aporte)),
       serie7d,
       deltaTotal: delta,
     };
@@ -107,8 +93,8 @@ export function useDemandaSimulator(servicioInicialId = 'urgencias') {
   return {
     servicio,
     serviciosDisponibles: Object.values(SERVICIOS),
-    servicioActivoId,
-    setServicioActivoId,
+    servicioActivoId: servicioId,
+    setServicioActivoId: setServicioId,
     lluviaMm,
     setLluviaMm,
     esFestivo,

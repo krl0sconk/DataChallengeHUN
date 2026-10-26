@@ -1,25 +1,15 @@
-import React, { memo } from 'react';
 import { Info, Lock, ShieldCheck } from 'lucide-react';
 
-/**
- * Sección metodológica con soporte para Modo Claro y Oscuro Cozy Pastel.
- */
-export const Metodologia = memo(function Metodologia({ isDark }) {
+export function Metodologia({ isDark }) {
   return (
     <article
-      aria-labelledby="titulo-metodologia"
       className={`rounded-2xl p-6 border space-y-5 text-sm shadow-xs transition-colors ${
         isDark ? 'border-[#2e3748] bg-[#1e2536] text-slate-200' : 'border-stone-200 bg-white text-stone-700'
       }`}
     >
       <header>
-        <h2
-          id="titulo-metodologia"
-          className={`text-lg font-bold font-heading flex items-center gap-2 ${
-            isDark ? 'text-white' : 'text-stone-900'
-          }`}
-        >
-          <Info className={`h-5 w-5 ${isDark ? 'text-indigo-400' : 'text-sky-700'}`} aria-hidden="true" />
+        <h2 className={`text-lg font-bold font-heading flex items-center gap-2 ${isDark ? 'text-white' : 'text-stone-900'}`}>
+          <Info className={`h-5 w-5 ${isDark ? 'text-indigo-400' : 'text-sky-700'}`} />
           Metodología, Arquitectura y Privacidad Clínica
         </h2>
         <p className={`text-xs font-semibold mt-1 ${isDark ? 'text-slate-300' : 'text-stone-600'}`}>
@@ -35,17 +25,12 @@ export const Metodologia = memo(function Metodologia({ isDark }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
         <section
-          aria-label="Seguridad y privacidad"
           className={`p-5 rounded-xl border space-y-2.5 ${
             isDark ? 'bg-[#161c28] border-[#333d52]' : 'bg-stone-50 border-stone-200'
           }`}
         >
-          <h3
-            className={`font-bold flex items-center gap-2 text-xs uppercase tracking-wider font-heading ${
-              isDark ? 'text-white' : 'text-stone-900'
-            }`}
-          >
-            <Lock className={`h-4 w-4 ${isDark ? 'text-amber-300' : 'text-amber-700'}`} aria-hidden="true" />
+          <h3 className={`font-bold flex items-center gap-2 text-xs uppercase tracking-wider font-heading ${isDark ? 'text-white' : 'text-stone-900'}`}>
+            <Lock className={`h-4 w-4 ${isDark ? 'text-amber-300' : 'text-amber-700'}`} />
             Privacidad Estricta y Reglas Anti-Fuga
           </h3>
           <p className={`text-xs leading-relaxed font-normal ${isDark ? 'text-slate-300' : 'text-stone-600'}`}>
@@ -56,17 +41,12 @@ export const Metodologia = memo(function Metodologia({ isDark }) {
         </section>
 
         <section
-          aria-label="Estándar OMOP"
           className={`p-5 rounded-xl border space-y-2.5 ${
             isDark ? 'bg-[#161c28] border-[#333d52]' : 'bg-stone-50 border-stone-200'
           }`}
         >
-          <h3
-            className={`font-semibold flex items-center gap-2 text-xs uppercase tracking-wider font-heading ${
-              isDark ? 'text-white' : 'text-stone-900'
-            }`}
-          >
-            <ShieldCheck className={`h-4 w-4 ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`} aria-hidden="true" />
+          <h3 className={`font-semibold flex items-center gap-2 text-xs uppercase tracking-wider font-heading ${isDark ? 'text-white' : 'text-stone-900'}`}>
+            <ShieldCheck className={`h-4 w-4 ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`} />
             Estándar OMOP Common Data Model
           </h3>
           <p className={`text-xs leading-relaxed font-normal ${isDark ? 'text-slate-300' : 'text-stone-600'}`}>
@@ -78,4 +58,4 @@ export const Metodologia = memo(function Metodologia({ isDark }) {
       </div>
     </article>
   );
-});
+}

@@ -1,9 +1,3 @@
-/**
- * Constantes y configuración canónica de servicios asistenciales (OMOP CDM).
- * Referencia técnica: docs/objetivo_prediccion.md
- * Paleta Cozy / Pastel Cálido con contraste WCAG AAA sobre fondos claros.
- */
-
 export const SERVICIOS = {
   urgencias: {
     id: 'urgencias',
@@ -14,7 +8,7 @@ export const SERVICIOS = {
     p90: 540,
     p10Ratio: 0.86,
     p90Ratio: 1.14,
-    color: '#2563eb', // Azul sereno accesible
+    color: '#2563eb',
   },
   rehabilitacion: {
     id: 'rehabilitacion',
@@ -25,7 +19,7 @@ export const SERVICIOS = {
     p90: 940,
     p10Ratio: 0.88,
     p90Ratio: 1.12,
-    color: '#059669', // Verde salvia accesible
+    color: '#059669',
   },
   tratamiento_urgencia: {
     id: 'tratamiento_urgencia',
@@ -34,9 +28,9 @@ export const SERVICIOS = {
     mediaDiaria: 15,
     p75: 18,
     p90: 22,
-    p10Ratio: 0.70,
-    p90Ratio: 1.30,
-    color: '#7c3aed', // Lavanda pastel accesible
+    p10Ratio: 0.7,
+    p90Ratio: 1.3,
+    color: '#7c3aed',
   },
 };
 

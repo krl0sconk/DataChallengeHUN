@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   DemandChart,
   Header,
@@ -9,27 +9,14 @@ import {
 } from './components';
 import { useDemandaSimulator } from './hooks/useDemandaSimulator';
 
-/**
- * Componente raíz:
- * - Soporte bimodal: Modo Claro Cozy Pastel (crema cálido) & Modo Oscuro Cozy Pastel (pizarra nocturno suave)
- * - Contraste WCAG AAA en ambos temas, sin negros ni azules agresivos
- */
 export default function App() {
   const [tabActiva, setTabActiva] = useState('panel');
-  const [isDark, setIsDark] = useState(() => {
-    return localStorage.getItem('hun-theme') === 'dark';
-  });
+  const [isDark, setIsDark] = useState(() => localStorage.getItem('hun-theme') === 'dark');
 
   useEffect(() => {
     localStorage.setItem('hun-theme', isDark ? 'dark' : 'light');
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    document.documentElement.classList.toggle('dark', isDark);
   }, [isDark]);
-
-  const toggleTheme = () => setIsDark((prev) => !prev);
 
   const {
     servicio,
@@ -55,27 +42,19 @@ export default function App() {
           : 'bg-[#faf8f5] text-stone-800 selection:bg-sky-200 selection:text-sky-900'
       }`}
     >
-      {/* 1. Header con selector de servicio y toggle de tema */}
       <Header
         servicios={serviciosDisponibles}
         servicioActivoId={servicioActivoId}
         onSeleccionarServicio={setServicioActivoId}
         isDark={isDark}
-        onToggleTheme={toggleTheme}
+        onToggleTheme={() => setIsDark((prev) => !prev)}
       />
 
-      {/* 2. Pestañas de Navegación Semántica */}
       <NavTabs tabActiva={tabActiva} onCambiarTab={setTabActiva} isDark={isDark} />
 
-      {/* 3. Contenedor Principal Semántico */}
       <main className="max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-6">
         {tabActiva === 'panel' && (
-          <section
-            role="tabpanel"
-            id="panel-panel"
-            aria-labelledby="tab-panel"
-            className="space-y-6"
-          >
+          <section className="space-y-6">
             <StatCardGrid
               alerta={resultado.alerta}
               prediccion={resultado.prediccion}
@@ -89,39 +68,24 @@ export default function App() {
         )}
 
         {tabActiva === 'simulador' && (
-          <section
-            role="tabpanel"
-            id="panel-simulador"
-            aria-labelledby="tab-simulador"
-          >
-            <SimulatorPanel
-              servicio={servicio}
-              lluviaMm={lluviaMm}
-              setLluviaMm={setLluviaMm}
-              esFestivo={esFestivo}
-              setEsFestivo={setEsFestivo}
-              esQuincena={esQuincena}
-              setEsQuincena={setEsQuincena}
-              esCarnaval={esCarnaval}
-              setEsCarnaval={setEsCarnaval}
-              resultado={resultado}
-              isDark={isDark}
-            />
-          </section>
+          <SimulatorPanel
+            servicio={servicio}
+            lluviaMm={lluviaMm}
+            setLluviaMm={setLluviaMm}
+            esFestivo={esFestivo}
+            setEsFestivo={setEsFestivo}
+            esQuincena={esQuincena}
+            setEsQuincena={setEsQuincena}
+            esCarnaval={esCarnaval}
+            setEsCarnaval={setEsCarnaval}
+            resultado={resultado}
+            isDark={isDark}
+          />
         )}
 
-        {tabActiva === 'metodologia' && (
-          <section
-            role="tabpanel"
-            id="panel-metodologia"
-            aria-labelledby="tab-metodologia"
-          >
-            <Metodologia isDark={isDark} />
-          </section>
-        )}
+        {tabActiva === 'metodologia' && <Metodologia isDark={isDark} />}
       </main>
 
-      {/* 4. Footer Semántico */}
       <footer
         className={`border-t py-6 px-6 text-center text-xs font-semibold transition-colors ${
           isDark
