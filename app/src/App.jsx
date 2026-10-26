@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
+  ComparadorServicios,
   DemandChart,
   Header,
   HeatmapTurnos,
   Metodologia,
   NavTabs,
-  ComparadorServicios,
   SimulatorPanel,
   StatCardGrid,
 } from './components';
@@ -36,12 +36,22 @@ export default function App() {
     setServicioSel,
     lluvia,
     setLluvia,
+    temperatura,
+    setTemperatura,
+    alertaDengue,
+    setAlertaDengue,
     puente,
     setPuente,
     quincena,
     setQuincena,
     carnaval,
     setCarnaval,
+    postFestivo,
+    setPostFestivo,
+    vacaciones,
+    setVacaciones,
+    resetearEscenario,
+    aplicarPreset,
     proyeccion,
   } = useDemandaSimulator('urgencias');
 
@@ -70,7 +80,12 @@ export default function App() {
             <DemandChart serie7d={proyeccion.serie7d} servicio={servicio} isDark={isDark} />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <HeatmapTurnos servicio={servicio} isDark={isDark} />
-              <ComparadorServicios servicios={SERVICIOS} servicioActivoId={servicioSel} onSeleccionarServicio={setServicioSel} isDark={isDark} />
+              <ComparadorServicios
+                servicios={SERVICIOS}
+                servicioActivoId={servicioSel}
+                onSeleccionarServicio={setServicioSel}
+                isDark={isDark}
+              />
             </div>
           </section>
         )}
@@ -80,12 +95,22 @@ export default function App() {
             servicio={servicio}
             lluvia={lluvia}
             setLluvia={setLluvia}
+            temperatura={temperatura}
+            setTemperatura={setTemperatura}
+            alertaDengue={alertaDengue}
+            setAlertaDengue={setAlertaDengue}
             puente={puente}
             setPuente={setPuente}
             quincena={quincena}
             setQuincena={setQuincena}
             carnaval={carnaval}
             setCarnaval={setCarnaval}
+            postFestivo={postFestivo}
+            setPostFestivo={setPostFestivo}
+            vacaciones={vacaciones}
+            setVacaciones={setVacaciones}
+            resetearEscenario={resetearEscenario}
+            aplicarPreset={aplicarPreset}
             proyeccion={proyeccion}
             isDark={isDark}
           />
