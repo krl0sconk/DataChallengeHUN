@@ -20,18 +20,18 @@ export default function App() {
 
   const {
     servicio,
-    serviciosDisponibles,
-    servicioActivoId,
-    setServicioActivoId,
-    lluviaMm,
-    setLluviaMm,
-    esFestivo,
-    setEsFestivo,
-    esQuincena,
-    setEsQuincena,
-    esCarnaval,
-    setEsCarnaval,
-    resultado,
+    listaServicios,
+    servicioSel,
+    setServicioSel,
+    lluvia,
+    setLluvia,
+    puente,
+    setPuente,
+    quincena,
+    setQuincena,
+    carnaval,
+    setCarnaval,
+    proyeccion,
   } = useDemandaSimulator('urgencias');
 
   return (
@@ -43,9 +43,9 @@ export default function App() {
       }`}
     >
       <Header
-        servicios={serviciosDisponibles}
-        servicioActivoId={servicioActivoId}
-        onSeleccionarServicio={setServicioActivoId}
+        servicios={listaServicios}
+        servicioActivoId={servicioSel}
+        onSeleccionarServicio={setServicioSel}
         isDark={isDark}
         onToggleTheme={() => setIsDark((prev) => !prev)}
       />
@@ -56,29 +56,29 @@ export default function App() {
         {tabActiva === 'panel' && (
           <section className="space-y-6">
             <StatCardGrid
-              alerta={resultado.alerta}
-              prediccion={resultado.prediccion}
-              p10={resultado.p10}
-              p90={resultado.p90}
+              alerta={proyeccion.alerta}
+              prediccion={proyeccion.prediccion}
+              p10={proyeccion.min}
+              p90={proyeccion.max}
               servicio={servicio}
               isDark={isDark}
             />
-            <DemandChart serie7d={resultado.serie7d} servicio={servicio} isDark={isDark} />
+            <DemandChart serie7d={proyeccion.serie7d} servicio={servicio} isDark={isDark} />
           </section>
         )}
 
         {tabActiva === 'simulador' && (
           <SimulatorPanel
             servicio={servicio}
-            lluviaMm={lluviaMm}
-            setLluviaMm={setLluviaMm}
-            esFestivo={esFestivo}
-            setEsFestivo={setEsFestivo}
-            esQuincena={esQuincena}
-            setEsQuincena={setEsQuincena}
-            esCarnaval={esCarnaval}
-            setEsCarnaval={setEsCarnaval}
-            resultado={resultado}
+            lluvia={lluvia}
+            setLluvia={setLluvia}
+            puente={puente}
+            setPuente={setPuente}
+            quincena={quincena}
+            setQuincena={setQuincena}
+            carnaval={carnaval}
+            setCarnaval={setCarnaval}
+            proyeccion={proyeccion}
             isDark={isDark}
           />
         )}
@@ -87,15 +87,13 @@ export default function App() {
       </main>
 
       <footer
-        className={`border-t py-6 px-6 text-center text-xs font-semibold transition-colors ${
+        className={`border-t py-5 px-6 text-center text-xs font-medium transition-colors ${
           isDark
             ? 'border-[#2e3748] bg-[#161c28] text-slate-400'
             : 'border-stone-200 bg-[#fdfbf7] text-stone-500'
         }`}
       >
-        <p>
-          Hospital Universidad del Norte · Predicción y Control de Flujo de Pacientes · Sprint 2 (Web & Validación)
-        </p>
+        <p>Hospital Universidad del Norte · Monitoreo y Simulación de Demanda</p>
       </footer>
     </div>
   );

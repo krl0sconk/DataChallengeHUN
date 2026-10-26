@@ -11,45 +11,45 @@ import {
 
 export function SimulatorPanel({
   servicio,
-  lluviaMm,
-  setLluviaMm,
-  esFestivo,
-  setEsFestivo,
-  esQuincena,
-  setEsQuincena,
-  esCarnaval,
-  setEsCarnaval,
-  resultado,
+  lluvia,
+  setLluvia,
+  puente,
+  setPuente,
+  quincena,
+  setQuincena,
+  carnaval,
+  setCarnaval,
+  proyeccion,
   isDark,
 }) {
-  const { prediccion, alerta, factores, deltaTotal } = resultado;
+  const { prediccion, alerta, factores, deltaTotal } = proyeccion;
 
   return (
     <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Parámetros de prueba */}
+      {/* Controles interactivos */}
       <fieldset
-        className={`rounded-2xl p-6 border space-y-5 lg:col-span-1 shadow-xs transition-colors ${
+        className={`rounded-3xl p-7 border space-y-6 lg:col-span-1 shadow-xs transition-colors ${
           isDark ? 'border-[#2e3748] bg-[#1e2536]' : 'border-stone-200 bg-white'
         }`}
       >
-        <legend className={`border-b pb-3 w-full ${isDark ? 'border-[#2e3748]' : 'border-stone-200'}`}>
+        <legend className={`border-b pb-3.5 w-full ${isDark ? 'border-[#2e3748]' : 'border-stone-200'}`}>
           <h2 className={`text-base font-bold font-heading flex items-center gap-2 ${isDark ? 'text-white' : 'text-stone-900'}`}>
             <Sparkles className={`h-5 w-5 ${isDark ? 'text-amber-300' : 'text-amber-600'}`} />
-            Variables de Contingencia
+            Variables de Entorno
           </h2>
           <p className={`text-xs font-semibold mt-1 ${isDark ? 'text-slate-300' : 'text-stone-600'}`}>
-            Mueve los parámetros para evaluar el impacto en tiempo real
+            Simula el comportamiento según factores externos
           </p>
         </legend>
 
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           <div className="flex justify-between text-xs font-bold">
             <label htmlFor="slider-lluvia" className={`flex items-center gap-1.5 cursor-pointer ${isDark ? 'text-slate-200' : 'text-stone-700'}`}>
               <CloudRain className={`h-4 w-4 ${isDark ? 'text-indigo-400' : 'text-sky-700'}`} />
-              Lluvia en Soledad (24h)
+              Lluvia prevista (24h)
             </label>
             <output htmlFor="slider-lluvia" className={`font-mono-num font-bold text-sm ${isDark ? 'text-indigo-300' : 'text-sky-800'}`}>
-              {lluviaMm} mm
+              {lluvia} mm
             </output>
           </div>
           <input
@@ -58,92 +58,92 @@ export function SimulatorPanel({
             min="0"
             max="100"
             step="5"
-            value={lluviaMm}
-            onChange={(e) => setLluviaMm(Number(e.target.value))}
+            value={lluvia}
+            onChange={(e) => setLluvia(Number(e.target.value))}
             className={`w-full cursor-pointer h-2 rounded-lg appearance-none transition-colors ${
               isDark ? 'accent-indigo-400 bg-slate-700' : 'accent-sky-600 bg-stone-200'
             }`}
           />
           <div className={`flex justify-between text-[11px] font-semibold ${isDark ? 'text-slate-400' : 'text-stone-500'}`}>
-            <span>Seco (0mm)</span>
-            <span>Tormenta (&gt;50mm)</span>
+            <span>Sin lluvia (0mm)</span>
+            <span>Aguacero (&gt;50mm)</span>
           </div>
         </div>
 
-        <div className="space-y-3 pt-2">
+        <div className="space-y-3 pt-1">
           <label
-            className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-colors ${
+            className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition-colors ${
               isDark ? 'bg-[#161c28] border-[#333d52] hover:border-indigo-400/50' : 'bg-stone-50 border-stone-200 hover:border-stone-400'
             }`}
           >
             <span className={`flex items-center gap-2.5 text-xs font-bold ${isDark ? 'text-slate-200' : 'text-stone-800'}`}>
               <Calendar className={`h-4 w-4 ${isDark ? 'text-purple-300' : 'text-purple-700'}`} />
-              Puente Festivo
+              Puente festivo
             </span>
             <input
               type="checkbox"
-              checked={esFestivo}
-              onChange={(e) => setEsFestivo(e.target.checked)}
+              checked={puente}
+              onChange={(e) => setPuente(e.target.checked)}
               className="h-4 w-4 accent-indigo-500 rounded cursor-pointer"
             />
           </label>
 
           <label
-            className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-colors ${
+            className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition-colors ${
               isDark ? 'bg-[#161c28] border-[#333d52] hover:border-indigo-400/50' : 'bg-stone-50 border-stone-200 hover:border-stone-400'
             }`}
           >
             <span className={`flex items-center gap-2.5 text-xs font-bold ${isDark ? 'text-slate-200' : 'text-stone-800'}`}>
               <DollarSign className={`h-4 w-4 ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`} />
-              Día de Quincena (15 o 30)
+              Día de quincena (15 o 30)
             </span>
             <input
               type="checkbox"
-              checked={esQuincena}
-              onChange={(e) => setEsQuincena(e.target.checked)}
+              checked={quincena}
+              onChange={(e) => setQuincena(e.target.checked)}
               className="h-4 w-4 accent-indigo-500 rounded cursor-pointer"
             />
           </label>
 
           <label
-            className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-colors ${
+            className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition-colors ${
               isDark ? 'bg-[#161c28] border-[#333d52] hover:border-indigo-400/50' : 'bg-stone-50 border-stone-200 hover:border-stone-400'
             }`}
           >
             <span className={`flex items-center gap-2.5 text-xs font-bold ${isDark ? 'text-slate-200' : 'text-stone-800'}`}>
               <Sparkles className={`h-4 w-4 ${isDark ? 'text-rose-300' : 'text-rose-700'}`} />
-              Carnaval de Barranquilla
+              Temporada Carnaval
             </span>
             <input
               type="checkbox"
-              checked={esCarnaval}
-              onChange={(e) => setEsCarnaval(e.target.checked)}
+              checked={carnaval}
+              onChange={(e) => setCarnaval(e.target.checked)}
               className="h-4 w-4 accent-indigo-500 rounded cursor-pointer"
             />
           </label>
         </div>
       </fieldset>
 
-      {/* Salida del cálculo */}
+      {/* Resultados de la simulación */}
       <article
-        className={`rounded-2xl p-6 border space-y-6 lg:col-span-2 shadow-xs flex flex-col justify-between transition-colors ${
+        className={`rounded-3xl p-7 border space-y-6 lg:col-span-2 shadow-xs flex flex-col justify-between transition-colors ${
           isDark ? 'border-[#2e3748] bg-[#1e2536]' : 'border-stone-200 bg-white'
         }`}
       >
         <div>
           <header className="mb-5">
             <h3 className={`text-base font-bold font-heading ${isDark ? 'text-white' : 'text-stone-900'}`}>
-              Impacto Proyectado en {servicio.nombre}
+              Respuesta en {servicio.nombre}
             </h3>
             <p className={`text-xs font-semibold mt-0.5 ${isDark ? 'text-slate-300' : 'text-stone-600'}`}>
-              Sensibilidad estimada de acuerdo a pesos y elasticidades históricas validadas
+              Impacto sobre el volumen base según el escenario configurado
             </p>
           </header>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className={`p-4 rounded-xl border ${isDark ? 'bg-[#161c28] border-[#333d52]' : 'bg-stone-50 border-stone-200'}`}>
+            <div className={`p-4.5 rounded-2xl border ${isDark ? 'bg-[#161c28] border-[#333d52]' : 'bg-stone-50 border-stone-200'}`}>
               <span className={`text-xs font-extrabold uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-stone-600'}`}>
-                Demanda Simulada
+                Llegadas estimadas
               </span>
               <div className={`text-3xl font-extrabold mt-1 font-mono-num ${isDark ? 'text-white' : 'text-stone-900'}`}>
                 {prediccion}{' '}
@@ -161,12 +161,12 @@ export function SimulatorPanel({
                 }`}
               >
                 {deltaTotal > 0 ? '+' : ''}
-                {deltaTotal} vs promedio
+                {deltaTotal} vs habitual
               </span>
             </div>
 
             <div
-              className={`p-4 rounded-xl border ${
+              className={`p-4.5 rounded-2xl border ${
                 isDark
                   ? alerta.nivel === 'rojo'
                     ? 'bg-[#351e24] border-rose-400/50 text-rose-100'
@@ -177,7 +177,7 @@ export function SimulatorPanel({
               }`}
             >
               <span className={`text-xs font-extrabold uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-stone-700'}`}>
-                Riesgo Operativo
+                Nivel de saturación
               </span>
               <div
                 className={`text-2xl font-black mt-1 uppercase tracking-tight font-heading ${
@@ -198,10 +198,9 @@ export function SimulatorPanel({
             </div>
           </div>
 
-          {/* Desglose de factores */}
           <section className="mt-6">
             <h4 className={`text-xs font-bold uppercase tracking-wider mb-3 ${isDark ? 'text-slate-200' : 'text-stone-700'}`}>
-              Descomposición de Factores Activos
+              Aporte de cada factor al total
             </h4>
             {factores.length > 0 ? (
               <div className="h-44 w-full font-mono-num text-xs">
@@ -231,11 +230,11 @@ export function SimulatorPanel({
               </div>
             ) : (
               <p
-                className={`p-4 rounded-xl border text-xs text-center font-semibold ${
+                className={`p-4 rounded-2xl border text-xs text-center font-semibold ${
                   isDark ? 'bg-[#161c28] border-[#333d52] text-slate-300' : 'bg-stone-50 border-stone-200 text-stone-700'
                 }`}
               >
-                No hay factores extraordinarios activos. El servicio operará en su promedio base habitual.
+                No hay factores externos activos. Flujo estimado normal.
               </p>
             )}
           </section>
