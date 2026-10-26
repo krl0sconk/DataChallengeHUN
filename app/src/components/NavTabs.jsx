@@ -3,6 +3,7 @@ import { Activity, Info, Sparkles } from 'lucide-react';
 
 /**
  * Pestañas de navegación semántica accesibles (WAI-ARIA tabs).
+ * Tipografía limpia y contraste nítido contra el fondo oscuro.
  */
 export const NavTabs = memo(function NavTabs({ tabActiva, onCambiarTab }) {
   const tabs = [
@@ -14,9 +15,9 @@ export const NavTabs = memo(function NavTabs({ tabActiva, onCambiarTab }) {
   return (
     <nav
       aria-label="Secciones del panel de control"
-      className="border-b border-slate-800/80 bg-[#0b132a] px-6"
+      className="border-b border-slate-700/80 bg-[#091024] px-6"
     >
-      <div role="tablist" className="max-w-7xl mx-auto flex gap-6 text-sm">
+      <div role="tablist" className="max-w-7xl mx-auto flex gap-8 text-sm">
         {tabs.map((t) => {
           const Icon = t.icon;
           const isSelected = tabActiva === t.id;
@@ -28,10 +29,10 @@ export const NavTabs = memo(function NavTabs({ tabActiva, onCambiarTab }) {
               aria-controls={`panel-${t.id}`}
               aria-selected={isSelected}
               onClick={() => onCambiarTab(t.id)}
-              className={`flex items-center gap-2 border-b-2 py-3 font-medium transition-colors ${
+              className={`flex items-center gap-2.5 border-b-2 py-3.5 font-semibold transition-colors ${
                 isSelected
-                  ? 'border-blue-500 text-blue-400 font-semibold'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
+                  ? 'border-sky-400 text-sky-300'
+                  : 'border-transparent text-slate-300 hover:text-white'
               }`}
             >
               <Icon className="h-4 w-4" aria-hidden="true" />
