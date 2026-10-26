@@ -40,28 +40,28 @@ export function HeatmapTurnos({ servicio, isDark }) {
     }
     if (ratio >= 1.0) {
       return isDark
-        ? 'bg-[#408A71] text-[#B0E4CC] border-[#8C5800]/50'
+        ? 'bg-[#2A835F] text-[#8BBB92] border-[#8C5800]/50'
         : 'bg-[#FFFBEA] text-[#8C5800] border-[#F1F7D4]';
     }
     if (ratio >= 0.5) {
       return isDark
-        ? 'bg-[#091413] text-[#B0E4CC] border-[#1F4436]'
+        ? 'bg-[#092328] text-[#8BBB92] border-[#0E3B39]'
         : 'bg-[#F2F8F4] text-[#205C3B] border-[#9FCBAD]/60';
     }
     return isDark
-      ? 'bg-[#091413]/40 text-[#B0E4CC]/40 border-transparent'
+      ? 'bg-[#092328]/40 text-[#8BBB92]/40 border-transparent'
       : 'bg-[#FAFCF6] text-[#4A4466]/40 border-[#EDF3DC]';
   };
 
   return (
-    <section className="rounded-3xl p-6 border border-[#EDF3DC] dark:border-[#1F4436] bg-white dark:bg-[#285A48] transition-colors">
+    <section className="rounded-3xl p-6 border border-[#EDF3DC] dark:border-[#0E3B39] bg-white dark:bg-[#12544F] transition-colors">
       <header className="flex flex-wrap items-center justify-between gap-4 mb-5">
         <div>
-          <h2 className="text-base font-bold font-heading flex items-center gap-2 text-[#4A4466] dark:text-[#B0E4CC]">
+          <h2 className="text-base font-bold font-heading flex items-center gap-2 text-[#4A4466] dark:text-[#8BBB92]">
             <Flame className="h-5 w-5 text-[#3B7D8C] dark:text-[#9FCBAD]" />
             Patrón de Afluencia por Día y Turno Horario
           </h2>
-          <p className="text-xs font-medium mt-0.5 text-[#4A4466]/80 dark:text-[#B0E4CC]/70">
+          <p className="text-xs font-medium mt-0.5 text-[#4A4466]/80 dark:text-[#8BBB92]/70">
             Estimación de llegadas por guardia asistencial en {servicio.nombre}
           </p>
         </div>
@@ -82,13 +82,13 @@ export function HeatmapTurnos({ servicio, isDark }) {
         <table className="w-full text-xs font-mono-num text-center border-collapse">
           <thead>
             <tr>
-              <th className="p-2.5 text-left font-sans font-bold text-[#4A4466]/70 dark:text-[#B0E4CC]/70">
+              <th className="p-2.5 text-left font-sans font-bold text-[#4A4466]/70 dark:text-[#8BBB92]/70">
                 Guardia / Turno
               </th>
               {DIAS.map((dia) => (
                 <th
                   key={dia}
-                  className="p-2.5 font-heading font-bold text-[#4A4466] dark:text-[#B0E4CC]"
+                  className="p-2.5 font-heading font-bold text-[#4A4466] dark:text-[#8BBB92]"
                 >
                   {dia}
                 </th>
@@ -98,7 +98,7 @@ export function HeatmapTurnos({ servicio, isDark }) {
           <tbody>
             {matriz.map((fila, fIdx) => (
               <tr key={FRANJAS[fIdx]}>
-                <td className="p-2.5 text-left font-sans font-semibold text-[#4A4466] dark:text-[#B0E4CC]">
+                <td className="p-2.5 text-left font-sans font-semibold text-[#4A4466] dark:text-[#8BBB92]">
                   {FRANJAS[fIdx]}
                 </td>
                 {fila.map((celda, dIdx) => (

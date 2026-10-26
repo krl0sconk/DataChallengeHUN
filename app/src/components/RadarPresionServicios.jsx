@@ -26,14 +26,14 @@ export function RadarPresionServicios({ servicios, servicioActivoId, isDark }) {
   });
 
   return (
-    <section className="rounded-3xl p-6 border border-[#EDF3DC] dark:border-[#1F4436] bg-white dark:bg-[#285A48] transition-colors">
+    <section className="rounded-3xl p-6 border border-[#EDF3DC] dark:border-[#0E3B39] bg-white dark:bg-[#12544F] transition-colors">
       <header className="flex flex-wrap items-center justify-between gap-4 mb-4">
         <div>
-          <h2 className="text-base font-bold font-heading flex items-center gap-2 text-[#4A4466] dark:text-[#B0E4CC]">
+          <h2 className="text-base font-bold font-heading flex items-center gap-2 text-[#4A4466] dark:text-[#8BBB92]">
             <Compass className="h-5 w-5 text-[#3B7D8C] dark:text-[#9FCBAD]" />
             Radar de Presión Asistencial Multi-Servicio
           </h2>
-          <p className="text-xs font-medium mt-0.5 text-[#4A4466]/80 dark:text-[#B0E4CC]/70">
+          <p className="text-xs font-medium mt-0.5 text-[#4A4466]/80 dark:text-[#8BBB92]/70">
             Comparativa de carga operacional (% de capacidad frente a p90)
           </p>
         </div>
@@ -50,22 +50,22 @@ export function RadarPresionServicios({ servicios, servicioActivoId, isDark }) {
       <div className="h-64 w-full font-mono-num text-xs">
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart cx="50%" cy="50%" outerRadius="75%" data={data}>
-            <PolarGrid stroke={isDark ? '#1F4436' : '#EDF3DC'} />
+            <PolarGrid stroke={isDark ? '#0E3B39' : '#EDF3DC'} />
             <PolarAngleAxis
               dataKey="servicio"
-              tick={{ fill: isDark ? '#B0E4CC' : '#4A4466', fontSize: 11, fontWeight: 700 }}
+              tick={{ fill: isDark ? '#8BBB92' : '#4A4466', fontSize: 11, fontWeight: 700 }}
             />
             <PolarRadiusAxis
               angle={30}
               domain={[0, 100]}
-              tick={{ fill: isDark ? '#B0E4CC' : '#4A4466', fontSize: 10 }}
+              tick={{ fill: isDark ? '#8BBB92' : '#4A4466', fontSize: 10 }}
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: isDark ? '#091413' : '#FAFCF6',
-                borderColor: isDark ? '#408A71' : '#9FCBAD',
+                backgroundColor: isDark ? '#092328' : '#FAFCF6',
+                borderColor: isDark ? '#2A835F' : '#9FCBAD',
                 borderRadius: '12px',
-                color: isDark ? '#B0E4CC' : '#4A4466',
+                color: isDark ? '#8BBB92' : '#4A4466',
                 fontSize: '12px',
                 fontFamily: 'var(--font-mono)',
               }}
@@ -93,23 +93,23 @@ export function RadarPresionServicios({ servicios, servicioActivoId, isDark }) {
         </ResponsiveContainer>
       </div>
 
-      <footer className="mt-3 grid grid-cols-3 gap-2 pt-3 border-t border-[#EDF3DC] dark:border-[#1F4436] text-center text-xs">
+      <footer className="mt-3 grid grid-cols-3 gap-2 pt-3 border-t border-[#EDF3DC] dark:border-[#0E3B39] text-center text-xs">
         {data.map((item) => (
           <div
             key={item.id}
             className={`p-2 rounded-xl transition-all ${
               item.id === servicioActivoId
-                ? 'bg-[#F1F7D4]/50 dark:bg-[#408A71]/50 border border-[#9FCBAD] dark:border-[#408A71]'
+                ? 'bg-[#F1F7D4]/50 dark:bg-[#2A835F]/50 border border-[#9FCBAD] dark:border-[#2A835F]'
                 : 'bg-transparent'
             }`}
           >
-            <span className="block font-bold truncate text-[#4A4466] dark:text-[#B0E4CC]">
+            <span className="block font-bold truncate text-[#4A4466] dark:text-[#8BBB92]">
               {item.servicio}
             </span>
             <span className="font-mono-num font-extrabold text-sm text-[#3B7D8C] dark:text-[#9FCBAD]">
               {item.presion}%
             </span>
-            <span className="block text-[10px] text-[#4A4466]/70 dark:text-[#B0E4CC]/60">
+            <span className="block text-[10px] text-[#4A4466]/70 dark:text-[#8BBB92]/60">
               de p90 histórico
             </span>
           </div>

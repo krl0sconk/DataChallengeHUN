@@ -26,19 +26,19 @@ export function SimulatorPanel({
 
   return (
     <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <fieldset className="rounded-3xl p-7 border border-[#EDF3DC] dark:border-[#1F4436] bg-white dark:bg-[#285A48] space-y-6 lg:col-span-1 shadow-xs transition-colors">
-        <legend className="border-b border-[#EDF3DC] dark:border-[#1F4436] pb-3.5 w-full">
-          <h2 className="text-base font-bold font-heading flex items-center gap-2 text-[#4A4466] dark:text-[#B0E4CC]">
+      <fieldset className="rounded-3xl p-7 border border-[#EDF3DC] dark:border-[#0E3B39] bg-white dark:bg-[#12544F] space-y-6 lg:col-span-1 shadow-xs transition-colors">
+        <legend className="border-b border-[#EDF3DC] dark:border-[#0E3B39] pb-3.5 w-full">
+          <h2 className="text-base font-bold font-heading flex items-center gap-2 text-[#4A4466] dark:text-[#8BBB92]">
             <Sparkles className="h-5 w-5 text-[#6EADBC]" />
             Variables de Entorno
           </h2>
-          <p className="text-xs font-semibold mt-1 text-[#4A4466]/80 dark:text-[#B0E4CC]/70">
+          <p className="text-xs font-semibold mt-1 text-[#4A4466]/80 dark:text-[#8BBB92]/70">
             Simula el comportamiento según factores externos
           </p>
         </legend>
 
         <div className="space-y-2">
-          <div className="flex justify-between text-xs font-bold text-[#4A4466] dark:text-[#B0E4CC]">
+          <div className="flex justify-between text-xs font-bold text-[#4A4466] dark:text-[#8BBB92]">
             <label htmlFor="slider-lluvia" className="flex items-center gap-1.5 cursor-pointer">
               <CloudRain className="h-4 w-4 text-[#3B7D8C] dark:text-[#9FCBAD]" />
               Lluvia prevista (24h)
@@ -55,17 +55,17 @@ export function SimulatorPanel({
             step="5"
             value={lluvia}
             onChange={(e) => setLluvia(Number(e.target.value))}
-            className="w-full cursor-pointer h-2 rounded-lg appearance-none accent-[#3B7D8C] dark:accent-[#9FCBAD] bg-[#F1F7D4] dark:bg-[#091413]"
+            className="w-full cursor-pointer h-2 rounded-lg appearance-none accent-[#3B7D8C] dark:accent-[#9FCBAD] bg-[#F1F7D4] dark:bg-[#092328]"
           />
-          <div className="flex justify-between text-[11px] font-semibold text-[#4A4466]/70 dark:text-[#B0E4CC]/60">
+          <div className="flex justify-between text-[11px] font-semibold text-[#4A4466]/70 dark:text-[#8BBB92]/60">
             <span>Sin lluvia (0mm)</span>
             <span>Aguacero (&gt;50mm)</span>
           </div>
         </div>
 
         <div className="space-y-3 pt-1">
-          <label className="flex items-center justify-between p-3.5 rounded-2xl border border-[#EDF3DC] dark:border-[#1F4436] bg-[#FAFCF6] dark:bg-[#091413] hover:border-[#9FCBAD] dark:hover:border-[#408A71] cursor-pointer transition-colors">
-            <span className="flex items-center gap-2.5 text-xs font-bold text-[#4A4466] dark:text-[#B0E4CC]">
+          <label className="flex items-center justify-between p-3.5 rounded-2xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#FAFCF6] dark:bg-[#092328] hover:border-[#9FCBAD] dark:hover:border-[#2A835F] cursor-pointer transition-colors">
+            <span className="flex items-center gap-2.5 text-xs font-bold text-[#4A4466] dark:text-[#8BBB92]">
               <Calendar className="h-4 w-4 text-[#6EADBC]" />
               Puente festivo
             </span>
@@ -73,12 +73,12 @@ export function SimulatorPanel({
               type="checkbox"
               checked={puente}
               onChange={(e) => setPuente(e.target.checked)}
-              className="h-4 w-4 accent-[#4A4466] dark:accent-[#408A71] rounded cursor-pointer"
+              className="h-4 w-4 accent-[#4A4466] dark:accent-[#2A835F] rounded cursor-pointer"
             />
           </label>
 
-          <label className="flex items-center justify-between p-3.5 rounded-2xl border border-[#EDF3DC] dark:border-[#1F4436] bg-[#FAFCF6] dark:bg-[#091413] hover:border-[#9FCBAD] dark:hover:border-[#408A71] cursor-pointer transition-colors">
-            <span className="flex items-center gap-2.5 text-xs font-bold text-[#4A4466] dark:text-[#B0E4CC]">
+          <label className="flex items-center justify-between p-3.5 rounded-2xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#FAFCF6] dark:bg-[#092328] hover:border-[#9FCBAD] dark:hover:border-[#2A835F] cursor-pointer transition-colors">
+            <span className="flex items-center gap-2.5 text-xs font-bold text-[#4A4466] dark:text-[#8BBB92]">
               <DollarSign className="h-4 w-4 text-[#6EADBC]" />
               Día de quincena (15 o 30)
             </span>
@@ -86,12 +86,12 @@ export function SimulatorPanel({
               type="checkbox"
               checked={quincena}
               onChange={(e) => setQuincena(e.target.checked)}
-              className="h-4 w-4 accent-[#4A4466] dark:accent-[#408A71] rounded cursor-pointer"
+              className="h-4 w-4 accent-[#4A4466] dark:accent-[#2A835F] rounded cursor-pointer"
             />
           </label>
 
-          <label className="flex items-center justify-between p-3.5 rounded-2xl border border-[#EDF3DC] dark:border-[#1F4436] bg-[#FAFCF6] dark:bg-[#091413] hover:border-[#9FCBAD] dark:hover:border-[#408A71] cursor-pointer transition-colors">
-            <span className="flex items-center gap-2.5 text-xs font-bold text-[#4A4466] dark:text-[#B0E4CC]">
+          <label className="flex items-center justify-between p-3.5 rounded-2xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#FAFCF6] dark:bg-[#092328] hover:border-[#9FCBAD] dark:hover:border-[#2A835F] cursor-pointer transition-colors">
+            <span className="flex items-center gap-2.5 text-xs font-bold text-[#4A4466] dark:text-[#8BBB92]">
               <Sparkles className="h-4 w-4 text-[#6EADBC]" />
               Temporada Carnaval
             </span>
@@ -99,37 +99,37 @@ export function SimulatorPanel({
               type="checkbox"
               checked={carnaval}
               onChange={(e) => setCarnaval(e.target.checked)}
-              className="h-4 w-4 accent-[#4A4466] dark:accent-[#408A71] rounded cursor-pointer"
+              className="h-4 w-4 accent-[#4A4466] dark:accent-[#2A835F] rounded cursor-pointer"
             />
           </label>
         </div>
       </fieldset>
 
-      <article className="rounded-3xl p-7 border border-[#EDF3DC] dark:border-[#1F4436] bg-white dark:bg-[#285A48] space-y-6 lg:col-span-2 shadow-xs flex flex-col justify-between transition-colors">
+      <article className="rounded-3xl p-7 border border-[#EDF3DC] dark:border-[#0E3B39] bg-white dark:bg-[#12544F] space-y-6 lg:col-span-2 shadow-xs flex flex-col justify-between transition-colors">
         <div>
           <header className="mb-5">
-            <h3 className="text-base font-bold font-heading text-[#4A4466] dark:text-[#B0E4CC]">
+            <h3 className="text-base font-bold font-heading text-[#4A4466] dark:text-[#8BBB92]">
               Respuesta en {servicio.nombre}
             </h3>
-            <p className="text-xs font-semibold mt-0.5 text-[#4A4466]/80 dark:text-[#B0E4CC]/70">
+            <p className="text-xs font-semibold mt-0.5 text-[#4A4466]/80 dark:text-[#8BBB92]/70">
               Impacto sobre el volumen base según el escenario configurado
             </p>
           </header>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="p-4.5 rounded-2xl border border-[#EDF3DC] dark:border-[#1F4436] bg-[#FAFCF6] dark:bg-[#091413]">
+            <div className="p-4.5 rounded-2xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#FAFCF6] dark:bg-[#092328]">
               <span className="text-xs font-extrabold uppercase tracking-wider text-[#3B7D8C] dark:text-[#9FCBAD]">
                 Llegadas estimadas
               </span>
-              <div className="text-3xl font-extrabold mt-1 font-mono-num text-[#4A4466] dark:text-[#B0E4CC]">
+              <div className="text-3xl font-extrabold mt-1 font-mono-num text-[#4A4466] dark:text-[#8BBB92]">
                 {prediccion}{' '}
-                <span className="text-xs font-sans font-medium text-[#4A4466]/70 dark:text-[#B0E4CC]/60">
+                <span className="text-xs font-sans font-medium text-[#4A4466]/70 dark:text-[#8BBB92]/60">
                   pacientes
                 </span>
               </div>
               <span
                 className={`text-xs font-bold font-mono-num ${
-                  deltaTotal > 0 ? 'text-[#C5304C]' : deltaTotal < 0 ? 'text-[#205C3B] dark:text-[#9FCBAD]' : 'text-[#4A4466] dark:text-[#B0E4CC]'
+                  deltaTotal > 0 ? 'text-[#C5304C]' : deltaTotal < 0 ? 'text-[#205C3B] dark:text-[#9FCBAD]' : 'text-[#4A4466] dark:text-[#8BBB92]'
                 }`}
               >
                 {deltaTotal > 0 ? '+' : ''}
@@ -137,33 +137,33 @@ export function SimulatorPanel({
               </span>
             </div>
 
-            <div className={`p-4.5 rounded-2xl border ${alerta.colorBg} ${alerta.colorBorder} dark:bg-[#091413] dark:border-[#1F4436]`}>
-              <span className="text-xs font-extrabold uppercase tracking-wider text-[#4A4466] dark:text-[#B0E4CC]">
+            <div className={`p-4.5 rounded-2xl border ${alerta.colorBg} ${alerta.colorBorder} dark:bg-[#092328] dark:border-[#0E3B39]`}>
+              <span className="text-xs font-extrabold uppercase tracking-wider text-[#4A4466] dark:text-[#8BBB92]">
                 Nivel de saturación
               </span>
               <div className={`text-2xl font-black mt-1 uppercase tracking-tight font-heading ${alerta.colorTexto} dark:brightness-125`}>
                 {alerta.etiqueta}
               </div>
-              <span className="text-xs text-[#4A4466]/80 dark:text-[#B0E4CC]/70 font-medium">{alerta.subtitulo}</span>
+              <span className="text-xs text-[#4A4466]/80 dark:text-[#8BBB92]/70 font-medium">{alerta.subtitulo}</span>
             </div>
           </div>
 
           <section className="mt-6">
-            <h4 className="text-xs font-bold uppercase tracking-wider mb-3 text-[#4A4466] dark:text-[#B0E4CC]">
+            <h4 className="text-xs font-bold uppercase tracking-wider mb-3 text-[#4A4466] dark:text-[#8BBB92]">
               Aporte de cada factor al total
             </h4>
             {factores.length > 0 ? (
               <div className="h-44 w-full font-mono-num text-xs">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart layout="vertical" data={factores} margin={{ top: 0, right: 30, left: 40, bottom: 0 }}>
-                    <XAxis type="number" stroke={isDark ? '#B0E4CC' : '#4A4466'} fontSize={11} />
-                    <YAxis dataKey="nombre" type="category" stroke={isDark ? '#B0E4CC' : '#4A4466'} fontSize={11} width={150} />
+                    <XAxis type="number" stroke={isDark ? '#8BBB92' : '#4A4466'} fontSize={11} />
+                    <YAxis dataKey="nombre" type="category" stroke={isDark ? '#8BBB92' : '#4A4466'} fontSize={11} width={150} />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: isDark ? '#091413' : '#FAFCF6',
-                        borderColor: isDark ? '#408A71' : '#9FCBAD',
+                        backgroundColor: isDark ? '#092328' : '#FAFCF6',
+                        borderColor: isDark ? '#2A835F' : '#9FCBAD',
                         borderRadius: '12px',
-                        color: isDark ? '#B0E4CC' : '#4A4466',
+                        color: isDark ? '#8BBB92' : '#4A4466',
                         fontFamily: 'var(--font-mono)',
                       }}
                     />
@@ -171,7 +171,7 @@ export function SimulatorPanel({
                       {factores.map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
-                          fill={entry.aporte > 0 ? '#6EADBC' : isDark ? '#408A71' : '#9FCBAD'}
+                          fill={entry.aporte > 0 ? '#6EADBC' : isDark ? '#2A835F' : '#9FCBAD'}
                         />
                       ))}
                     </Bar>
@@ -179,7 +179,7 @@ export function SimulatorPanel({
                 </ResponsiveContainer>
               </div>
             ) : (
-              <p className="p-4 rounded-2xl border border-[#EDF3DC] dark:border-[#1F4436] bg-[#FAFCF6] dark:bg-[#091413] text-xs text-center font-semibold text-[#4A4466] dark:text-[#B0E4CC]">
+              <p className="p-4 rounded-2xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#FAFCF6] dark:bg-[#092328] text-xs text-center font-semibold text-[#4A4466] dark:text-[#8BBB92]">
                 No hay factores externos activos. Flujo estimado normal.
               </p>
             )}
