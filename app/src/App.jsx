@@ -10,10 +10,9 @@ import {
 import { useDemandaSimulator } from './hooks/useDemandaSimulator';
 
 /**
- * Componente raíz refactorizado:
- * - Arquitectura desacoplada y modular
- * - HTML semántico y accesibilidad A11y
- * - Lógica de negocio extraída a useDemandaSimulator
+ * Componente raíz:
+ * - Tema Warm & Cozy (fondo cálido tipo papel #faf8f5, bordes suaves y tarjetas blancas)
+ * - Contraste WCAG AAA (texto oscuro sobre fondo claro sin fatiga visual)
  */
 export default function App() {
   const [tabActiva, setTabActiva] = useState('panel');
@@ -35,7 +34,7 @@ export default function App() {
   } = useDemandaSimulator('urgencias');
 
   return (
-    <div className="min-h-screen bg-[#070d1e] text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-[#faf8f5] text-stone-800 flex flex-col font-sans selection:bg-sky-200 selection:text-sky-900">
       {/* 1. Header con selector de servicio */}
       <Header
         servicios={serviciosDisponibles}
@@ -47,7 +46,7 @@ export default function App() {
       <NavTabs tabActiva={tabActiva} onCambiarTab={setTabActiva} />
 
       {/* 3. Contenedor Principal Semántico */}
-      <main className="max-w-7xl mx-auto px-6 py-6 flex-1 w-full space-y-6">
+      <main className="max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-6">
         {tabActiva === 'panel' && (
           <section
             role="tabpanel"
@@ -99,7 +98,7 @@ export default function App() {
       </main>
 
       {/* 4. Footer Semántico */}
-      <footer className="border-t border-slate-800/60 py-4 px-6 text-center text-xs text-slate-500">
+      <footer className="border-t border-stone-200 py-6 px-6 text-center text-xs font-semibold text-stone-500 bg-[#fdfbf7]">
         <p>
           Hospital Universidad del Norte · Predicción y Control de Flujo de Pacientes · Sprint 2 (Web & Validación)
         </p>
