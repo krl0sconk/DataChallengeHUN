@@ -1,5 +1,11 @@
 import { useMemo, useState } from 'react';
-import { CONFIG_ALERTAS, DIAS_SEMANA, SERVICIOS } from '../constants/servicios';
+import {
+  CONFIG_ALERTAS,
+  DIAS_SEMANA,
+  FECHA_BASE_POR_DEFECTO,
+  limitarFechaBase,
+  SERVICIOS,
+} from '../constants/servicios';
 
 export function useDemandaSimulator(servicioDefault = 'urgencias') {
   const [servicioSel, setServicioSel] = useState(servicioDefault);
@@ -11,9 +17,12 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
   const [carnaval, setCarnaval] = useState(false);
   const [postFestivo, setPostFestivo] = useState(false);
   const [vacaciones, setVacaciones] = useState(false);
-  const [fechaSimulacion, setFechaSimulacion] = useState(() => {
-    return new Date().toISOString().split('T')[0];
-  });
+  // La base termina el 2026-07-16: no se usa la fecha de hoy (DEC-002).
+  const [fechaSimulacion, setFechaSimulacionCruda] = useState(FECHA_BASE_POR_DEFECTO);
+  // Una fecha incompleta en el selector llega vacía: se ignora para no saltar mientras se escribe.
+  const setFechaSimulacion = (fecha) => {
+    if (fecha) setFechaSimulacionCruda(limitarFechaBase(fecha));
+  };
 
   const servicio = SERVICIOS[servicioSel] ?? SERVICIOS.urgencias;
 
@@ -161,7 +170,7 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
     setCarnaval(false);
     setPostFestivo(false);
     setVacaciones(false);
-    setFechaSimulacion(new Date().toISOString().split('T')[0]);
+    setFechaSimulacion(FECHA_BASE_POR_DEFECTO);
   };
 
   const aplicarPreset = (tipo) => {

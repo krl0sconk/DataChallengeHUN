@@ -71,3 +71,20 @@ export const CONFIG_ALERTAS = {
 };
 
 export const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+// Rango de la base del hospital (docs/inventario_base.md): datos del 2023-01-01 al 2026-07-16
+// (último día completo). La base no se actualiza, así que el simulador trabaja dentro de este
+// rango (DEC-002). La fecha base se limita para que la ventana de 7 días no se salga del rango.
+export const FECHA_INICIO_DATOS = '2023-01-01';
+export const FECHA_FIN_DATOS = '2026-07-16';
+export const DIAS_VENTANA = 7;
+export const FECHA_BASE_MAXIMA = '2026-07-10'; // FECHA_FIN_DATOS - (DIAS_VENTANA - 1)
+export const FECHA_BASE_POR_DEFECTO = FECHA_BASE_MAXIMA;
+
+/** Ajusta una fecha 'YYYY-MM-DD' al rango válido para la fecha base del simulador. */
+export function limitarFechaBase(fecha) {
+  if (!fecha) return FECHA_BASE_POR_DEFECTO;
+  if (fecha < FECHA_INICIO_DATOS) return FECHA_INICIO_DATOS;
+  if (fecha > FECHA_BASE_MAXIMA) return FECHA_BASE_MAXIMA;
+  return fecha;
+}
