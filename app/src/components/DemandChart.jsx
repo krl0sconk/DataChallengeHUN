@@ -14,14 +14,14 @@ export function DemandChart({ serie7d, servicio, isDark }) {
   const { p75, p90 } = servicio;
 
   return (
-    <section className="rounded-3xl p-6 border border-[#EDF3DC] dark:border-[#52525E] bg-white dark:bg-[#44444E] transition-colors">
+    <section className="rounded-3xl p-6 border border-[#EDF3DC] dark:border-[#1F4436] bg-white dark:bg-[#285A48] transition-colors">
       <header className="flex flex-wrap items-center justify-between gap-4 mb-5">
         <div>
-          <h2 className="text-base font-bold font-heading flex items-center gap-2 text-[#4A4466] dark:text-[#D3DAD9]">
+          <h2 className="text-base font-bold font-heading flex items-center gap-2 text-[#4A4466] dark:text-[#B0E4CC]">
             <TrendingUp className="h-5 w-5 text-[#6EADBC]" />
             Curva de Demanda Semanal Proyectada
           </h2>
-          <p className="text-xs font-medium mt-0.5 text-[#4A4466]/80 dark:text-[#D3DAD9]/70">
+          <p className="text-xs font-medium mt-0.5 text-[#4A4466]/80 dark:text-[#B0E4CC]/70">
             Proyección horizonte 7 días con banda de tolerancia (p10 - p90)
           </p>
         </div>
@@ -47,15 +47,15 @@ export function DemandChart({ serie7d, servicio, isDark }) {
                 <stop offset="95%" stopColor="#6EADBC" stopOpacity={0.03} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#52525E' : '#EDF3DC'} />
-            <XAxis dataKey="dia" stroke={isDark ? '#D3DAD9' : '#4A4466'} fontSize={12} tickLine={false} />
-            <YAxis stroke={isDark ? '#D3DAD9' : '#4A4466'} fontSize={12} tickLine={false} domain={['auto', 'auto']} />
+            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#1F4436' : '#EDF3DC'} />
+            <XAxis dataKey="dia" stroke={isDark ? '#B0E4CC' : '#4A4466'} fontSize={12} tickLine={false} />
+            <YAxis stroke={isDark ? '#B0E4CC' : '#4A4466'} fontSize={12} tickLine={false} domain={['auto', 'auto']} />
             <Tooltip
               contentStyle={{
-                backgroundColor: isDark ? '#37353E' : '#FAFCF6',
-                borderColor: isDark ? '#715A5A' : '#9FCBAD',
+                backgroundColor: isDark ? '#091413' : '#FAFCF6',
+                borderColor: isDark ? '#408A71' : '#9FCBAD',
                 borderRadius: '12px',
-                color: isDark ? '#D3DAD9' : '#4A4466',
+                color: isDark ? '#B0E4CC' : '#4A4466',
                 fontSize: '12px',
                 fontFamily: 'var(--font-mono)',
               }}

@@ -17,12 +17,12 @@
     --color-card: #FFFFFF;
     --color-subtle: #EDF3DC;
 
-    /* Paleta Modo Oscuro Cozy - #37353E / #44444E / #715A5A / #D3DAD9 */
-    --dark-bg: #37353E;       /* Fondo oscuro base ceniza */
-    --dark-card: #44444E;     /* Superficie tarjetas y barras */
-    --dark-accent: #715A5A;   /* Acento cálido tierra / moca suave */
-    --dark-text: #D3DAD9;     /* Texto claro menta hielo WCAG AAA */
-    --dark-border: #52525E;   /* Bordes definidos con contraste */
+    /* Paleta Modo Oscuro Cozy - #091413 / #285A48 / #408A71 / #B0E4CC */
+    --dark-bg: #091413;       /* Fondo oscuro base ceniza */
+    --dark-card: #285A48;     /* Superficie tarjetas y barras */
+    --dark-accent: #408A71;   /* Acento cálido tierra / moca suave */
+    --dark-text: #B0E4CC;     /* Texto claro menta hielo WCAG AAA */
+    --dark-border: #1F4436;   /* Bordes definidos con contraste */
   }
 
   body {
@@ -35,8 +35,8 @@
   }
 
   .dark body {
-    background-color: #37353E;
-    color: #D3DAD9;
+    background-color: #091413;
+    color: #B0E4CC;
   }
 
   h1, h2, h3, h4, h5, h6 {
