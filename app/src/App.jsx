@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react';
 import {
   DemandChart,
   Header,
+  HeatmapTurnos,
   Metodologia,
   NavTabs,
+  RadarPresionServicios,
   SimulatorPanel,
   StatCardGrid,
 } from './components';
+import { SERVICIOS } from './constants/servicios';
 import { useDemandaSimulator } from './hooks/useDemandaSimulator';
 
 export default function App() {
@@ -65,6 +68,14 @@ export default function App() {
               servicio={servicio}
             />
             <DemandChart serie7d={proyeccion.serie7d} servicio={servicio} isDark={isDark} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <HeatmapTurnos servicio={servicio} isDark={isDark} />
+              <RadarPresionServicios
+                servicios={SERVICIOS}
+                servicioActivoId={servicioSel}
+                isDark={isDark}
+              />
+            </div>
           </section>
         )}
 
