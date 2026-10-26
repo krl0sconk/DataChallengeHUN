@@ -26,14 +26,14 @@ export function DemandChart({ serie7d, servicio }) {
           </p>
         </div>
         <div className="flex items-center gap-5 text-xs font-semibold">
-          <span className="flex items-center gap-1.5 text-[#601D49]">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#BD5579]" /> Mediana esperada
+          <span className="flex items-center gap-1.5 text-[#286B94]">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#286B94]" /> Mediana esperada
           </span>
-          <span className="flex items-center gap-1.5 text-[#BD5579]">
-            <span className="h-0.5 w-3 bg-[#EA9D9D] inline-block border-t border-dashed" /> Alerta (p75)
+          <span className="flex items-center gap-1.5 text-[#D98A00]">
+            <span className="h-0.5 w-3 bg-[#D98A00] inline-block border-t border-dashed" /> Alerta (p75)
           </span>
-          <span className="flex items-center gap-1.5 text-[#601D49]">
-            <span className="h-0.5 w-3 bg-[#601D49] inline-block border-t border-dashed" /> Saturación (p90)
+          <span className="flex items-center gap-1.5 text-[#C5304C]">
+            <span className="h-0.5 w-3 bg-[#C5304C] inline-block border-t border-dashed" /> Saturación (p90)
           </span>
         </div>
       </header>
@@ -43,13 +43,13 @@ export function DemandChart({ serie7d, servicio }) {
           <AreaChart data={serie7d} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="colorDemanda" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#BD5579" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#BD5579" stopOpacity={0.02} />
+                <stop offset="5%" stopColor="#286B94" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="#286B94" stopOpacity={0.02} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#FFEBB8" />
-            <XAxis dataKey="dia" stroke="#BD5579" fontSize={12} tickLine={false} />
-            <YAxis stroke="#BD5579" fontSize={12} tickLine={false} domain={['auto', 'auto']} />
+            <XAxis dataKey="dia" stroke="#601D49" fontSize={12} tickLine={false} />
+            <YAxis stroke="#601D49" fontSize={12} tickLine={false} domain={['auto', 'auto']} />
             <Tooltip
               contentStyle={{
                 backgroundColor: '#FFFDF9',
@@ -63,22 +63,22 @@ export function DemandChart({ serie7d, servicio }) {
             />
             <ReferenceLine
               y={p75}
-              stroke="#EA9D9D"
+              stroke="#D98A00"
               strokeDasharray="4 4"
               strokeWidth={1.5}
-              label={{ value: `Alerta p75 (${p75})`, fill: '#BD5579', fontSize: 11, position: 'right' }}
+              label={{ value: `Alerta p75 (${p75})`, fill: '#8A5800', fontSize: 11, position: 'right' }}
             />
             <ReferenceLine
               y={p90}
-              stroke="#601D49"
+              stroke="#C5304C"
               strokeDasharray="4 4"
               strokeWidth={1.5}
-              label={{ value: `Saturación p90 (${p90})`, fill: '#601D49', fontSize: 11, position: 'right' }}
+              label={{ value: `Saturación p90 (${p90})`, fill: '#C5304C', fontSize: 11, position: 'right' }}
             />
             <Area
               type="monotone"
               dataKey="prediccion"
-              stroke="#BD5579"
+              stroke="#286B94"
               strokeWidth={3}
               fillOpacity={1}
               fill="url(#colorDemanda)"

@@ -39,10 +39,10 @@ export function SimulatorPanel({
         <div className="space-y-2">
           <div className="flex justify-between text-xs font-bold text-[#601D49]">
             <label htmlFor="slider-lluvia" className="flex items-center gap-1.5 cursor-pointer">
-              <CloudRain className="h-4 w-4 text-[#BD5579]" />
+              <CloudRain className="h-4 w-4 text-[#286B94]" />
               Lluvia prevista (24h)
             </label>
-            <output htmlFor="slider-lluvia" className="font-mono-num font-bold text-sm text-[#601D49]">
+            <output htmlFor="slider-lluvia" className="font-mono-num font-bold text-sm text-[#286B94]">
               {lluvia} mm
             </output>
           </div>
@@ -54,7 +54,7 @@ export function SimulatorPanel({
             step="5"
             value={lluvia}
             onChange={(e) => setLluvia(Number(e.target.value))}
-            className="w-full cursor-pointer h-2 rounded-lg appearance-none accent-[#BD5579] bg-[#FFEBB8]"
+            className="w-full cursor-pointer h-2 rounded-lg appearance-none accent-[#286B94] bg-[#E8F1F5]"
           />
           <div className="flex justify-between text-[11px] font-semibold text-[#BD5579]">
             <span>Sin lluvia (0mm)</span>
@@ -170,7 +170,7 @@ export function SimulatorPanel({
                       {factores.map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
-                          fill={entry.aporte > 0 ? '#601D49' : '#BD5579'}
+                          fill={entry.aporte > 0 ? '#BD5579' : '#2D8A68'}
                         />
                       ))}
                     </Bar>
