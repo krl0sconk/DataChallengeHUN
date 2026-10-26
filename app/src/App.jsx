@@ -5,7 +5,7 @@ import {
   HeatmapTurnos,
   Metodologia,
   NavTabs,
-  RadarPresionServicios,
+  ComparadorServicios,
   SimulatorPanel,
   StatCardGrid,
 } from './components';
@@ -70,11 +70,7 @@ export default function App() {
             <DemandChart serie7d={proyeccion.serie7d} servicio={servicio} isDark={isDark} />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <HeatmapTurnos servicio={servicio} isDark={isDark} />
-              <RadarPresionServicios
-                servicios={SERVICIOS}
-                servicioActivoId={servicioSel}
-                isDark={isDark}
-              />
+              <ComparadorServicios servicios={SERVICIOS} servicioActivoId={servicioSel} onSeleccionarServicio={setServicioSel} isDark={isDark} />
             </div>
           </section>
         )}

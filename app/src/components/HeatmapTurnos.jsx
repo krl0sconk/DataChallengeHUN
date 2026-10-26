@@ -1,6 +1,5 @@
 import { Flame } from 'lucide-react';
 
-// Distribución horaria calculada sobre series agregadas del HUN
 const FRANJAS = ['Mañana (06-12h)', 'Tarde (12-18h)', 'Noche (18-24h)', 'Madrugada (00-06h)'];
 const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
@@ -31,90 +30,100 @@ export function HeatmapTurnos({ servicio, isDark }) {
 
   const getCellColor = (ratio) => {
     if (ratio >= 1.25) {
+      // Nivel Rojo - Pico
       return isDark
-        ? 'bg-[#C5304C]/30 text-[#F4C5CD] border-[#C5304C]/60'
-        : 'bg-[#FDF0F2] text-[#8A2434] border-[#F4C5CD]';
+        ? 'bg-[#C5304C]/35 text-[#FFA8B6] border-[#C5304C]/70 shadow-2xs font-extrabold'
+        : 'bg-[#FDF0F2] text-[#8A2434] border-[#F4C5CD] font-extrabold';
     }
     if (ratio >= 1.0) {
+      // Nivel Amarillo / Ámbar visible en ambos modos
       return isDark
-        ? 'bg-[#2A835F]/40 text-[#8BBB92] border-[#2A835F]'
-        : 'bg-[#FFFBEA] text-[#8C5800] border-[#F1F7D4]';
+        ? 'bg-[#D98A00]/30 text-[#FFD875] border-[#D98A00]/70 font-bold'
+        : 'bg-[#FFFBEA] text-[#8C5800] border-[#FFEBB8] font-bold';
     }
     if (ratio >= 0.5) {
+      // Nivel Verde / Normal
       return isDark
-        ? 'bg-[#092328] text-[#8BBB92]/90 border-[#0E3B39]'
+        ? 'bg-[#12544F]/80 text-[#8BBB92] border-[#2A835F]/60'
         : 'bg-[#F2F8F4] text-[#205C3B] border-[#9FCBAD]/60';
     }
+    // Nivel Valle
     return isDark
-      ? 'bg-[#092328]/30 text-[#8BBB92]/40 border-transparent'
+      ? 'bg-[#092328]/60 text-[#8BBB92]/40 border-[#0E3B39]'
       : 'bg-[#FAFCF6] text-[#4A4466]/40 border-[#EDF3DC]';
   };
 
   return (
-    <section className="rounded-3xl p-6 border border-[#EDF3DC] dark:border-[#0E3B39] bg-white dark:bg-[#12544F] transition-colors">
-      <header className="flex flex-wrap items-center justify-between gap-4 mb-5">
-        <div>
-          <h2 className="text-base font-bold font-heading flex items-center gap-2 text-[#4A4466] dark:text-[#8BBB92]">
-            <Flame className="h-5 w-5 text-[#3B7D8C] dark:text-[#8BBB92]" />
-            Afluencia por Turno
-          </h2>
-          <p className="text-xs font-medium mt-0.5 text-[#4A4466]/80 dark:text-[#8BBB92]/70">
-            Pacientes estimados según día de semana y franja horaria
-          </p>
-        </div>
-        <div className="flex items-center gap-3 text-xs font-semibold">
-          <span className="flex items-center gap-1.5 text-[#205C3B] dark:text-[#8BBB92]">
-            <span className="h-2.5 w-2.5 rounded-sm bg-[#9FCBAD] dark:bg-[#2A835F]" /> Normal
-          </span>
-          <span className="flex items-center gap-1.5 text-[#8C5800] dark:text-[#F1F7D4]">
-            <span className="h-2.5 w-2.5 rounded-sm bg-[#F1F7D4] dark:bg-[#D98A00]" /> Medio
-          </span>
-          <span className="flex items-center gap-1.5 text-[#8A2434] dark:text-[#F4C5CD]">
-            <span className="h-2.5 w-2.5 rounded-sm bg-[#8A2434] dark:bg-[#C5304C]" /> Alto
-          </span>
-        </div>
-      </header>
+    <section className="rounded-3xl p-6 border border-[#EDF3DC] dark:border-[#0E3B39] bg-white dark:bg-[#12544F] transition-colors flex flex-col justify-between">
+      <div>
+        <header className="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 className="text-base font-bold font-heading flex items-center gap-2 text-[#4A4466] dark:text-[#8BBB92]">
+              <Flame className="h-5 w-5 text-[#3B7D8C] dark:text-[#8BBB92]" />
+              Afluencia por Turno
+            </h2>
+            <p className="text-xs font-medium mt-0.5 text-[#4A4466]/80 dark:text-[#8BBB92]/70">
+              Distribución de pacientes según día y guardia horaria
+            </p>
+          </div>
+          <div className="flex items-center gap-3 text-xs font-semibold">
+            <span className="flex items-center gap-1.5 text-[#205C3B] dark:text-[#8BBB92]">
+              <span className="h-2.5 w-2.5 rounded-sm bg-[#9FCBAD] dark:bg-[#12544F] border border-[#2A835F]" /> Normal
+            </span>
+            <span className="flex items-center gap-1.5 text-[#8C5800] dark:text-[#FFD875]">
+              <span className="h-2.5 w-2.5 rounded-sm bg-[#FFEBB8] dark:bg-[#D98A00]" /> Concurrido
+            </span>
+            <span className="flex items-center gap-1.5 text-[#8A2434] dark:text-[#FFA8B6]">
+              <span className="h-2.5 w-2.5 rounded-sm bg-[#C5304C]" /> Pico Crítico
+            </span>
+          </div>
+        </header>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs font-mono-num text-center border-collapse">
-          <thead>
-            <tr>
-              <th className="p-2.5 text-left font-sans font-bold text-[#4A4466]/70 dark:text-[#8BBB92]/70">
-                Turno
-              </th>
-              {DIAS.map((dia) => (
-                <th
-                  key={dia}
-                  className="p-2.5 font-heading font-bold text-[#4A4466] dark:text-[#8BBB92]"
-                >
-                  {dia}
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs font-mono-num text-center border-collapse">
+            <thead>
+              <tr>
+                <th className="p-2.5 text-left font-sans font-bold text-[#4A4466]/70 dark:text-[#8BBB92]/70">
+                  Guardia
                 </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {matriz.map((fila, fIdx) => (
-              <tr key={FRANJAS[fIdx]}>
-                <td className="p-2.5 text-left font-sans font-semibold text-[#4A4466] dark:text-[#8BBB92]">
-                  {FRANJAS[fIdx]}
-                </td>
-                {fila.map((celda, dIdx) => (
-                  <td key={dIdx} className="p-1">
-                    <div
-                      className={`py-2 px-1 rounded-xl border font-bold transition-all ${getCellColor(
-                        celda.ratio
-                      )}`}
-                    >
-                      {celda.estimado}
-                      <span className="block text-[10px] font-normal opacity-70">pac.</span>
-                    </div>
-                  </td>
+                {DIAS.map((dia) => (
+                  <th
+                    key={dia}
+                    className="p-2 font-heading font-bold text-[#4A4466] dark:text-[#8BBB92]"
+                  >
+                    {dia}
+                  </th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {matriz.map((fila, fIdx) => (
+                <tr key={FRANJAS[fIdx]}>
+                  <td className="p-2 text-left font-sans font-semibold text-[#4A4466] dark:text-[#8BBB92]">
+                    {FRANJAS[fIdx]}
+                  </td>
+                  {fila.map((celda, dIdx) => (
+                    <td key={dIdx} className="p-1">
+                      <div
+                        className={`py-2 px-1 rounded-xl border transition-all ${getCellColor(
+                          celda.ratio
+                        )}`}
+                      >
+                        {celda.estimado}
+                        <span className="block text-[10px] font-normal opacity-70">pac.</span>
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      <footer className="mt-4 pt-3 border-t border-[#EDF3DC] dark:border-[#0E3B39] text-[11px] text-[#4A4466]/80 dark:text-[#8BBB92]/80 leading-relaxed font-sans">
+        💡 <strong>Cómo leer esta tabla:</strong> Las celdas rojas marcan las horas con mayor congestión donde se recomienda reforzar personal médico en triaje.
+      </footer>
     </section>
   );
 }

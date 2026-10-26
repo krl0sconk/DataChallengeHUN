@@ -5,4 +5,4 @@ export { DemandChart } from './DemandChart';
 export { SimulatorPanel } from './SimulatorPanel';
 export { Metodologia } from './Metodologia';
 export { HeatmapTurnos } from './HeatmapTurnos';
-export { RadarPresionServicios } from './RadarPresionServicios';
+export { ComparadorServicios } from './ComparadorServicios';
