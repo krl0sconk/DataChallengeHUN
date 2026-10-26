@@ -5,7 +5,7 @@ export function StatCardGrid({ alerta, prediccion, p10, p90, servicio }) {
 
   return (
     <section className="grid grid-cols-1 md:grid-cols-3 gap-5">
-      {/* Estado y semáforo asistencial con color semántico real */}
+      {/* Estado y semáforo asistencial */}
       <article className={`rounded-3xl p-6 border transition-colors ${colorBg} ${colorBorder} dark:bg-[#12544F] dark:border-[#0E3B39]`}>
         <header className="flex items-center justify-between">
           <h2 className="text-xs uppercase font-extrabold tracking-wider text-[#4A4466] dark:text-[#8BBB92]">
@@ -29,10 +29,10 @@ export function StatCardGrid({ alerta, prediccion, p10, p90, servicio }) {
         </footer>
       </article>
 
-      {/* Proyección puntual del día con acento azul sereno */}
+      {/* Proyección puntual del día */}
       <article className="rounded-3xl p-6 border border-[#EDF3DC] dark:border-[#0E3B39] bg-white dark:bg-[#12544F] transition-colors">
         <header>
-          <h2 className="text-xs uppercase font-extrabold tracking-wider text-[#3B7D8C] dark:text-[#9FCBAD]">
+          <h2 className="text-xs uppercase font-extrabold tracking-wider text-[#3B7D8C] dark:text-[#8BBB92]">
             Llegadas Proyectadas (Hoy)
           </h2>
         </header>
@@ -40,18 +40,18 @@ export function StatCardGrid({ alerta, prediccion, p10, p90, servicio }) {
           <span className="text-4xl font-extrabold font-mono-num text-[#4A4466] dark:text-[#8BBB92]">
             {prediccion}
           </span>
-          <span className="text-sm font-bold text-[#3B7D8C] dark:text-[#9FCBAD]">pacientes</span>
+          <span className="text-sm font-bold text-[#3B7D8C] dark:text-[#8BBB92]">pacientes</span>
         </div>
         <footer className="mt-3.5 flex items-center justify-between text-xs p-2.5 rounded-xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#F1F7D4]/40 dark:bg-[#092328] text-[#4A4466] dark:text-[#8BBB92] font-mono-num font-semibold">
           <span>p10: <strong>{p10}</strong></span>
           <span className="text-[#9FCBAD] dark:text-[#2A835F]">|</span>
-          <span>Mediana: <strong className="text-[#3B7D8C] dark:text-[#9FCBAD]">{prediccion}</strong></span>
+          <span>Mediana: <strong className="text-[#3B7D8C] dark:text-[#8BBB92]">{prediccion}</strong></span>
           <span className="text-[#9FCBAD] dark:text-[#2A835F]">|</span>
           <span>p90: <strong>{p90}</strong></span>
         </footer>
       </article>
 
-      {/* Base histórica de referencia con acento salvia clínico */}
+      {/* Base histórica de referencia */}
       <article className="rounded-3xl p-6 border border-[#EDF3DC] dark:border-[#0E3B39] bg-white dark:bg-[#12544F] transition-colors">
         <header>
           <h2 className="text-xs uppercase font-extrabold tracking-wider text-[#4A4466]/80 dark:text-[#8BBB92]/70">
@@ -62,14 +62,14 @@ export function StatCardGrid({ alerta, prediccion, p10, p90, servicio }) {
           <span className="text-4xl font-extrabold font-mono-num text-[#4A4466] dark:text-[#8BBB92]">
             {servicio.mediaDiaria}
           </span>
-          <span className="text-xs font-bold text-[#3B7D8C] dark:text-[#9FCBAD]">promedio / día</span>
+          <span className="text-xs font-bold text-[#3B7D8C] dark:text-[#8BBB92]">promedio / día</span>
         </div>
         <p className="mt-2 text-xs font-medium text-[#4A4466]/80 dark:text-[#8BBB92]/70">
           {servicio.codigo} · Serie agregada del HUN (2023–2026).
         </p>
-        <footer className="mt-4 pt-3 border-t border-[#EDF3DC] dark:border-[#0E3B39] text-xs text-[#205C3B] dark:text-[#9FCBAD] flex items-center gap-2 font-semibold">
-          <Users className="h-4 w-4 shrink-0 text-[#205C3B] dark:text-[#9FCBAD]" />
-          <span>Validación walk-forward sin fuga temporal.</span>
+        <footer className="mt-4 pt-3 border-t border-[#EDF3DC] dark:border-[#0E3B39] text-xs text-[#205C3B] dark:text-[#8BBB92] flex items-center gap-2 font-semibold">
+          <Users className="h-4 w-4 shrink-0 text-[#205C3B] dark:text-[#8BBB92]" />
+          <span>Datos analizados con el histórico del hospital.</span>
         </footer>
       </article>
     </section>

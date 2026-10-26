@@ -23,12 +23,12 @@ export function Metodologia() {
         <section className="p-5 rounded-2xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#FAFCF6] dark:bg-[#092328] space-y-2.5">
           <h3 className="font-bold flex items-center gap-2 text-xs uppercase tracking-wider font-heading text-[#4A4466] dark:text-[#8BBB92]">
             <Lock className="h-4 w-4 text-[#6EADBC]" />
-            Privacidad Estricta y Reglas Anti-Fuga
+            Privacidad y Protección de Datos
           </h3>
           <p className="text-xs leading-relaxed text-[#4A4466]/80 dark:text-[#8BBB92]/70 font-normal">
             Ningún registro médico individual ni fila de paciente sale de la infraestructura segura
             del hospital. La aplicación interactúa exclusivamente con series temporales agregadas y
-            coeficientes validados mediante validación walk-forward.
+            modelos estadísticos validados con el histórico del hospital.
           </p>
         </section>
 
