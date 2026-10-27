@@ -21,6 +21,7 @@ dependencies = [
     "pyarrow",
     "holidays",
     "python-dateutil",
+    "lightgbm",
 ]
 
 [project.optional-dependencies]
