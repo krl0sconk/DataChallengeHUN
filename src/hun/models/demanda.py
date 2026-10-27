@@ -975,9 +975,9 @@ def main() -> None:
         help="Llegadas mínimas por día para no agrupar en 'Otros'",
     )
     parser.add_argument(
-        "--ejecutar-factores",
+        "--omitir-factores",
         action="store_true",
-        help="Si se activa, ejecuta también ef.evaluar_grupos con LightGBM",
+        help="Si se activa, omite la evaluación previa de grupos de factores externos",
     )
     args = parser.parse_args()
 
@@ -1026,22 +1026,27 @@ def main() -> None:
     if nombres is not None:
         nombres[OTROS] = f"Otros (< {args.min_por_dia:g} llegadas/día, agrupados)"
 
-    log.info("Evaluando escalera de modelos...")
-    resultados = evaluar_escalera(serie, externos, pliegues, grupos_aceptados=GRUPOS_ACEPTADOS)
+    grupos_seleccionados = GRUPOS_ACEPTADOS
+    if not args.omitir_factores and externos is not None:
+        log.info("Ejecutando evaluación de factores externos con LightGBM...")
+        res_factores = ef.evaluar_grupos(
+            serie, externos, pliegues, ajustar_predecir=ajustar_predecir_lgbm
+        )
+        aceptados = tuple(r.grupo for r in res_factores if r.aceptado)
+        if aceptados:
+            grupos_seleccionados = aceptados
+        texto_factores = reporte_factores_markdown(res_factores)
+        salida_factores_path.parent.mkdir(parents=True, exist_ok=True)
+        salida_factores_path.write_text(texto_factores, encoding="utf-8")
+        log.info("Reporte de factores externos guardado en %s", salida_factores_path)
+
+    log.info("Evaluando escalera de modelos con grupos aceptados: %s...", grupos_seleccionados)
+    resultados = evaluar_escalera(serie, externos, pliegues, grupos_aceptados=grupos_seleccionados)
 
     texto_reporte = reporte_markdown(resultados, nombres, pliegues, ruta_entrada=entrada_path.name)
     salida_demanda_path.parent.mkdir(parents=True, exist_ok=True)
     salida_demanda_path.write_text(texto_reporte, encoding="utf-8")
     log.info("Reporte del modelo de demanda guardado en %s", salida_demanda_path)
-
-    if args.ejecutar_factores and externos is not None:
-        log.info("Ejecutando evaluación de factores externos con LightGBM...")
-        res_factores = ef.evaluar_grupos(
-            serie, externos, pliegues, ajustar_predecir=ajustar_predecir_lgbm
-        )
-        texto_factores = reporte_factores_markdown(res_factores)
-        salida_factores_path.write_text(texto_factores, encoding="utf-8")
-        log.info("Reporte de factores externos guardado en %s", salida_factores_path)
 
 
 if __name__ == "__main__":
