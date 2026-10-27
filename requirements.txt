@@ -13,6 +13,7 @@ pyarrow
 holidays
 python-dateutil
 lightgbm
+shap
 
 # Conexión a la base del hospital (PostgreSQL)
 sqlalchemy>=2.0

@@ -22,6 +22,7 @@ dependencies = [
     "holidays",
     "python-dateutil",
     "lightgbm",
+    "shap",
 ]
 
 [project.optional-dependencies]
