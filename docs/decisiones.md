@@ -20,6 +20,23 @@ Si una decisión reemplaza a otra, no borres la anterior: márcala como **Reempl
 
 ---
 
+### DEC-006 · Framework de la aplicación web: React + Vite + Tailwind CSS
+
+- **Fecha:** 2026-10-25
+- **Sprint:** 2
+- **Responsable:** Daniel
+- **Estado:** Aceptada (2026-10-26, por el equipo)
+- **Decisión:** La aplicación web interactiva se desarrolla en **Vite + React + Tailwind CSS** dentro de la carpeta `app/`.
+- **Motivo:** Garantiza máxima velocidad de renderizado (0ms de latencia en el cliente para el simulador "¿qué pasa si?"), estética profesional SaaS/hospitalaria (Recharts, Lucide Icons, tema oscuro institucional) y desacoplamiento limpio.
+- **Alternativas consideradas:** Streamlit (descartada por limitaciones estéticas, look genérico y latencia al recargar componentes).
+- **Consecuencias:** Todo el desarrollo web vive en `app/` gestionado con `npm run dev`. No expone datos de pacientes y utiliza los parámetros del inventario OMOP.
+  React corre en el navegador y no puede llamar a `predecir()` directamente, así que la web obtiene las
+  predicciones por una **API** (pendiente) que expone el contrato de `src/hun/models/predict.py`. Mientras
+  tanto los valores de la web son simulados. El simulador trabaja dentro del rango de la base
+  (2023-01-01 a 2026-07-16, DEC-002).
+
+---
+
 ### DEC-005 · Herramienta del dashboard de análisis: Power BI
 
 - **Fecha:** 2026-10-23

@@ -1,0 +1,33 @@
+# Calendario de vacaciones escolares colegios oficiales (Barranquilla / Atlántico - Calendario A)
+# Columnas: inicio, fin, confianza, descripcion
+inicio,fin,confianza,descripcion
+2018-06-25,2018-07-15,estimado,Vacaciones mitad de año 2018
+2018-10-08,2018-10-14,estimado,Semana de receso octubre 2018
+2018-12-10,2019-01-27,estimado,Vacaciones fin de año 2018-2019
+2019-06-24,2019-07-14,estimado,Vacaciones mitad de año 2019
+2019-10-07,2019-10-13,estimado,Semana de receso octubre 2019
+2019-12-09,2020-01-26,estimado,Vacaciones fin de año 2019-2020
+2020-06-22,2020-07-12,estimado,Vacaciones mitad de año 2020
+2020-10-05,2020-10-11,estimado,Semana de receso octubre 2020
+2020-12-07,2021-01-24,estimado,Vacaciones fin de año 2020-2021
+2021-06-21,2021-07-11,estimado,Vacaciones mitad de año 2021
+2021-10-11,2021-10-17,estimado,Semana de receso octubre 2021
+2021-12-06,2022-01-23,estimado,Vacaciones fin de año 2021-2022
+2022-06-27,2022-07-17,estimado,Vacaciones mitad de año 2022
+2022-10-10,2022-10-16,estimado,Semana de receso octubre 2022
+2022-12-12,2023-01-29,estimado,Vacaciones fin de año 2022-2023
+2023-06-26,2023-07-16,estimado,Vacaciones mitad de año 2023
+2023-10-09,2023-10-15,estimado,Semana de receso octubre 2023
+2023-12-11,2024-01-28,estimado,Vacaciones fin de año 2023-2024
+2024-06-17,2024-07-07,oficial,Vacaciones mitad de año 2024
+2024-10-07,2024-10-13,oficial,Semana de receso octubre 2024
+2024-12-09,2025-01-19,oficial,Vacaciones fin de año 2024-2025
+2025-06-16,2025-07-06,oficial,Vacaciones mitad de año 2025
+2025-10-06,2025-10-12,oficial,Semana de receso octubre 2025
+2025-12-08,2026-01-18,oficial,Vacaciones fin de año 2025-2026
+2026-06-22,2026-07-12,oficial,Vacaciones mitad de año 2026
+2026-10-05,2026-10-11,oficial,Semana de receso octubre 2026
+2026-12-07,2027-01-17,oficial,Vacaciones fin de año 2026-2027
+2027-06-21,2027-07-11,estimado,Vacaciones mitad de año 2027
+2027-10-11,2027-10-17,estimado,Semana de receso octubre 2027
+2027-12-06,2028-01-23,estimado,Vacaciones fin de año 2027-2028

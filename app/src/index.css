@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-heading: 'Outfit', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    /* Paleta Mineral Salud Cozy - Claro */
+    --color-slate-violet: #4A4466;
+    --color-teal: #6EADBC;
+    --color-sage: #9FCBAD;
+    --color-pistachio: #F1F7D4;
+    --color-surface: #FAFCF6;
+    --color-card: #FFFFFF;
+    --color-subtle: #EDF3DC;
+
+    /* Paleta Modo Oscuro Cozy - #092328 / #12544F / #2A835F / #8BBB92 */
+    --dark-bg: #092328;       /* Fondo oscuro base ceniza */
+    --dark-card: #12544F;     /* Superficie tarjetas y barras */
+    --dark-accent: #2A835F;   /* Acento cálido tierra / moca suave */
+    --dark-text: #8BBB92;     /* Texto claro menta hielo WCAG AAA */
+    --dark-border: #0E3B39;   /* Bordes definidos con contraste */
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    background-color: #FAFCF6;
+    color: #4A4466;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .dark body {
+    background-color: #092328;
+    color: #8BBB92;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    color: inherit;
+  }
+}
+
+.font-heading {
+  font-family: var(--font-heading);
+}
+
+.font-mono-num {
+  font-family: var(--font-mono);
+}
