@@ -15,6 +15,7 @@ import {
   SunMedium,
   Zap,
 } from 'lucide-react';
+import { FECHA_BASE_MAXIMA, FECHA_INICIO_DATOS } from '../constants/servicios';
 import {
   Area,
   AreaChart,
@@ -118,9 +119,14 @@ export function SimulatorPanel({
             id="input-fecha"
             type="date"
             value={fechaSimulacion}
+            min={FECHA_INICIO_DATOS}
+            max={FECHA_BASE_MAXIMA}
             onChange={(e) => setFechaSimulacion(e.target.value)}
             className="w-full text-xs font-mono-num font-bold px-3 py-2 rounded-xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-white dark:bg-[#12544F] text-[#4A4466] dark:text-[#8BBB92] focus:outline-none focus:ring-1 focus:ring-[#2A835F] cursor-pointer"
           />
+          <p className="text-[11px] text-[#4A4466]/70 dark:text-[#8BBB92]/70">
+            Datos disponibles del 1 ene 2023 al 16 jul 2026: la ventana de 7 días debe quedar dentro.
+          </p>
         </div>
 
         {/* 2. Escenarios Rápidos Preconfigurados */}
