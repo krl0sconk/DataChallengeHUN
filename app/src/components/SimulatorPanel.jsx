@@ -1,19 +1,11 @@
 import { useState } from 'react';
 import {
   Activity,
-  Bug,
   Calendar,
   Check,
-  CloudRain,
   Copy,
-  DollarSign,
-  GraduationCap,
   LineChart as LineChartIcon,
-  RotateCcw,
-  Share2,
   Sparkles,
-  SunMedium,
-  Zap,
 } from 'lucide-react';
 import { FECHA_BASE_MAXIMA, FECHA_INICIO_DATOS } from '../constants/servicios';
 import {
@@ -23,7 +15,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  Legend,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -33,26 +24,8 @@ import {
 
 export function SimulatorPanel({
   servicio,
-  lluvia,
-  setLluvia,
-  temperatura,
-  setTemperatura,
-  alertaDengue,
-  setAlertaDengue,
-  puente,
-  setPuente,
-  quincena,
-  setQuincena,
-  carnaval,
-  setCarnaval,
-  postFestivo,
-  setPostFestivo,
-  vacaciones,
-  setVacaciones,
   fechaSimulacion,
   setFechaSimulacion,
-  resetearEscenario,
-  aplicarPreset,
   proyeccion,
   isDark,
 }) {
@@ -66,15 +39,8 @@ export function SimulatorPanel({
 📅 Fecha Base: ${fechaSimulacion}
 👥 Demanda Estimada: ${prediccion} pac. (${deltaTotal > 0 ? '+' : ''}${deltaTotal} vs habitual)
 🚨 Estado: ${alerta.etiqueta} (${alerta.subtitulo})
-⚙️ Parámetros activos:
-- Lluvia: ${lluvia}mm
-- Temperatura: ${temperatura}°C
-- Dengue: ${alertaDengue ? 'Sí' : 'No'}
-- Puente festivo: ${puente ? 'Sí' : 'No'}
-- Quincena: ${quincena ? 'Sí' : 'No'}
-- Carnaval: ${carnaval ? 'Sí' : 'No'}
-- Rebote post-puente: ${postFestivo ? 'Sí' : 'No'}
-- Vacaciones escolares: ${vacaciones ? 'Sí' : 'No'}
+⚙️ Factores identificados por el modelo:
+${(factores || []).map((f) => `- ${f.nombre}: ${f.aporte > 0 ? '+' : ''}${f.aporte} pac.`).join('\n')}
 💡 Recomendación: ${alerta.accion}`;
 
     navigator.clipboard.writeText(textoCompartir).then(() => {
@@ -91,28 +57,20 @@ export function SimulatorPanel({
           <div>
             <h2 className="text-base font-bold font-heading flex items-center gap-2 text-[#4A4466] dark:text-[#8BBB92]">
               <Sparkles className="h-5 w-5 text-[#3B7D8C] dark:text-[#8BBB92]" />
-              Variables de Entorno
+              Factores de Demanda
             </h2>
             <p className="text-xs font-medium mt-0.5 text-[#4A4466]/80 dark:text-[#8BBB92]/70">
-              Modela condiciones climáticas y de calendario
+              Evaluación por fecha histórica y efectos observados
             </p>
           </div>
-          <button
-            onClick={resetearEscenario}
-            title="Reiniciar todos los valores a condiciones normales"
-            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#FAFCF6] dark:bg-[#092328] text-[#4A4466] dark:text-[#8BBB92] hover:border-[#2A835F] hover:bg-white dark:hover:bg-[#12544F] transition-all cursor-pointer shadow-2xs shrink-0"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            <span>Restablecer</span>
-          </button>
         </header>
 
         {/* 1. Selector de Fecha Específica */}
-        <div className="space-y-1.5 p-3 rounded-2xl bg-[#FAFCF6] dark:bg-[#092328] border border-[#EDF3DC] dark:border-[#0E3B39]">
+        <div className="space-y-1.5 p-3.5 rounded-2xl bg-[#FAFCF6] dark:bg-[#092328] border border-[#EDF3DC] dark:border-[#0E3B39]">
           <label htmlFor="input-fecha" className="flex items-center justify-between text-xs font-bold text-[#4A4466] dark:text-[#8BBB92] cursor-pointer">
             <span className="flex items-center gap-1.5">
               <Calendar className="h-4 w-4 text-[#3B7D8C] dark:text-[#8BBB92]" />
-              Fecha específica a evaluar:
+              Fecha histórica a evaluar:
             </span>
           </label>
           <input
@@ -125,168 +83,47 @@ export function SimulatorPanel({
             className="w-full text-xs font-mono-num font-bold px-3 py-2 rounded-xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-white dark:bg-[#12544F] text-[#4A4466] dark:text-[#8BBB92] focus:outline-none focus:ring-1 focus:ring-[#2A835F] cursor-pointer"
           />
           <p className="text-[11px] text-[#4A4466]/70 dark:text-[#8BBB92]/70">
-            Datos disponibles del 1 ene 2023 al 16 jul 2026: la ventana de 7 días debe quedar dentro.
+            Rango de la base: 1 ene 2023 al 16 jul 2026 (ventana de 7 días).
           </p>
         </div>
 
-        {/* 2. Escenarios Rápidos Preconfigurados */}
-        <div className="space-y-1.5">
+        {/* 2. Factores de Calendario del Modelo Oficial */}
+        <div className="space-y-2.5 pt-1">
           <span className="text-[11px] font-bold uppercase tracking-wider text-[#4A4466]/70 dark:text-[#8BBB92]/70 flex items-center gap-1">
-            <Zap className="h-3 w-3" /> Escenarios Preconfigurados:
+            <Activity className="h-3.5 w-3.5 text-[#3B7D8C] dark:text-[#8BBB92]" />
+            Componentes del Modelo (predict.py):
           </span>
-          <div className="grid grid-cols-2 gap-1.5 text-xs font-bold">
-            <button
-              onClick={() => aplicarPreset('arroyo_lluvia')}
-              className="p-2 rounded-xl text-left border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#FAFCF6] dark:bg-[#092328] hover:border-[#2A835F] text-[#4A4466] dark:text-[#8BBB92] transition-colors cursor-pointer"
-            >
-              🌧️ Arroyo torrencial
-            </button>
-            <button
-              onClick={() => aplicarPreset('carnaval_pico')}
-              className="p-2 rounded-xl text-left border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#FAFCF6] dark:bg-[#092328] hover:border-[#2A835F] text-[#4A4466] dark:text-[#8BBB92] transition-colors cursor-pointer"
-            >
-              🎉 Carnaval pico
-            </button>
-            <button
-              onClick={() => aplicarPreset('brote_epidemia')}
-              className="p-2 rounded-xl text-left border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#FAFCF6] dark:bg-[#092328] hover:border-[#2A835F] text-[#4A4466] dark:text-[#8BBB92] transition-colors cursor-pointer"
-            >
-              🦟 Brote de Dengue
-            </button>
-            <button
-              onClick={() => aplicarPreset('rebote_puente')}
-              className="p-2 rounded-xl text-left border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#FAFCF6] dark:bg-[#092328] hover:border-[#2A835F] text-[#4A4466] dark:text-[#8BBB92] transition-colors cursor-pointer"
-            >
-              🗓️ Rebote post-puente
-            </button>
+
+          <div className="p-3.5 rounded-2xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#FAFCF6] dark:bg-[#092328] space-y-2 text-xs">
+            <div className="flex items-center justify-between font-semibold">
+              <span className="text-[#4A4466] dark:text-[#8BBB92]">Día de la semana:</span>
+              <strong className="text-[#3B7D8C] dark:text-[#8BBB92]">
+                {new Date(fechaSimulacion + 'T12:00:00').toLocaleDateString('es-CO', { weekday: 'long' })}
+              </strong>
+            </div>
+            <div className="flex items-center justify-between font-semibold">
+              <span className="text-[#4A4466] dark:text-[#8BBB92]">Efecto lunes / fin de semana:</span>
+              <span className="font-mono-num text-[11px] px-2 py-0.5 rounded-md bg-[#EDF3DC] dark:bg-[#12544F] text-[#3B7D8C] dark:text-[#8BBB92]">
+                {new Date(fechaSimulacion + 'T12:00:00').getDay() === 1 ? '+8% (Lunes)' : (new Date(fechaSimulacion + 'T12:00:00').getDay() % 6 === 0 ? '+5% (Fin de sem.)' : 'Basal')}
+              </span>
+            </div>
+            <div className="flex items-center justify-between font-semibold">
+              <span className="text-[#4A4466] dark:text-[#8BBB92]">Efecto quincena (15/30):</span>
+              <span className="font-mono-num text-[11px] px-2 py-0.5 rounded-md bg-[#EDF3DC] dark:bg-[#12544F] text-[#3B7D8C] dark:text-[#8BBB92]">
+                {[15, 30, 31].includes(Number(fechaSimulacion.split('-')[2])) ? '+4% (Día de pago)' : 'Sin ajuste'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between font-semibold">
+              <span className="text-[#4A4466] dark:text-[#8BBB92]">Media histórica base:</span>
+              <span className="font-mono-num text-[11px] font-bold text-[#4A4466] dark:text-[#8BBB92]">
+                {servicio.mediaDiaria} pac/día
+              </span>
+            </div>
           </div>
-        </div>
 
-        {/* 3. Slider: Lluvia */}
-        <div className="space-y-1 pt-1">
-          <div className="flex justify-between text-xs font-bold text-[#4A4466] dark:text-[#8BBB92]">
-            <label htmlFor="slider-lluvia" className="flex items-center gap-1.5 cursor-pointer">
-              <CloudRain className="h-4 w-4 text-[#3B7D8C] dark:text-[#8BBB92]" />
-              Lluvia prevista en 24h
-            </label>
-            <output htmlFor="slider-lluvia" className="font-mono-num font-extrabold text-sm text-[#3B7D8C] dark:text-[#8BBB92]">
-              {lluvia} mm
-            </output>
+          <div className="p-3 rounded-xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#F1F7D4]/40 dark:bg-[#092328] text-[11px] text-[#4A4466]/80 dark:text-[#8BBB92]/80 leading-relaxed">
+            ℹ️ <strong>Transparencia:</strong> Los factores de estacionalidad son calculados automáticamente por <code>predict.py</code> a partir de la fecha seleccionada.
           </div>
-          <input
-            id="slider-lluvia"
-            type="range"
-            min="0"
-            max="100"
-            step="5"
-            value={lluvia}
-            onChange={(e) => setLluvia(Number(e.target.value))}
-            className="w-full cursor-pointer h-2 rounded-lg appearance-none accent-[#3B7D8C] dark:accent-[#8BBB92] bg-[#F1F7D4] dark:bg-[#092328]"
-          />
-        </div>
-
-        {/* 4. Slider: Sensación Térmica */}
-        <div className="space-y-1 pt-1">
-          <div className="flex justify-between text-xs font-bold text-[#4A4466] dark:text-[#8BBB92]">
-            <label htmlFor="slider-temp" className="flex items-center gap-1.5 cursor-pointer">
-              <SunMedium className="h-4 w-4 text-[#D98A00] dark:text-[#FFD875]" />
-              Sensación Térmica
-            </label>
-            <output htmlFor="slider-temp" className="font-mono-num font-extrabold text-sm text-[#D98A00] dark:text-[#FFD875]">
-              {temperatura} °C
-            </output>
-          </div>
-          <input
-            id="slider-temp"
-            type="range"
-            min="26"
-            max="42"
-            step="1"
-            value={temperatura}
-            onChange={(e) => setTemperatura(Number(e.target.value))}
-            className="w-full cursor-pointer h-2 rounded-lg appearance-none accent-[#D98A00] dark:accent-[#FFD875] bg-[#F1F7D4] dark:bg-[#092328]"
-          />
-        </div>
-
-        {/* 5. Factores de Calendario y Brotes */}
-        <div className="space-y-2 pt-1 text-xs font-bold">
-          <label className="flex items-center justify-between p-2.5 rounded-2xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#FAFCF6] dark:bg-[#092328] hover:border-[#2A835F] cursor-pointer transition-colors">
-            <span className="flex items-center gap-2 text-[#4A4466] dark:text-[#8BBB92]">
-              <Bug className="h-4 w-4 text-[#C5304C]" />
-              Brote de Dengue (SIVIGILA)
-            </span>
-            <input
-              type="checkbox"
-              checked={alertaDengue}
-              onChange={(e) => setAlertaDengue(e.target.checked)}
-              className="h-4 w-4 accent-[#C5304C] rounded cursor-pointer"
-            />
-          </label>
-
-          <label className="flex items-center justify-between p-2.5 rounded-2xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#FAFCF6] dark:bg-[#092328] hover:border-[#2A835F] cursor-pointer transition-colors">
-            <span className="flex items-center gap-2 text-[#4A4466] dark:text-[#8BBB92]">
-              <Activity className="h-4 w-4 text-[#3B7D8C] dark:text-[#8BBB92]" />
-              Rebote post-festivo
-            </span>
-            <input
-              type="checkbox"
-              checked={postFestivo}
-              onChange={(e) => setPostFestivo(e.target.checked)}
-              className="h-4 w-4 accent-[#3B7D8C] dark:accent-[#8BBB92] rounded cursor-pointer"
-            />
-          </label>
-
-          <label className="flex items-center justify-between p-2.5 rounded-2xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#FAFCF6] dark:bg-[#092328] hover:border-[#2A835F] cursor-pointer transition-colors">
-            <span className="flex items-center gap-2 text-[#4A4466] dark:text-[#8BBB92]">
-              <Calendar className="h-4 w-4 text-[#3B7D8C] dark:text-[#8BBB92]" />
-              Puente festivo
-            </span>
-            <input
-              type="checkbox"
-              checked={puente}
-              onChange={(e) => setPuente(e.target.checked)}
-              className="h-4 w-4 accent-[#4A4466] dark:accent-[#2A835F] rounded cursor-pointer"
-            />
-          </label>
-
-          <label className="flex items-center justify-between p-2.5 rounded-2xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#FAFCF6] dark:bg-[#092328] hover:border-[#2A835F] cursor-pointer transition-colors">
-            <span className="flex items-center gap-2 text-[#4A4466] dark:text-[#8BBB92]">
-              <DollarSign className="h-4 w-4 text-[#3B7D8C] dark:text-[#8BBB92]" />
-              Día de quincena (15 o 30)
-            </span>
-            <input
-              type="checkbox"
-              checked={quincena}
-              onChange={(e) => setQuincena(e.target.checked)}
-              className="h-4 w-4 accent-[#4A4466] dark:accent-[#2A835F] rounded cursor-pointer"
-            />
-          </label>
-
-          <label className="flex items-center justify-between p-2.5 rounded-2xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#FAFCF6] dark:bg-[#092328] hover:border-[#2A835F] cursor-pointer transition-colors">
-            <span className="flex items-center gap-2 text-[#4A4466] dark:text-[#8BBB92]">
-              <GraduationCap className="h-4 w-4 text-[#3B7D8C] dark:text-[#8BBB92]" />
-              Vacaciones escolares
-            </span>
-            <input
-              type="checkbox"
-              checked={vacaciones}
-              onChange={(e) => setVacaciones(e.target.checked)}
-              className="h-4 w-4 accent-[#4A4466] dark:accent-[#2A835F] rounded cursor-pointer"
-            />
-          </label>
-
-          <label className="flex items-center justify-between p-2.5 rounded-2xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#FAFCF6] dark:bg-[#092328] hover:border-[#2A835F] cursor-pointer transition-colors">
-            <span className="flex items-center gap-2 text-[#4A4466] dark:text-[#8BBB92]">
-              <Sparkles className="h-4 w-4 text-[#D98A00] dark:text-[#FFD875]" />
-              Carnaval de Barranquilla
-            </span>
-            <input
-              type="checkbox"
-              checked={carnaval}
-              onChange={(e) => setCarnaval(e.target.checked)}
-              className="h-4 w-4 accent-[#4A4466] dark:accent-[#2A835F] rounded cursor-pointer"
-            />
-          </label>
         </div>
       </section>
 
