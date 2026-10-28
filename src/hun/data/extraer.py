@@ -69,6 +69,7 @@ EXTRACCIONES = {
         Extraccion("conceptos_diagnosticos", "20_conceptos_diagnosticos.sql"),
         Extraccion("conceptos_procedimientos", "21_conceptos_procedimientos.sql"),
         Extraccion("conceptos_mediciones", "22_conceptos_mediciones.sql"),
+        Extraccion("duracion_etapas_percentiles", "23_duracion_etapas_percentiles.sql"),
     ]
 }
 
@@ -96,6 +97,7 @@ GRUPOS = {
         "duracion_etapas_diaria",
         "duracion_etapas_por_franja",
         "transiciones_etapas",
+        "duracion_etapas_percentiles",
     ],
     "conceptos": [
         "conceptos_visitas",
