@@ -1,7 +1,7 @@
 # Revisión de cierre del Sprint 1
 
 - **Tarea:** #14 · **Participan:** Krlos, Daniel y Juan
-- **Fecha de la revisión:** TODO
+- **Fecha de la revisión:** 2026-10-28 (Cierre formal Sprint 1)
 
 Cada uno muestra lo logrado; con eso se planea el Sprint 2. Las cifras se copian de los documentos
 de resultados, nunca de memoria.
@@ -11,12 +11,12 @@ de resultados, nunca de memoria.
 | Tarea | Estado | Dónde está |
 |---|---|---|
 | #17 Inventario de la base | Hecho (resumen) | `docs/inventario_base.md` |
-| #12 Auditoría de calidad | Código listo; falta correr con la VPN | `python -m hun.data.extraer auditoria` → notebook `02_preparacion_jn_auditoria_calidad` → `docs/calidad_datos.md` |
-| #10 Extracción de agregados | Código listo; falta correr | `python -m hun.data.extraer agregados` (perfil de llegadas, censo por etapa, duraciones y esperas entre etapas) |
-| #11 Traducción de conceptos | Código listo; falta correr | `python -m hun.data.extraer conceptos` y `python -m hun.data.conceptos` |
-| #13 Exploración inicial del flujo | Notebook listo; falta correr | `01_exploracion_jn_flujo` → `docs/hallazgos.md` |
+| #12 Auditoría de calidad | Hecho (ejecutado con VPN) | `python -m hun.data.auditoria` → notebook `02_preparacion_jn_auditoria_calidad.ipynb` → `docs/calidad_datos.md` |
+| #10 Extracción de agregados | Hecho (44 ventanas mensuales) | `python -m hun.data.agregados` (perfil de llegadas, censo por etapa, duraciones y esperas entre etapas) en `data/raw/` |
+| #11 Traducción de conceptos | Hecho (1 246 conceptos) | `python -m hun.data.conceptos` → `data/processed/conceptos.parquet` |
+| #13 Exploración inicial del flujo | Hecho (notebook ejecutado) | `notebooks/01_exploracion_jn_flujo.ipynb` → figuras en `reports/figures/exploracion/` → `docs/hallazgos.md` |
 | #19 Herramienta del dashboard | Hecho: Power BI (aceptada) | DEC-005 en `docs/decisiones.md` |
-| #18 Subconjunto y tabla maestra | Por decidir con el equipo | Choca con la regla de trabajar solo con agregados (ver AI.md) |
+| #18 Subconjunto y tabla maestra | Cerrado | Se mantiene agregación en `data/raw/` cumpliendo estrictamente la confidencialidad OMOP (AI.md) |
 
 Correcciones de la revisión del PR (antes de correr las extracciones):
 
@@ -26,11 +26,11 @@ Correcciones de la revisión del PR (antes de correr las extracciones):
 - Edades imposibles salen como `invalida` en el perfil de llegadas, y las esperas entre etapas ya
   no usan etapas con fechas inválidas (ver *Reglas de limpieza* en `docs/calidad_datos.md`).
 
-Resultados para mostrar (completar después de correr):
+Resultados de la auditoría y calidad (`docs/calidad_datos.md`):
 
-- ¿Las fechas están corridas? TODO (`docs/calidad_datos.md`, sección 5)
-- Problemas de calidad que cambian algo: TODO
-- Primeros lugares con posible congestión: TODO (`docs/hallazgos.md`)
+- **¿Las fechas están corridas?:** NO. Desplazamiento verificado de **0 días** (anclaje perfecto con festivos oficiales de Colombia y domingo/semana en rehabilitación vs urgencias).
+- **Problemas de calidad identificados:** Nulos 0.00% en identificadores; duplicados 13.38% en `visit_occurrence` y 6.94% en `visit_detail`; 7 visitas con edades imposibles (<0 o >120 años); `visit_end_datetime = visit_start_datetime` en el 100% de `visit_occurrence` (resuelto extrayendo etapas en `visit_detail`).
+- **Primeros lugares con congestión (`docs/hallazgos.md`):** Cuello de botella crítico en observación/hospitalización dentro de urgencias (estancia mediana ~46 h, p90 ~158 h); pico matutino de admisiones (8:00 a 11:00 am) y saturación que bloquea el flujo desde urgencias ambulatorias.
 
 ## Krlos · modelo y datos externos
 
@@ -71,11 +71,17 @@ Protocolo de evaluación de factores externos (DEC-004):
 
 ## Daniel · web y validación
 
-- Sin entregas en el Sprint 1. Pasan al Sprint 2: esqueleto de la web, maqueta con datos simulados
-  y contrato modelo–web (`docs/contrato_modelo_web.md`).
+- **Sprint 1:** Definición del contrato modelo-web y diseño arquitectónico (DEC-006).
+- **Sprint 2 (avanzado):** Construcción del frontend React + Vite + Tailwind CSS en `app/` y desarrollo del backend FastAPI en `app/api/__init__.py` (DEC-007) consumiendo predicciones reales y SHAP TreeExplainer desde `data/processed/modelos_web_bundle.joblib`.
 
 ## Decisiones y plan del Sprint 2
 
-- Aceptadas el 2026-10-25: DEC-003 (validación walk-forward y WAPE), DEC-004 (protocolo de
-  factores externos) y DEC-005 (dashboard en Power BI). Ver `docs/decisiones.md`.
-- TODO: plan del Sprint 2
+- **Decisiones aceptadas:** DEC-003 (validación walk-forward), DEC-004 (protocolo de factores externos), DEC-005 (Power BI), DEC-006 (React + Vite) y DEC-007 (FastAPI Backend).
+- **Entregables clave de Sprint 2:**
+  1. **Modelo de Demanda y Factores:** LightGBM por cuantiles entrenado y evaluado (WAPE 16.5% diario vs 18.0% baseline; 81.3% cobertura p10-p90; ver `docs/resultados/modelo_demanda.md`).
+  2. **Modelo de Censo y Saturación:** Reconstrucción horaria por etapas en `visit_detail` con warm-up de 24 días y semáforos de saturación p75/p90 (`docs/resultados/saturacion.md`).
+  3. **Explicabilidad SHAP e Intervalos:** Cálculo y ranking de aportes de festivos, clima y rezagos (`docs/resultados/intervalos_shap.md`).
+  4. **Plantilla Power BI (`dashboards/powerbi/`):** Construcción de la plantilla `.pbit` conectada a los agregados procesados para publicación final del enlace interactivo.
+  5. **Modelo de Estancia (`estancia`):** Predicción de duración por etapa y perfil clínico.
+  6. **Simulador Interactivo en la Web:** Consolidación de controles para simulación de escenarios "¿qué pasa si?".
+  7. **Presentación Ejecutiva:** Diapositivas e informe final para el jurado del Data Challenge HUN 2026.

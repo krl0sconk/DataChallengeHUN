@@ -18,12 +18,21 @@ con un agente de IA desde la terminal.
    Si la lista sale vacía, cambiar `HUN_DB_SCHEMA` (`uninorte_omop` ↔ `uninorte_omo`).
 4. Extraer lo que necesites:
    ```bash
-   python -m hun.data.extraer inventario       # liviano: tamaños, cobertura, tipos, precisión de horas
+   # Extracciones principales por categorías CLI:
+   python -m hun.data.extraer inventario       # tamaños, cobertura, tipos, precisión de horas
    python -m hun.data.extraer flujo_horario    # entradas y salidas por hora, mes a mes
+   python -m hun.data.extraer demografia       # agregados de edad y sexo por servicio
+   python -m hun.data.extraer estancia_urgencias # duraciones y percentiles de etapas
+   python -m hun.data.extraer servicios_frecuentes # volumen por concepto
+
+   # Pipelines especializados de extracción y consolidación:
+   python -m hun.data.auditoria                # calidad, duplicados, solapes y fechas (6 parquets)
+   python -m hun.data.agregados                # series temporales en 44 ventanas mensuales (7 parquets)
+   python -m hun.data.conceptos                # diccionario de conceptos OMOP (data/processed/conceptos.parquet)
    ```
-   Los resultados quedan en `data/raw/` (no se suben). Si se corta, vuelve a correr el mismo comando:
-   los meses ya bajados se saltan.
+   Los resultados quedan en `data/raw/` y `data/processed/` (protegidos por `.gitignore`, nunca se suben). Si se corta, vuelve a correr el comando: las consultas que usan ventanas mensuales saltan los periodos ya descargados.
 5. Desconectar la VPN y avisar **"libre"**.
+   Para garantizar la seguridad de la red y la sesión compartida, verificar el estado de la VPN inmediatamente (`forticlient vpn status: Not Running`).
 
 ## Reglas
 

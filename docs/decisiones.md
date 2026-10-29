@@ -20,20 +20,29 @@ Si una decisión reemplaza a otra, no borres la anterior: márcala como **Reempl
 
 ---
 
+### DEC-007 · API Backend FastAPI para servir predicciones reales y SHAP
+
+- **Fecha:** 2026-10-28
+- **Sprint:** 2
+- **Responsable:** Krlos & Daniel
+- **Estado:** Aceptada (implementada en `app/api/__init__.py`)
+- **Decisión:** Implementar un backend en **FastAPI** (`app/api/`) que sirve directamente el contrato de `src/hun/models/predict.py`, respaldado por el artefacto `data/processed/modelos_web_bundle.joblib` (LightGBM cuantil p10/p50/p90 + TreeExplainer SHAP + censo por etapas).
+- **Motivo:** Sustituir los valores estáticos/simulados en la interfaz de React por inferencias reales basadas en los datos agregados y modelos entrenados, garantizando tiempos de respuesta sub-segundo (<20ms), validación automática de esquemas con Pydantic, CORS habilitado para el frontend de Vite (`http://localhost:5173`) y documentación interactiva automática en `/docs`.
+- **Alternativas consideradas:** Servidor Flask (más verboso y sin validación Pydantic nativa); Inferencia puramente en el cliente JS/ONNX (descartada por complejidad de cálculo SHAP y empaquetado de modelos LightGBM).
+- **Consecuencias:** La aplicación web consume los endpoints `/api/predecir`, `/api/historico/llegadas`, `/api/historico/turnos` y `/api/ocupacion`. Si el archivo del bundle no está presente en un entorno de desarrollo ligero, el backend conmuta transparentemente al fallback calibrado.
+
+---
+
 ### DEC-006 · Framework de la aplicación web: React + Vite + Tailwind CSS
 
 - **Fecha:** 2026-10-25
 - **Sprint:** 2
 - **Responsable:** Daniel
-- **Estado:** Aceptada (2026-10-26, por el equipo)
+- **Estado:** Aceptada (2026-10-26, por el equipo; complementada por DEC-007)
 - **Decisión:** La aplicación web interactiva se desarrolla en **Vite + React + Tailwind CSS** dentro de la carpeta `app/`.
 - **Motivo:** Garantiza máxima velocidad de renderizado (0ms de latencia en el cliente para el simulador "¿qué pasa si?"), estética profesional SaaS/hospitalaria (Recharts, Lucide Icons, tema oscuro institucional) y desacoplamiento limpio.
 - **Alternativas consideradas:** Streamlit (descartada por limitaciones estéticas, look genérico y latencia al recargar componentes).
-- **Consecuencias:** Todo el desarrollo web vive en `app/` gestionado con `npm run dev`. No expone datos de pacientes y utiliza los parámetros del inventario OMOP.
-  React corre en el navegador y no puede llamar a `predecir()` directamente, así que la web obtiene las
-  predicciones por una **API** (pendiente) que expone el contrato de `src/hun/models/predict.py`. Mientras
-  tanto los valores de la web son simulados. El simulador trabaja dentro del rango de la base
-  (2023-01-01 a 2026-07-16, DEC-002).
+- **Consecuencias:** Todo el desarrollo web vive en `app/` gestionado con `npm run dev`. No expone datos de pacientes y utiliza los parámetros del inventario OMOP. La web se comunica mediante HTTP con la API FastAPI (DEC-007) para obtener predicciones y explicabilidad SHAP real en tiempo real. El simulador trabaja dentro del rango de la base (2023-01-01 a 2026-07-16, DEC-002).
 
 ---
 

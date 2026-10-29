@@ -107,8 +107,6 @@ Cifras agregadas de `python -m hun.data.extraer inventario` y `flujo_horario`.
 
 ### Ajustes al objetivo
 
-1. **Demanda:** sin cambios. Día como unidad principal; modelo horario solo para urgencias.
-2. **Ocupación:** el censo ya no se reconstruye desde `visit_occurrence`. Pasa a `visit_detail`
-   (inicio y fin de cada etapa), que requiere una extracción nueva en la próxima sesión de VPN.
-   Mientras tanto, la saturación se aproxima con las llegadas por hora.
-3. **Tiempos:** la duración de la visita no existe como tal; se predice la duración de las etapas.
+1. **Demanda:** sin cambios. Día como unidad principal; modelo horario evaluado para urgencias.
+2. **Ocupación:** el censo ya no se reconstruye desde `visit_occurrence`. Se implementó exitosamente con las etapas de `visit_detail` (inicio y fin de cada etapa extraídas con `14_etapas_duracion_por_visita.sql`), con warm-up de 24 días para estabilizar el censo. Los resultados de saturación y capacidad relativa están documentados en `docs/resultados/saturacion.md`.
+3. **Tiempos:** la duración de la visita completa tiene `end = start`; se analiza y modela la duración real de cada sub-etapa clínica (urgencias, urgencia-tratamiento y hospitalización/observación).

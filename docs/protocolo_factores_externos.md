@@ -1,6 +1,6 @@
 # Protocolo de evaluación de factores externos
 
-- **Estado:** definido (Sprint 1). Se ejecuta en el Sprint 2 con los datos reales.
+- **Estado:** Ejecutado y validado en Sprint 2 sobre los datos reales con LightGBM (ver reporte consolidado en `docs/resultados/factores_externos.md`).
 - **Responsable:** Krlos · valida Daniel.
 - **Código:** `src/hun/models/evaluacion_factores.py` · pruebas en `tests/test_modelo_base.py`.
 
