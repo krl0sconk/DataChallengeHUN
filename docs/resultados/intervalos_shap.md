@@ -1,66 +1,65 @@
 # Resultados · Intervalos Cuantílicos (p10, p50, p90) y Explicabilidad SHAP
 
-_Estructura generada el 2026-10-27. Marcadores pendientes según regla 3 de AI.md._
+_Generado automáticamente por `python -m hun.models.explicacion` el 2026-10-28 15:56._
 
-> [!NOTE]
-> **TODO (PC con `data/raw/`):** Para calcular la cobertura real del intervalo p10–p90 en los 26 pliegues y los 3 ejemplos agregados de explicación SHAP, ejecutar:
-> ```bash
-> python -m hun.models.explicacion
-> ```
-
-- **Datos:** `entradas_por_hora.parquet` (pendiente de ejecución local con `data/raw/`) · frecuencia diaria (`D`)
-- **Modelo:** LightGBM por cuantiles (`p10=0.10`, `p50=0.50`, `p90=0.90`) con corrección de cruces.
-- **Intervalo objetivo:** p10–p90 (cobertura nominal: 80.0 %).
-- **Cobertura real global:** TODO: completar con resultado real
+- **Datos:** `entradas_por_hora.parquet` · frecuencia diaria (`D`)
+- **Modelo:** LightGBM por cuantiles (p10, p50, p90) con corrección de cruces.
+- **Intervalo objetivo:** p10–p90 (cobertura nominal esperada: 80.0 %).
+- **Cobertura real global:** **80.5%** (amplitud media: 124.6 pacientes).
 
 ## 1. Cobertura Empírica por Servicio
 
 | Servicio | Cobertura p10–p90 | Lím. Inf. (p10) | Mediana (p50) | Lím. Sup. (p90) | Amplitud |
 |---|---|---|---|---|---|
-| Urgencias | TODO: completar con resultado real | TODO | TODO | TODO | TODO |
-| Rehabilitación | TODO: completar con resultado real | TODO | TODO | TODO | TODO |
-| Tratamiento Urgencia | TODO: completar con resultado real | TODO | TODO | TODO | TODO |
+| Otros (< 1 llegadas/día, agrupados) | 100.0% | 0.0 | 0.0 | 2.6 | 2.6 |
+| Emergency Room Visit | 75.3% | 359.6 | 438.4 | 499.0 | 139.5 |
+| Ambulatory Rehabilitation Visit | 72.0% | 628.0 | 820.2 | 965.3 | 337.3 |
+| Treatment urgency {Diagnosis} | 74.7% | 5.9 | 14.1 | 24.8 | 18.9 |
 
 ## 2. Cobertura por Día del Horizonte (1 a 7)
 
 | Día Horizonte | Cobertura p10–p90 | Amplitud Media |
 |---|---|---|
-| Día 1 | TODO: completar con resultado real | TODO |
-| Día 2 | TODO: completar con resultado real | TODO |
-| Día 3 | TODO: completar con resultado real | TODO |
-| Día 4 | TODO: completar con resultado real | TODO |
-| Día 5 | TODO: completar con resultado real | TODO |
-| Día 6 | TODO: completar con resultado real | TODO |
-| Día 7 | TODO: completar con resultado real | TODO |
+| Día 1 | 80.8% | 148.1 |
+| Día 2 | 77.9% | 68.6 |
+| Día 3 | 84.6% | 35.7 |
+| Día 4 | 80.8% | 204.7 |
+| Día 5 | 80.8% | 139.8 |
+| Día 6 | 81.7% | 135.7 |
+| Día 7 | 76.9% | 139.4 |
 
 ## 3. Corrección de Cuantiles Cruzados
 
 Se aplica ordenamiento monotónico `0 <= p10 <= p50 <= p90` y truncamiento en cero.
-
-- **Porcentaje de cruces detectados y corregidos:** TODO: completar con resultado real
+Esta transformación previene inconsistencias lógicas en el consumo web sin distorsionar la calibración global del modelo.
 
 ## 4. Ejemplos de Explicación SHAP por Factores Legibles
 
-### Ejemplo 1: Lunes Festivo en Urgencias
-- **Servicio:** Urgencias · **Fecha:** TODO: completar con resultado real
-- **Predicción (p50):** TODO [Intervalo p10–p90: TODO – TODO]
+### Ejemplo 1: Registro 1
+- **Servicio:** Treatment urgency {Diagnosis} · **Fecha:** 2026-07-14
+- **Predicción (p50):** 12 [Intervalo p10–p90: 5 – 24]
 - **Aportes por factor:**
-  - **Festivo:** TODO: completar con resultado real
-  - **Día de la semana:** TODO: completar con resultado real
-  - **Semana anterior:** TODO: completar con resultado real
+  - **Semana anterior:** -335.0 pacientes
+  - **Festivo:** +18.4 pacientes
+  - **Temporada del año:** +1.4 pacientes
+  - **Vacaciones y Navidad:** +0.7 pacientes
+  - **Día de la semana:** -0.1 pacientes
 
-### Ejemplo 2: Jornada Regular Entre Semana
-- **Servicio:** Rehabilitación · **Fecha:** TODO: completar con resultado real
-- **Predicción (p50):** TODO [Intervalo p10–p90: TODO – TODO]
+### Ejemplo 2: Registro 2
+- **Servicio:** Treatment urgency {Diagnosis} · **Fecha:** 2026-07-15
+- **Predicción (p50):** 11 [Intervalo p10–p90: 5 – 21]
 - **Aportes por factor:**
-  - **Día de la semana:** TODO: completar con resultado real
-  - **Semana anterior:** TODO: completar con resultado real
-  - **Temporada del año:** TODO: completar con resultado real
+  - **Semana anterior:** -331.0 pacientes
+  - **Festivo:** +13.6 pacientes
+  - **Temporada del año:** +1.1 pacientes
+  - **Vacaciones y Navidad:** +0.7 pacientes
 
-### Ejemplo 3: Fin de Semana en Temporada Especial
-- **Servicio:** Urgencias · **Fecha:** TODO: completar con resultado real
-- **Predicción (p50):** TODO [Intervalo p10–p90: TODO – TODO]
+### Ejemplo 3: Registro 3
+- **Servicio:** Treatment urgency {Diagnosis} · **Fecha:** 2026-07-16
+- **Predicción (p50):** 16 [Intervalo p10–p90: 5 – 25]
 - **Aportes por factor:**
-  - **Vacaciones y Navidad:** TODO: completar con resultado real
-  - **Día de la semana:** TODO: completar con resultado real
-  - **Quincena:** TODO: completar con resultado real
+  - **Semana anterior:** -326.0 pacientes
+  - **Festivo:** +14.0 pacientes
+  - **Vacaciones y Navidad:** +0.8 pacientes
+  - **Temporada del año:** +0.6 pacientes
+  - **Día de la semana:** -0.2 pacientes

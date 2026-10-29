@@ -12,20 +12,30 @@ from pathlib import Path
 from typing import Any
 
 # Asegurar resolución del paquete `hun` al ejecutar desde cualquier directorio
-ROOT_DIR = Path(__file__).resolve().parent.parent
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 SRC_DIR = ROOT_DIR / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from fastapi import FastAPI, HTTPException  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from pydantic import BaseModel, Field  # noqa: E402
 
-from hun.models.predict import PARAMETROS_SERVICIO, SERVICIOS_CANONICOS, predecir, predecir_rango
+from hun.models.predict import (  # noqa: E402
+    PARAMETROS_SERVICIO,
+    SERVICIOS_CANONICOS,
+    obtener_llegadas_reales,
+    obtener_ocupacion_real,
+    obtener_turnos_reales,
+    predecir,
+    predecir_rango,
+)
 
 app = FastAPI(
     title="Hospital Universidad del Norte - API de Pronóstico",
-    description="Capa de servicio HTTP para estimación de afluencia asistencial (Data Challenge 2026)",
+    description=(
+        "Capa de servicio HTTP para estimación de afluencia asistencial (Data Challenge 2026)"
+    ),
     version="1.0.0",
 )
 
@@ -45,7 +55,9 @@ app.add_middleware(
 
 class PrediccionRequest(BaseModel):
     fecha: date = Field(..., description="Fecha objetivo de predicción (YYYY-MM-DD)")
-    servicio: str = Field(..., description="Nombre o concept_id del servicio (urgencias, 9203, etc.)")
+    servicio: str = Field(
+        ..., description="Nombre o concept_id del servicio (urgencias, 9203, etc.)"
+    )
 
 
 class RangoRequest(BaseModel):
@@ -58,6 +70,36 @@ class RangoRequest(BaseModel):
 def health() -> dict[str, str]:
     """Chequeo de estado del servicio."""
     return {"status": "ok", "hospital": "HUN", "version": "1.0.0"}
+
+
+@app.get("/api/servicios")
+def obtener_servicios() -> list[dict[str, Any]]:
+    """Devuelve la lista de servicios asistenciales configurados."""
+    nombres_visibles = {
+        "urgencias": ("Urgencias", "OMOP 9203"),
+        "rehabilitacion": ("Rehabilitación Ambulatoria", "OMOP 581479"),
+        "tratamiento_urgencia": ("Tratamiento Urgencias", "OMOP 3045729"),
+    }
+    servicios = []
+    for sid, (nombre, codigo) in nombres_visibles.items():
+        params = PARAMETROS_SERVICIO[sid]
+        servicios.append(
+            {
+                "id": sid,
+                "nombre": nombre,
+                "codigo": codigo,
+                "mediaDiaria": params["media_diaria"],
+                "p75": params["umbral_p75"],
+                "p90": params["umbral_p90"],
+            }
+        )
+    return servicios
+
+
+@app.get("/api/turnos/{servicio}")
+def obtener_turnos(servicio: str) -> dict[str, Any]:
+    """Calcula la matriz de afluencia estimada por franja horaria y día de la semana."""
+    return obtener_turnos_reales(servicio)
 
 
 @app.get("/api/parametros")
@@ -76,45 +118,18 @@ def obtener_parametros() -> dict[str, Any]:
 
 @app.get("/api/ocupacion")
 def endpoint_ocupacion() -> list[dict[str, Any]]:
-    """Calcula la comparativa de ocupación y presión hospitalaria usando los parámetros canónicos."""
-    nombres_visibles = {
-        "urgencias": ("Urgencias", "Urgencias", "OMOP 9203"),
-        "rehabilitacion": ("Rehabilitación Ambulatoria", "Rehabilitación", "OMOP 581479"),
-        "tratamiento_urgencia": ("Tratamiento Urgencias", "Tratamiento Urg.", "OMOP 3045729"),
-    }
-
-    resultado = []
-    for sid, (nombre_completo, nombre_corto, codigo) in nombres_visibles.items():
-        params = PARAMETROS_SERVICIO[sid]
-        media = params["media_diaria"]
-        p75 = params["umbral_p75"]
-        p90 = params["umbral_p90"]
-
-        ocupacion_pct = int(round((media / p90) * 100))
-        alerta_pct = int(round((p75 / p90) * 100))
-        estado = "rojo" if media > p90 else ("amarillo" if media >= p75 else "verde")
-
-        resultado.append({
-            "id": sid,
-            "nombreCompleto": nombre_completo,
-            "nombreCorto": nombre_corto,
-            "codigo": codigo,
-            "mediaDiaria": media,
-            "p75": p75,
-            "p90": p90,
-            "ocupacion": ocupacion_pct,
-            "alertaPct": alerta_pct,
-            "estado": estado,
-        })
-
-    return resultado
+    """Calcula la comparativa de ocupación y presión hospitalaria con parámetros canónicos."""
+    return obtener_ocupacion_real()
 
 
 @app.post("/api/predecir")
 def endpoint_predecir(payload: PrediccionRequest) -> dict[str, Any]:
     """Genera la predicción puntual para una fecha y servicio aplicando el contrato."""
     try:
-        return predecir(payload.fecha, payload.servicio)
+        resultado = predecir(payload.fecha, payload.servicio)
+        if "real" not in resultado:
+            resultado["real"] = obtener_llegadas_reales(payload.fecha, payload.servicio)
+        return resultado
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -126,31 +141,40 @@ def endpoint_predecir_rango(payload: RangoRequest) -> dict[str, Any]:
         fecha_fin = payload.fecha_inicio + timedelta(days=payload.dias - 1)
         serie = predecir_rango(payload.fecha_inicio, fecha_fin, payload.servicio)
         puntual = predecir(payload.fecha_inicio, payload.servicio)
+        real_puntual = puntual.get("real")
+        if real_puntual is None:
+            real_puntual = obtener_llegadas_reales(payload.fecha_inicio, payload.servicio)
+
+        sid_lower = payload.servicio.lower()
+        param_serv = PARAMETROS_SERVICIO.get(sid_lower, PARAMETROS_SERVICIO["urgencias"])
+        p75_val = param_serv["umbral_p75"]
+        p90_val = param_serv["umbral_p90"]
+
         return {
             "fecha": str(payload.fecha_inicio),
             "servicio": payload.servicio,
             "prediccion": puntual["prediccion"],
+            "real": real_puntual,
             "habitual": puntual["prediccion"],
             "min": puntual["min"],
             "max": puntual["max"],
             "alerta": puntual["alerta"],
             "delta_total": 0,
-            "factores": [
-                {"nombre": f[0], "aporte": int(round(f[1]))} for f in puntual["factores"]
-            ],
+            "factores": [{"nombre": f[0], "aporte": int(round(f[1]))} for f in puntual["factores"]],
             "serie": [
                 {
                     "fecha": str(p["fecha"]),
                     "habitual": p["prediccion"],
                     "simulado": p["prediccion"],
                     "prediccion": p["prediccion"],
+                    "real": p.get("real", obtener_llegadas_reales(p["fecha"], payload.servicio)),
                     "min": p["min"],
                     "max": p["max"],
                     "factores": [
                         {"nombre": f[0], "aporte": int(round(f[1]))} for f in p.get("factores", [])
                     ],
-                    "p75": PARAMETROS_SERVICIO.get(payload.servicio.lower(), PARAMETROS_SERVICIO["urgencias"])["umbral_p75"],
-                    "p90": PARAMETROS_SERVICIO.get(payload.servicio.lower(), PARAMETROS_SERVICIO["urgencias"])["umbral_p90"],
+                    "p75": p75_val,
+                    "p90": p90_val,
                 }
                 for p in serie
             ],

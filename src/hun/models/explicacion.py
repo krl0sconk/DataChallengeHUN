@@ -414,7 +414,17 @@ def explicar_prediccion_shap(
     if len(X) == 0:
         return []
 
-    X_sub = X[columnas]
+    cols = list(columnas)
+    if hasattr(modelo, "feature_name_") and modelo.feature_name_:
+        cols = list(modelo.feature_name_)
+    elif hasattr(modelo, "booster_") and hasattr(modelo.booster_, "feature_name"):
+        cols = list(modelo.booster_.feature_name())
+    elif "serie_cod" in X.columns and "serie_cod" not in cols:
+        cols.append("serie_cod")
+    elif "serie" in X.columns and "serie" not in cols and "serie_cod" not in X.columns:
+        cols.append("serie")
+
+    X_sub = X[cols]
     explainer = shap.TreeExplainer(modelo)
     shap_vals = explainer.shap_values(X_sub)
 
@@ -426,7 +436,7 @@ def explicar_prediccion_shap(
     if shap_mat.ndim == 1:
         shap_mat = shap_mat.reshape(1, -1)
 
-    factores_cols = [agrupar_columna_factor(c) for c in columnas]
+    factores_cols = [agrupar_columna_factor(c) for c in cols]
 
     explicaciones: list[list[tuple[str, float]]] = []
     for i in range(len(X)):

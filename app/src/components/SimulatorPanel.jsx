@@ -29,7 +29,7 @@ export function SimulatorPanel({
   proyeccion,
   isDark,
 }) {
-  const { prediccion, alerta, factores, deltaTotal, serie7d } = proyeccion;
+  const { prediccion, alerta, factores, deltaTotal, serie7d, real } = proyeccion;
   const [copiado, setCopiado] = useState(false);
   const [vistaGrafica, setVistaGrafica] = useState('comparativa'); // 'comparativa' o 'factores'
 
@@ -37,7 +37,7 @@ export function SimulatorPanel({
   const copiarConfiguracion = () => {
     const textoCompartir = `📊 [Simulación HUN - ${servicio.nombre}]
 📅 Fecha Base: ${fechaSimulacion}
-👥 Demanda Estimada: ${prediccion} pac. (${deltaTotal > 0 ? '+' : ''}${deltaTotal} vs habitual)
+👥 Demanda Estimada: ${prediccion} pac. (${deltaTotal > 0 ? '+' : ''}${deltaTotal} vs habitual)${real !== null && real !== undefined ? `\n🎯 Demanda Real: ${real} pac.` : ''}
 🚨 Estado: ${alerta.etiqueta} (${alerta.subtitulo})
 ⚙️ Factores identificados por el modelo:
 ${(factores || []).map((f) => `- ${f.nombre}: ${f.aporte > 0 ? '+' : ''}${f.aporte} pac.`).join('\n')}
@@ -87,11 +87,11 @@ ${(factores || []).map((f) => `- ${f.nombre}: ${f.aporte > 0 ? '+' : ''}${f.apor
           </p>
         </div>
 
-        {/* 2. Factores de Calendario del Modelo Oficial */}
+        {/* 2. Factores Dinámicos del Modelo (SHAP / Calendario) */}
         <div className="space-y-2.5 pt-1">
           <span className="text-[11px] font-bold uppercase tracking-wider text-[#4A4466]/70 dark:text-[#8BBB92]/70 flex items-center gap-1">
             <Activity className="h-3.5 w-3.5 text-[#3B7D8C] dark:text-[#8BBB92]" />
-            Componentes del Modelo (predict.py):
+            Factores Explicativos Dinámicos (SHAP):
           </span>
 
           <div className="p-3.5 rounded-2xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#FAFCF6] dark:bg-[#092328] space-y-2 text-xs">
@@ -102,27 +102,49 @@ ${(factores || []).map((f) => `- ${f.nombre}: ${f.aporte > 0 ? '+' : ''}${f.apor
               </strong>
             </div>
             <div className="flex items-center justify-between font-semibold">
-              <span className="text-[#4A4466] dark:text-[#8BBB92]">Efecto lunes / fin de semana:</span>
-              <span className="font-mono-num text-[11px] px-2 py-0.5 rounded-md bg-[#EDF3DC] dark:bg-[#12544F] text-[#3B7D8C] dark:text-[#8BBB92]">
-                {new Date(fechaSimulacion + 'T12:00:00').getDay() === 1 ? '+8% (Lunes)' : (new Date(fechaSimulacion + 'T12:00:00').getDay() % 6 === 0 ? '+5% (Fin de sem.)' : 'Basal')}
-              </span>
-            </div>
-            <div className="flex items-center justify-between font-semibold">
-              <span className="text-[#4A4466] dark:text-[#8BBB92]">Efecto quincena (15/30):</span>
-              <span className="font-mono-num text-[11px] px-2 py-0.5 rounded-md bg-[#EDF3DC] dark:bg-[#12544F] text-[#3B7D8C] dark:text-[#8BBB92]">
-                {[15, 30, 31].includes(Number(fechaSimulacion.split('-')[2])) ? '+4% (Día de pago)' : 'Sin ajuste'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between font-semibold">
               <span className="text-[#4A4466] dark:text-[#8BBB92]">Media histórica base:</span>
               <span className="font-mono-num text-[11px] font-bold text-[#4A4466] dark:text-[#8BBB92]">
                 {servicio.mediaDiaria} pac/día
               </span>
             </div>
+            {real !== null && real !== undefined && (
+              <div className="flex items-center justify-between font-semibold">
+                <span className="text-[#7E22CE] dark:text-[#C084FC]">Demanda real observada:</span>
+                <span className="font-mono-num text-[11px] font-extrabold px-2 py-0.5 rounded-md bg-[#FAF5FF] dark:bg-[#2A1535] text-[#7E22CE] dark:text-[#C084FC] border border-[#E9D5FF] dark:border-[#7E22CE]/40">
+                  {real} pac.
+                </span>
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-[#EDF3DC] dark:border-[#0E3B39] space-y-1.5">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#4A4466]/70 dark:text-[#8BBB92]/70 block mb-1">
+                Aporte por variable (pacientes):
+              </span>
+              {factores && factores.length > 0 ? (
+                factores.map((f, i) => (
+                  <div key={i} className="flex items-center justify-between font-semibold">
+                    <span className="text-[#4A4466] dark:text-[#8BBB92] truncate mr-2">{f.nombre}:</span>
+                    <span
+                      className={`font-mono-num text-[11px] font-bold px-2 py-0.5 rounded-md ${
+                        f.aporte > 0
+                          ? 'bg-[#FEECEF] text-[#781827] dark:bg-[#C5304C]/30 dark:text-[#FFA8B6]'
+                          : 'bg-[#EEF7F1] text-[#0E4222] dark:bg-[#12544F] dark:text-[#8AE6A2]'
+                      }`}
+                    >
+                      {f.aporte > 0 ? '+' : ''}{f.aporte} pac.
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="text-[11px] text-[#4A4466]/70 dark:text-[#8BBB92]/70 italic">
+                  Operando en valor basal. No hay desviación externa activa.
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="p-3 rounded-xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#F1F7D4]/40 dark:bg-[#092328] text-[11px] text-[#4A4466]/80 dark:text-[#8BBB92]/80 leading-relaxed">
-            ℹ️ <strong>Transparencia:</strong> Los factores de estacionalidad son calculados automáticamente por <code>predict.py</code> a partir de la fecha seleccionada.
+            ℹ️ <strong>Transparencia:</strong> Los factores y la descomposición provienen directamente del modelo de Machine Learning y SHAP del motor analítico.
           </div>
         </div>
       </section>
@@ -155,10 +177,10 @@ ${(factores || []).map((f) => `- ${f.nombre}: ${f.aporte > 0 ? '+' : ''}${f.apor
           </header>
 
           {/* Tarjetas de Resumen Numérico */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className={`grid ${real !== null && real !== undefined ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'} gap-4`}>
             <div className="p-4.5 rounded-2xl border border-[#EDF3DC] dark:border-[#0E3B39] bg-[#FAFCF6] dark:bg-[#092328]">
               <span className="text-xs font-extrabold uppercase tracking-wider text-[#3B7D8C] dark:text-[#8BBB92]">
-                Llegadas estimadas
+                Predicción LightGBM (p50)
               </span>
               <div className="text-3xl font-extrabold mt-1 font-mono-num text-[#4A4466] dark:text-[#8BBB92]">
                 {prediccion}{' '}
@@ -179,6 +201,23 @@ ${(factores || []).map((f) => `- ${f.nombre}: ${f.aporte > 0 ? '+' : ''}${f.apor
                 {deltaTotal} pac. vs promedio habitual ({servicio.mediaDiaria})
               </span>
             </div>
+
+            {real !== null && real !== undefined && (
+              <div className="p-4.5 rounded-2xl border border-[#D8B4FE] dark:border-[#7E22CE] bg-[#FAF5FF] dark:bg-[#1E112A]">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-[#7E22CE] dark:text-[#C084FC]">
+                  Demanda Real Registrada
+                </span>
+                <div className="text-3xl font-extrabold mt-1 font-mono-num text-[#581C87] dark:text-[#E9D5FF]">
+                  {real}{' '}
+                  <span className="text-xs font-sans font-medium text-[#7E22CE]/80 dark:text-[#C084FC]/80">
+                    pacientes
+                  </span>
+                </div>
+                <span className="text-xs font-bold font-mono-num text-[#7E22CE] dark:text-[#C084FC]">
+                  Diferencia: {prediccion >= real ? '+' : ''}{prediccion - real} pac. ({((Math.abs(prediccion - real) / Math.max(1, real)) * 100).toFixed(1)}% error)
+                </span>
+              </div>
+            )}
 
             <div className={`p-4.5 rounded-2xl border ${alerta.colorBg} ${alerta.colorBorder} dark:bg-[#092328] dark:border-[#0E3B39]`}>
               <span className="text-xs font-extrabold uppercase tracking-wider text-[#4A4466] dark:text-[#8BBB92]">

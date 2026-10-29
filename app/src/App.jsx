@@ -84,6 +84,7 @@ export default function App() {
             <StatCardGrid
               alerta={proyeccion.alerta}
               prediccion={proyeccion.prediccion}
+              real={proyeccion.real}
               p10={proyeccion.min}
               p90={proyeccion.max}
               servicio={servicio}

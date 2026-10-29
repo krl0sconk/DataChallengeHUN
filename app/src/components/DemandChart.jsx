@@ -7,6 +7,8 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
+  Line,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -30,10 +32,28 @@ export function DemandChart({
   const [vista, setVista] = useState('curva'); // 'curva' | 'factores'
 
   const datosFiltrados = (serie7d || []).slice(0, horizonte);
+  const hayDatosReales = datosFiltrados.some((d) => d.real !== null && d.real !== undefined);
 
-  // Calcula el dominio Y para que p10, p90, predicción y umbrales siempre queden visibles
-  const maxDato = datosFiltrados.length > 0 ? Math.max(...datosFiltrados.map((d) => d.max ?? d.prediccion), p90) : p90;
-  const minDato = datosFiltrados.length > 0 ? Math.min(...datosFiltrados.map((d) => d.min ?? d.prediccion), p75) : p75;
+  // Calcula el dominio Y para que p10, p90, predicción, valores reales y umbrales siempre queden visibles
+  const maxDato = datosFiltrados.length > 0
+    ? Math.max(
+        ...datosFiltrados.map((d) =>
+          Math.max(d.max ?? d.prediccion, d.real !== null && d.real !== undefined ? d.real : 0)
+        ),
+        p90
+      )
+    : p90;
+  const minDato = datosFiltrados.length > 0
+    ? Math.min(
+        ...datosFiltrados.map((d) =>
+          Math.min(
+            d.min ?? d.prediccion,
+            d.real !== null && d.real !== undefined ? d.real : d.min ?? d.prediccion
+          )
+        ),
+        p75
+      )
+    : p75;
   const yDomain = [Math.floor(minDato * 0.85), Math.ceil(maxDato * 1.08)];
 
   // Días con factores estacionales activos dentro del horizonte seleccionado
@@ -135,6 +155,12 @@ export function DemandChart({
               <span className="h-2.5 w-2.5 rounded-full bg-[#3B7D8C] dark:bg-[#8BBB92]" />
               Proyección esperada (Mediana p50)
             </span>
+            {hayDatosReales && (
+              <span className="flex items-center gap-1.5 font-bold text-[#7E22CE] dark:text-[#C084FC]">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#7E22CE] dark:bg-[#C084FC] border border-[#581C87]" />
+                Demanda Real Observada
+              </span>
+            )}
             <span className="flex items-center gap-1.5">
               <span className="h-2 w-4 border-t-2 border-dashed border-[#B26B00]" />
               Umbral Alerta p75 ({p75} pac)
@@ -154,7 +180,7 @@ export function DemandChart({
             <div className="space-y-4">
               <div className="h-64 w-full font-mono-num text-xs mt-3">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={datosFiltrados} margin={{ top: 10, right: 15, left: -20, bottom: 0 }}>
+                  <ComposedChart data={datosFiltrados} margin={{ top: 10, right: 15, left: -20, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorDemanda" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor={gradStop} stopOpacity={0.4} />
@@ -179,6 +205,7 @@ export function DemandChart({
                         fontFamily: 'var(--font-mono)',
                       }}
                       formatter={(val, name) => {
+                        if (name === 'real') return [`${val} pacientes`, 'Demanda Real Observada'];
                         if (name === 'prediccion') return [`${val} pacientes`, 'Demanda Esperada (p50)'];
                         if (name === 'max') return [`${val} pacientes`, 'Banda Superior (p90)'];
                         if (name === 'min') return [`${val} pacientes`, 'Banda Inferior (p10)'];
@@ -236,7 +263,19 @@ export function DemandChart({
                       fill="none"
                       name="min"
                     />
-                  </AreaChart>
+                    {hayDatosReales && (
+                      <Line
+                        type="monotone"
+                        dataKey="real"
+                        stroke={isDark ? '#C084FC' : '#7E22CE'}
+                        strokeWidth={2.5}
+                        dot={{ r: 4, fill: isDark ? '#C084FC' : '#7E22CE', strokeWidth: 1 }}
+                        activeDot={{ r: 6 }}
+                        name="real"
+                        connectNulls
+                      />
+                    )}
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
 
