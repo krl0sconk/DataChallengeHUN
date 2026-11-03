@@ -1,6 +1,6 @@
 # Resultados · Modelo de Demanda (Llegadas Diarias)
 
-_Generado automáticamente por `python -m hun.models.demanda` el 2026-10-28 15:54. Solo métricas agregadas._
+_Generado automáticamente por `python -m hun.models.demanda` el 2026-11-03 15:11. Solo métricas agregadas._
 
 - **Datos:** `entradas_por_hora.parquet` · frecuencia diaria (`D`)
 - **Validación:** walk-forward, 26 pliegues, origen 2025-07-25 → 2026-07-10, horizonte 1 a 7 días.
@@ -14,7 +14,7 @@ Cada escalón incorpora mayor capacidad predictiva sobre los mismos pliegues tem
 |---|---|---|---|---|---|
 | 1. Línea base (mediana 8 semanas) | 18.0% | 57.77 | 174.37 | +16.08 | Referencia |
 | 2. Poisson con calendario | 31.3% | 100.56 | 164.29 | +4.84 | -74.1% |
-| 3. LightGBM (todos los externos) | 10.7% | 34.38 | 72.60 | +0.57 | +40.5% |
+| 3. LightGBM (todos los externos) | 10.7% | 34.34 | 72.69 | +0.68 | +40.6% |
 | 4. LightGBM (grupos aceptados) | 16.4% | 52.76 | 142.00 | +4.05 | +8.7% |
 
 **Modelo principal seleccionado:** `lgbm_final`.

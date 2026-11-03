@@ -1,6 +1,6 @@
 # Resultados · Línea base
 
-_Generado automáticamente por `python -m hun.models.linea_base` el 2026-10-15 21:38. Solo métricas agregadas._
+_Generado automáticamente por `python -m hun.models.linea_base` el 2026-11-03 15:05. Solo métricas agregadas._
 
 - **Datos:** `entradas_por_hora.parquet` · frecuencia `h`
 - **Validación:** walk-forward, 26 pliegues, origen 2025-07-25 → 2026-07-10, horizonte 7 días.

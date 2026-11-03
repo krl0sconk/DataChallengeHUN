@@ -1,15 +1,6 @@
 # Resultados · Evaluación Empírica de Factores Externos
 
-_Generado automáticamente el 2026-10-28 15:54. Solo métricas agregadas._
-
-> [!WARNING]
-> **Calidad de datos pendiente de confirmación definitiva**
->
-> La auditoría de calidad en `docs/calidad_datos.md` aún contiene `TODO`
-> sobre la verificación del posible desplazamiento de fechas por anonimización.
-> Los resultados de factores externos dependientes de calendario (festivos,
-> puentes, Carnaval y vacaciones) son preliminares y deben reconfirmarse una vez
-> que se complete dicha auditoría.
+_Generado automáticamente el 2026-11-03 15:09. Solo métricas agregadas._
 
 ## Protocolo de Evaluación
 
@@ -26,9 +17,12 @@ Cada grupo de factores se evalúa en bloque siguiendo cuatro filtros estrictos:
 |---|---|---|---|---|---|---|
 | `festivos_y_puentes` | ❌ Descarta | +33.80% | +17.25% | 88% | 0.000 | el placebo mejora 17.25%: el aporte puede ser estacionalidad o forma del factor, no el factor |
 | `carnaval_y_semana_santa` | ✅ Acepta | +3.49% | +1.26% | 73% | 0.014 | Cumple todos los criterios |
-| `vacaciones_escolares` | ❌ Descarta | +4.41% | -0.13% | 65% | 0.084 | mejora solo en 65% de los pliegues; prueba de signo p=0.084 |
+| `vacaciones_escolares` | ❌ Descarta | -0.05% | +0.00% | 46% | 0.721 | mejora mediana -0.05% < 1%; mejora solo en 46% de los pliegues; prueba de signo p=0.721 |
 | `quincena_y_primas` | ❌ Descarta | +1.17% | +0.79% | 58% | 0.279 | mejora solo en 58% de los pliegues; prueba de signo p=0.279; el placebo mejora 0.79%: el aporte puede ser estacionalidad o forma del factor, no el factor |
+| `clima` | ❌ Descarta | +1.32% | -1.82% | 50% | 0.577 | mejora solo en 50% de los pliegues; prueba de signo p=0.577 |
+| `epidemiologia` | ❌ Descarta | -2.63% | +0.82% | 42% | 0.837 | mejora mediana -2.63% < 1%; mejora solo en 42% de los pliegues; prueba de signo p=0.837; el placebo mejora 0.82%: el aporte puede ser estacionalidad o forma del factor, no el factor |
 
 ## Grupos Aceptados en el Modelo Final
 
 - **`carnaval_y_semana_santa`**: 5 variables (dias_a_carnaval, dias_desde_carnaval, es_carnaval, es_precarnaval, es_semana_santa)
+
