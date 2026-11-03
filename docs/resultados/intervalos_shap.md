@@ -1,6 +1,6 @@
 # Resultados · Intervalos Cuantílicos (p10, p50, p90) y Explicabilidad SHAP
 
-_Generado automáticamente por `python -m hun.models.explicacion` el 2026-11-03 16:20._
+_Generado automáticamente por `python -m hun.models.explicacion` el 2026-11-03 16:47._
 
 - **Datos:** `entradas_por_hora.parquet` · frecuencia diaria (`D`)
 - **Modelo:** LightGBM por cuantiles (p10, p50, p90) con corrección de cruces.

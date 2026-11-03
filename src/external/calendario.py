@@ -47,12 +47,17 @@ def _days_since_last(flags: pd.Series) -> pd.Series:
 # --------------------------------------------------------------------------- #
 # Festivos
 # --------------------------------------------------------------------------- #
-def festivos(idx: pd.DatetimeIndex) -> pd.DataFrame:
-    years = range(idx.min().year, idx.max().year + 1)
-    co = holidays.Colombia(years=years)
-    d = idx.date
-    es_festivo = pd.Series([x in co for x in d], index=idx)
-    nombre = pd.Series([co.get(x, "") for x in d], index=idx)
+def columnas_festivos(
+    idx: pd.DatetimeIndex, es_festivo: pd.Series, nombre: pd.Series | None = None
+) -> pd.DataFrame:
+    """Columnas derivadas de los festivos desde la marca `es_festivo` (bool, indexada por `idx`).
+
+    Se separa de `festivos` para poder recalcular TODAS las columnas cuando el placebo mueve los
+    festivos a otras fechas (`evaluacion_factores.placebo_festivos`) sin duplicar la regla.
+    """
+    es_festivo = es_festivo.astype(bool)
+    if nombre is None:
+        nombre = pd.Series("", index=idx)
 
     dow = idx.dayofweek  # 0=lunes
     no_laboral = es_festivo | (dow >= 5)
@@ -78,6 +83,15 @@ def festivos(idx: pd.DatetimeIndex) -> pd.DataFrame:
         },
         index=idx,
     )
+
+
+def festivos(idx: pd.DatetimeIndex) -> pd.DataFrame:
+    years = range(idx.min().year, idx.max().year + 1)
+    co = holidays.Colombia(years=years)
+    d = idx.date
+    es_festivo = pd.Series([x in co for x in d], index=idx)
+    nombre = pd.Series([co.get(x, "") for x in d], index=idx)
+    return columnas_festivos(idx, es_festivo, nombre)
 
 
 # --------------------------------------------------------------------------- #

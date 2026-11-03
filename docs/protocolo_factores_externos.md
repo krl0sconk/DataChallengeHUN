@@ -19,7 +19,7 @@ que alguna pase por casualidad.
 
 | Grupo | Columnas de `externos.parquet` | Placebo |
 |---|---|---|
-| Festivos y puentes | `es_festivo`, `es_puente`, `es_dia_no_laboral`, `dia_post_festivo`, `dias_a/desde_festivo` | corridos 7 días |
+| Festivos y puentes | `es_festivo`, `es_puente`, `es_dia_no_laboral`, `dia_post_festivo`, `dias_a/desde_festivo` | cada festivo se muda 1–4 semanas, al mismo día de la semana, y se recalculan puentes y días a/desde festivo (`placebo_festivos`) |
 | Carnaval y Semana Santa | `es_carnaval`, `es_precarnaval`, `es_semana_santa`, `dias_a/desde_carnaval` | corridos 7 días |
 | Vacaciones escolares | `es_vacaciones_escolares`, `temporada_navidad` | corridos 14 días |
 | Quincena y primas | `es_dia_pago`, `dias_desde_pago`, `semana_de_pago`, `es_mes_prima` | corridos 7 días |
@@ -97,3 +97,11 @@ como hallazgo en la bitácora de decisiones.
   el placebo. Eso hay que detectarlo antes, en la auditoría de calidad.
 - Los grupos se evalúan cada uno contra la base, no en combinación. Si dos grupos aceptados resultan
   redundantes (por ejemplo, vacaciones y Navidad), se revisa en el modelo final con SHAP.
+
+## Nota sobre el placebo de festivos
+
+Correr los festivos 7 días conservaba fines de semana, puentes y la forma del calendario, así que el placebo
+"aportaba" +14,8 % y el grupo se descartaba aunque el efecto es real (rehabilitación cae a ~0 % en festivos).
+Ahora el placebo cambia cada festivo a otra semana pero al **mismo día de la semana** y recalcula todas las
+columnas derivadas con la misma regla que el calendario real. Con esto el placebo queda en −0,69 % y el
+grupo pasa el protocolo (mejora +29,6 %, 81 % de pliegues, p=0,001).
