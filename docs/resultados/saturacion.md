@@ -1,6 +1,6 @@
 # Resultados · Saturación hospitalaria por etapa
 
-_Generado automáticamente por `python -m hun.models.saturacion` el 2026-11-03 15:11. Solo métricas agregadas._
+_Generado automáticamente por `python -m hun.models.saturacion` el 2026-11-03 16:19. Solo métricas agregadas._
 
 - **Fuentes:** `etapas_entradas_por_hora.parquet`, `etapas_salidas_por_hora.parquet`, `duracion_etapas_percentiles.parquet`
 - **Reconstrucción del censo:** Entradas acumuladas − salidas acumuladas por etapa (`visit_detail_concept_id`).

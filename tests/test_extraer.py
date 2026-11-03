@@ -78,3 +78,20 @@ def test_archivo_final_solo_tiene_el_rango_pedido(entorno):
     df = extraer.ejecutar(nombre, date(2023, 2, 1), date(2023, 3, 1))
     assert pd.to_datetime(df["fecha"]).dt.month.unique().tolist() == [2]
     assert len(pd.read_parquet(raw / f"{nombre}.parquet")) == 28
+
+
+@pytest.mark.parametrize(
+    "archivo",
+    [
+        "04_entradas_por_hora.sql",
+        "11_auditoria_llegadas_diarias.sql",
+        "13_llegadas_diarias_perfil.sql",
+    ],
+)
+def test_consultas_de_llegadas_cuentan_visitas_unicas(archivo):
+    """Las copias de visit_occurrence (mismo paciente, servicio e inicio) no deben sobrecontarse."""
+    sql = " ".join(extraer.leer_sql(archivo).lower().split())
+    assert "count(*)" not in sql.replace("count(*) filter", "")
+    assert "count(distinct" in sql
+    for columna in ("person_id", "visit_concept_id", "visit_start_datetime"):
+        assert columna in sql.split("count(distinct", 1)[1].split("from", 1)[0]

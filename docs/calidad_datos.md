@@ -106,6 +106,7 @@ Ya aplicadas (no dependen de los porcentajes; son fechas que no pueden ser ciert
 |---|---|---|
 | Fuera las etapas sin fin o con fin antes del inicio | `14`/`15` (censo, vía `entradas_con_salida`), `16`, `17` y `18` | Sin un fin válido no hay duración, ni censo, ni espera hacia la etapa siguiente. En `18` se excluyen antes de ordenar, así que la "etapa siguiente" es la siguiente válida. |
 | Edad imposible → grupo `invalida` | `13` (perfil de llegadas) | Visita antes del año de nacimiento o más de 110 años, misma regla que `10`. Antes caían en `0-17` e inflaban a los menores. |
+| Visitas únicas por `(person_id, visit_concept_id, visit_start_datetime)` | `04`, `11` y `13` (llegadas) | `visit_occurrence` trae 13,38 % de copias sobrantes. Con `COUNT(DISTINCT ...)` las llegadas bajan de 1.706.001 a 1.477.742 (−13,4 %), y la línea base y los modelos se reentrenaron sobre ese conteo. |
 
 Decididas con los resultados de la auditoría:
 

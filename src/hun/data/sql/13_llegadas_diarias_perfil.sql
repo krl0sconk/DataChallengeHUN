@@ -1,5 +1,5 @@
 -- Llegadas por día, tipo de visita, sexo y grupo de edad, en una ventana [:desde, :hasta).
--- Alimenta el dashboard (perfil de quién llega) y el modelo de demanda. Solo conteos.
+-- Alimenta el dashboard (perfil de quién llega) y el modelo de demanda. Solo conteos de visitas únicas (paciente, servicio, inicio).
 -- Grupos: 'sin dato' (sin año de nacimiento), 'invalida' (edad imposible), 0-17, 18-39, 40-64, 65+.
 SELECT
     v.visit_start_datetime::DATE AS fecha,
@@ -15,7 +15,7 @@ SELECT
         WHEN EXTRACT(YEAR FROM v.visit_start_datetime) - p.year_of_birth < 65 THEN '40-64'
         ELSE '65+'
     END AS grupo_edad,
-    COUNT(*) AS visitas
+    COUNT(DISTINCT (v.person_id, v.visit_concept_id, v.visit_start_datetime)) AS visitas
 FROM {esquema}.visit_occurrence AS v
 LEFT JOIN {esquema}.person AS p ON p.person_id = v.person_id
 WHERE v.visit_start_datetime >= :desde
