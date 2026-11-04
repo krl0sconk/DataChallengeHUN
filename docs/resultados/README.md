@@ -14,3 +14,4 @@ Se regeneran ejecutando los módulos correspondientes; no se editan a mano.
 | [`factores_externos.md`](factores_externos.md) | `python -m hun.models.demanda` / `evaluacion_factores.py` | Evaluación de ablación, test placebo y estabilidad de factores climáticos, calendario y epidemiología. |
 | [`saturacion.md`](saturacion.md) | `python -m hun.models.saturacion` | Reconstrucción de censo horario en urgencias a partir de `visit_detail`, percentiles p75/p90 y niveles de saturación. |
 | [`intervalos_shap.md`](intervalos_shap.md) | `python -m hun.models.explicacion` | Validación de intervalos de predicción y ranking de factores explicativos SHAP (TreeExplainer). |
+| [`largo_plazo.md`](largo_plazo.md) | `python -m hun.models.largo_plazo` | Backtest walk-forward a 120 días (exactitud 84.3%, cobertura 86.5%) y pronóstico ago–nov 2026 con clima típico e intervalos crecientes. |

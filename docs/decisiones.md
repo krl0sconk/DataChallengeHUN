@@ -20,6 +20,19 @@ Si una decisión reemplaza a otra, no borres la anterior: márcala como **Reempl
 
 ---
 
+### DEC-008 · Modelo de demanda de largo plazo a 4 meses (sin rezagos cortos)
+
+- **Fecha:** 2026-11-03
+- **Sprint:** 3
+- **Responsable:** Krlos
+- **Estado:** Aceptada (implementada en `src/hun/models/largo_plazo.py`)
+- **Decisión:** Construir un modelo independiente para horizontes de hasta 120 días (4 meses, agosto–noviembre de 2026) basado en LightGBM Poisson con ponderación exponencial por recencia (vida media de 180 días), usando únicamente calendario, el grupo validado `festivos_y_puentes`, tendencia secular (`tendencia_anios`) y clima típico por día del año (`clima_tipico_por_fecha`, mediana histórica anterior al corte). Los intervalos se construyen con cuantiles base más amplios (p05/p95) y un factor de ensanchamiento progresivo `1 + 0,10 × (mes_horizonte − 1)`.
+- **Motivo:** La base termina el `2026-07-16` y el modelo operativo de 7 días depende de llegadas de las últimas 8 semanas (`llegadas_lag_7..56`), que no existen a 60–120 días; además `externos.parquet` no cuenta con clima medido a partir de octubre de 2026. Los cuantiles p10/p90 sin rezagos cortos se quedan estrechos (cobertura 65,9 % a 120 días, cayendo a 58,5 % en el mes 4) porque no capturan la deriva de nivel entre meses.
+- **Alternativas consideradas:** (1) Pronóstico autorregresivo realimentando predicciones de 7 días hasta completar 120 días: descartado porque acumula sesgo y diluye los choques de festivos. (2) Ancla congelada de 8 semanas como offset: probada en backtest (exactitud global 82,9 % vs. 84,3 % sin ancla; empeora cuando la serie tiene tendencia dentro de la ventana de 4 meses).
+- **Consecuencias:** En el backtest walk-forward a 120 días (13 pliegues, paso de 30 días) el modelo alcanza **84,3 % de exactitud global** (**86,0 %** en urgencias y **84,5 %** en rehabilitación; de 87,8 % en el mes 1 a 78,7 % en el mes 4) y **86,5 % de cobertura** del intervalo (≥ 84 % en los cuatro meses). Reporte reproducible en `docs/resultados/largo_plazo.md`.
+
+---
+
 ### DEC-007 · API Backend FastAPI para servir predicciones reales y SHAP
 
 - **Fecha:** 2026-10-28
