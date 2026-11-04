@@ -9,8 +9,10 @@ y explicabilidad SHAP agregada por factores clínicos y contextuales con datos 1
 from __future__ import annotations
 
 import logging
+import os
 import unicodedata
 from datetime import date, timedelta
+from pathlib import Path
 from typing import Any, Literal
 
 import holidays
@@ -19,15 +21,8 @@ import numpy as np
 import pandas as pd
 
 from hun import config
-from hun.data.agregados import agrupar_bajo_volumen, fecha_corte, serie_llegadas
-from hun.models.demanda import (
-    GRUPOS_ACEPTADOS,
-    columnas_por_grupos,
-    construir_features_demanda,
-)
 from hun.models.explicacion import (
     corregir_cuantiles_cruzados,
-    entrenar_modelos_cuantiles,
     explicar_prediccion_shap,
     predecir_intervalos,
 )
@@ -241,86 +236,116 @@ def _generar_ocupacion(serie: pd.DataFrame) -> list[dict[str, Any]]:
     return resultado
 
 
+def es_modo_produccion() -> bool:
+    """Indica si la API corre en modo producción (no se permite leer `data/`)."""
+    val = os.getenv("HUN_MODO_PRODUCCION", "").strip().lower()
+    env = os.getenv("HUN_ENV", "").strip().lower()
+    return val in ("1", "true", "si", "yes", "prod", "production") or env in ("prod", "production")
+
+
+def ruta_paquete_modelo() -> Path:
+    """Ruta canónica del paquete (`models/modelos_web_bundle.joblib` o `HUN_BUNDLE_PATH`)."""
+    env_path = os.getenv("HUN_BUNDLE_PATH", "").strip()
+    if env_path:
+        return Path(env_path)
+    return config.MODELS_DIR / "modelos_web_bundle.joblib"
+
+
+def limpiar_cache_modelo() -> None:
+    """Limpia la caché en memoria del paquete y de los factores externos."""
+    global _BUNDLE_CACHE, _BUNDLE_CARGADO, _EXTERNOS_DF, _EXTERNOS_CARGADO
+    _BUNDLE_CACHE = None
+    _BUNDLE_CARGADO = False
+    _EXTERNOS_DF = None
+    _EXTERNOS_CARGADO = False
+
+
 def _obtener_bundle_modelo() -> dict[str, Any] | None:
-    """Carga de memoria o disco (o construye perezosamente) los modelos reales entrenados."""
+    """Carga el paquete. En modo producción NUNCA toca `data/raw/` ni `data/processed/`."""
     global _BUNDLE_CACHE, _BUNDLE_CARGADO
     if _BUNDLE_CARGADO:
         return _BUNDLE_CACHE
 
-    bundle_path = config.PROCESSED_DIR / "modelos_web_bundle.joblib"
-    if bundle_path.exists():
+    ruta_principal = ruta_paquete_modelo()
+    if es_modo_produccion():
+        if not ruta_principal.exists():
+            raise FileNotFoundError(
+                f"Modo producción activo: no se encontró el paquete del modelo en "
+                f"'{ruta_principal}'. Ejecuta 'python -m hun.models.empaquetar' antes de "
+                "desplegar; en producción la API nunca lee data/raw/ ni data/processed/."
+            )
         try:
-            _BUNDLE_CACHE = joblib.load(bundle_path)
+            _BUNDLE_CACHE = joblib.load(ruta_principal)
             _BUNDLE_CARGADO = True
-            log.info("Bundle de modelos cargado desde %s", bundle_path)
             return _BUNDLE_CACHE
-        except Exception as e:
-            log.warning("No se pudo cargar %s: %s. Reconstruyendo bundle...", bundle_path, e)
+        except Exception as exc:
+            raise FileNotFoundError(
+                f"Modo producción activo: el paquete '{ruta_principal}' no se pudo cargar ({exc})."
+            ) from exc
+
+    for candidata in (ruta_principal, config.PROCESSED_DIR / "modelos_web_bundle.joblib"):
+        if candidata.exists():
+            try:
+                cargado = joblib.load(candidata)
+                if (
+                    isinstance(cargado, dict)
+                    and "comparacion_real" in cargado
+                    and "largo_plazo" in cargado
+                ):
+                    _BUNDLE_CACHE = cargado
+                    _BUNDLE_CARGADO = True
+                    log.info("Paquete de modelos cargado desde %s", candidata)
+                    return _BUNDLE_CACHE
+            except Exception as e:
+                log.warning("No se pudo cargar %s: %s. Reconstruyendo paquete...", candidata, e)
 
     entradas_path = config.RAW_DIR / "entradas_por_hora.parquet"
     externos_path = config.DATA_DIR / "externos.parquet"
     if not entradas_path.exists():
-        log.warning("Archivo %s no encontrado para construir bundle", entradas_path)
+        log.warning("Archivo %s no encontrado para construir paquete", entradas_path)
         _BUNDLE_CARGADO = True
         return None
 
     try:
-        log.info("Entrenando bundle de modelos web con datos reales de entradas_por_hora...")
+        from hun.models.empaquetar import construir_paquete
+
+        log.info("Construyendo paquete completo de modelos web con datos reales...")
         entradas = pd.read_parquet(entradas_path)
         externos = pd.read_parquet(externos_path) if externos_path.exists() else None
-        corte = fecha_corte(entradas)
-        entradas_filt = entradas[pd.to_datetime(entradas["hora"]) < corte].copy()
-        serie = agrupar_bajo_volumen(serie_llegadas(entradas_filt, freq="D"), min_por_dia=1.0)
+        bundle = construir_paquete(entradas, externos)
 
-        ext_cols = list(externos.columns) if externos is not None else []
-        cols = columnas_por_grupos(ext_cols, grupos_incluidos=GRUPOS_ACEPTADOS)
-        df_feat = construir_features_demanda(serie, externos)
-        modelos_q = entrenar_modelos_cuantiles(df_feat, cols)
-        modelo_p50 = modelos_q[0.50]
-
-        lookup_y = {
-            (int(r["serie"]), r["ts"].date()): int(round(r["y"])) for _, r in serie.iterrows()
-        }
-
-        max_ts = serie["ts"].max()
-        ultimas_8s = serie[serie["ts"] >= max_ts - pd.Timedelta(weeks=8)]
-        medianas_dw = (
-            ultimas_8s.groupby(["serie", ultimas_8s["ts"].dt.day_of_week])["y"].median().to_dict()
-        )
-        for k, v in (
-            serie.groupby(["serie", serie["ts"].dt.day_of_week])["y"].median().to_dict().items()
-        ):
-            if k not in medianas_dw:
-                medianas_dw[k] = v
-
-        turnos = _generar_turnos(entradas_filt)
-        ocupacion = _generar_ocupacion(serie)
-
-        bundle = {
-            "modelos_q": modelos_q,
-            "modelo_p50": modelo_p50,
-            "cols": cols,
-            "lookup_y": lookup_y,
-            "medianas_dw": medianas_dw,
-            "turnos": turnos,
-            "ocupacion": ocupacion,
-            "externos_df": externos,
-        }
-
-        try:
-            bundle_path.parent.mkdir(parents=True, exist_ok=True)
-            joblib.dump(bundle, bundle_path)
-            log.info("Bundle de modelos persistido en %s", bundle_path)
-        except Exception as e:
-            log.warning("No se pudo escribir %s: %s", bundle_path, e)
+        for destino in (ruta_principal, config.PROCESSED_DIR / "modelos_web_bundle.joblib"):
+            try:
+                destino.parent.mkdir(parents=True, exist_ok=True)
+                joblib.dump(bundle, destino)
+                log.info("Paquete persistido en %s", destino)
+            except Exception as e:
+                log.warning("No se pudo escribir %s: %s", destino, e)
 
         _BUNDLE_CACHE = bundle
         _BUNDLE_CARGADO = True
         return _BUNDLE_CACHE
     except Exception as exc:
-        log.error("Error al construir bundle de modelos reales: %s", exc)
+        log.error("Error al construir paquete de modelos reales: %s", exc)
         _BUNDLE_CARGADO = True
         return None
+
+
+def _bundle_o_sintetico() -> dict[str, Any]:
+    """Devuelve el paquete real o, en entornos de prueba sin `data/raw/`, un paquete sintético."""
+    global _BUNDLE_CACHE, _BUNDLE_CARGADO
+    bundle = _obtener_bundle_modelo()
+    if bundle is not None and "comparacion_real" in bundle:
+        return bundle
+    if es_modo_produccion():
+        raise FileNotFoundError(
+            "Modo producción activo: el paquete no contiene los resultados precalculados."
+        )
+    from hun.models.empaquetar import construir_paquete_sintetico_prueba
+
+    _BUNDLE_CACHE = construir_paquete_sintetico_prueba()
+    _BUNDLE_CARGADO = True
+    return _BUNDLE_CACHE
 
 
 def _construir_fila_fecha(f: date, s_id: int, bundle: dict[str, Any]) -> pd.DataFrame:
@@ -773,3 +798,73 @@ def obtener_ocupacion_real() -> list[dict[str, Any]]:
         )
 
     return resultado
+
+
+def obtener_comparacion_real(
+    servicio: str,
+    fecha_inicio: date | None = None,
+    fecha_fin: date | None = None,
+) -> dict[str, Any]:
+    """Devuelve predicho vs. real walk-forward en fechas pasadas y métricas de exactitud."""
+    sid = normalizar_servicio(servicio)
+    if sid == "otros":
+        sid = "urgencias"
+    bundle = _bundle_o_sintetico()
+    comp = bundle.get("comparacion_real", {}).get(sid)
+    if comp is None:
+        raise ValueError(f"No hay comparación histórica para el servicio '{servicio}'.")
+    out = dict(comp)
+    serie = list(out.get("serie", []))
+    if fecha_inicio is not None:
+        ini_s = fecha_inicio.isoformat()
+        serie = [p for p in serie if p["fecha"] >= ini_s]
+    if fecha_fin is not None:
+        fin_s = fecha_fin.isoformat()
+        serie = [p for p in serie if p["fecha"] <= fin_s]
+    out["serie"] = serie
+    return out
+
+
+def obtener_efectos_eventos(servicio: str) -> dict[str, Any]:
+    """Devuelve el efecto histórico promedio de cada evento por servicio."""
+    sid = normalizar_servicio(servicio)
+    if sid == "otros":
+        sid = "urgencias"
+    bundle = _bundle_o_sintetico()
+    ef_srv = bundle.get("efectos_eventos", {}).get(sid)
+    if ef_srv is None:
+        raise ValueError(f"No hay efectos de eventos para el servicio '{servicio}'.")
+    return dict(ef_srv)
+
+
+def obtener_pronostico_largo_plazo(
+    servicio: str,
+    fecha_inicio: date | None = None,
+    fecha_fin: date | None = None,
+) -> dict[str, Any]:
+    """Devuelve el pronóstico de largo plazo (4 meses, ago–nov 2026) y su backtest a 120 días."""
+    sid = normalizar_servicio(servicio)
+    if sid == "otros":
+        sid = "urgencias"
+    bundle = _bundle_o_sintetico()
+    lp_srv = bundle.get("largo_plazo", {}).get(sid)
+    if lp_srv is None:
+        raise ValueError(f"No hay pronóstico de largo plazo para el servicio '{servicio}'.")
+    out = dict(lp_srv)
+    serie = list(out.get("serie", []))
+    if fecha_inicio is not None:
+        ini_s = fecha_inicio.isoformat()
+        serie = [p for p in serie if p["fecha"] >= ini_s]
+    if fecha_fin is not None:
+        fin_s = fecha_fin.isoformat()
+        serie = [p for p in serie if p["fecha"] <= fin_s]
+    out["serie"] = serie
+    return out
+
+
+def obtener_indicadores_cuellos_botella() -> dict[str, Any]:
+    """Devuelve los indicadores agregados de duración y saturación por etapa de urgencias."""
+    bundle = _bundle_o_sintetico()
+    return dict(
+        bundle.get("cuellos_botella", {"etapas": [], "etapa_critica": "Observación adultos"})
+    )

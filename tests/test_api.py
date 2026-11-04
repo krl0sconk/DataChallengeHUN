@@ -221,3 +221,115 @@ def test_validaciones_pydantic():
         json={"fecha_inicio": "2026-07-10", "dias": 50, "servicio": "urgencias"},
     )
     assert resp.status_code == 422
+
+
+# --------------------------------------------------------------------------- modo producción (T5)
+def test_modo_produccion_falla_con_mensaje_claro_si_falta_paquete(monkeypatch, tmp_path):
+    """En modo producción, si falta el paquete del modelo debe fallar sin tocar data/."""
+    import pandas as pd
+
+    from hun.models import predict as pred_mod
+
+    monkeypatch.setenv("HUN_MODO_PRODUCCION", "1")
+    monkeypatch.setenv("HUN_BUNDLE_PATH", str(tmp_path / "no_existe.joblib"))
+    pred_mod.limpiar_cache_modelo()
+
+    def _prohibido(*_args, **_kwargs):
+        raise AssertionError("En modo producción no se debe leer ningún parquet de data/")
+
+    monkeypatch.setattr(pd, "read_parquet", _prohibido)
+
+    resp = client.post("/api/predecir", json={"fecha": "2026-07-10", "servicio": "urgencias"})
+    assert resp.status_code == 503
+    detalle = resp.json()["detail"]
+    assert (
+        "producción" in detalle.lower()
+        and "modelos_web_bundle" in detalle
+        or "paquete" in detalle.lower()
+    )
+    pred_mod.limpiar_cache_modelo()
+
+
+def test_modo_produccion_carga_paquete_sin_tocar_data(monkeypatch, tmp_path):
+    """Con un paquete válido, producción sirve predicciones sin tocar data/."""
+    import joblib
+    import pandas as pd
+
+    from hun.models import empaquetar
+    from hun.models import predict as pred_mod
+
+    paquete_Sint = empaquetar.construir_paquete_sintetico_prueba()
+    ruta_bundle = tmp_path / "modelos_web_bundle.joblib"
+    joblib.dump(paquete_Sint, ruta_bundle)
+
+    monkeypatch.setenv("HUN_MODO_PRODUCCION", "1")
+    monkeypatch.setenv("HUN_BUNDLE_PATH", str(ruta_bundle))
+    pred_mod.limpiar_cache_modelo()
+
+    def _prohibido(*_args, **_kwargs):
+        raise AssertionError("En modo producción no se debe leer ningún parquet de data/")
+
+    monkeypatch.setattr(pd, "read_parquet", _prohibido)
+
+    resp = client.post("/api/predecir", json={"fecha": "2026-07-10", "servicio": "urgencias"})
+    assert resp.status_code == 200
+    d = resp.json()
+    assert d["min"] <= d["prediccion"] <= d["max"]
+    pred_mod.limpiar_cache_modelo()
+
+
+# --------------------------------------------------------------------------- endpoints nuevos (T6)
+def test_endpoint_comparacion_predicho_vs_real():
+    """Verifica GET /api/comparacion/{servicio}: predicho vs real y exactitud."""
+    for s in ("urgencias", "rehabilitacion", "tratamiento_urgencia"):
+        resp = client.get(f"/api/comparacion/{s}")
+        assert resp.status_code == 200
+        d = resp.json()
+        assert d["servicio"] == s
+        assert "exactitud" in d and 0.0 <= d["exactitud"] <= 1.0
+        assert "wape" in d and "mae" in d and "cobertura" in d
+        assert isinstance(d["serie"], list) and len(d["serie"]) > 0
+        p0 = d["serie"][0]
+        assert {"fecha", "real", "prediccion", "min", "max"}.issubset(p0.keys())
+        assert p0["min"] <= p0["prediccion"] <= p0["max"]
+
+
+def test_endpoint_efectos_eventos_por_servicio():
+    """Verifica GET /api/efectos-eventos/{servicio}: efecto promedio histórico y frases."""
+    for s in ("urgencias", "rehabilitacion", "tratamiento_urgencia"):
+        resp = client.get(f"/api/efectos-eventos/{s}")
+        assert resp.status_code == 200
+        d = resp.json()
+        assert d["servicio"] == s
+        assert isinstance(d["eventos"], list) and len(d["eventos"]) >= 3
+        nombres = {e["evento"] for e in d["eventos"]}
+        assert {"festivos", "carnaval", "vacaciones"}.issubset(nombres)
+        for ev in d["eventos"]:
+            assert {
+                "evento",
+                "etiqueta",
+                "media_evento",
+                "media_normal",
+                "cambio_visitas",
+                "cambio_pct",
+                "n_dias",
+                "frase",
+            }.issubset(ev.keys())
+            assert isinstance(ev["frase"], str) and len(ev["frase"]) > 15
+
+
+def test_endpoint_pronostico_largo_plazo():
+    """Verifica GET /api/largo-plazo/{servicio}: pronóstico ago-nov 2026 y backtest a 120 días."""
+    for s in ("urgencias", "rehabilitacion", "tratamiento_urgencia"):
+        resp = client.get(f"/api/largo-plazo/{s}")
+        assert resp.status_code == 200
+        d = resp.json()
+        assert d["servicio"] == s
+        assert "backtest_120d" in d
+        bt = d["backtest_120d"]
+        assert {"exactitud", "wape", "mae", "cobertura"}.issubset(bt.keys())
+        assert isinstance(d["resumen_mensual"], list) and len(d["resumen_mensual"]) == 4
+        assert isinstance(d["serie"], list) and len(d["serie"]) >= 120
+        for punto in d["serie"][:5]:
+            assert {"fecha", "prediccion", "min", "max", "mes_horizonte"}.issubset(punto.keys())
+            assert punto["min"] <= punto["prediccion"] <= punto["max"]

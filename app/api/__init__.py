@@ -24,8 +24,12 @@ from pydantic import BaseModel, Field  # noqa: E402
 from hun.models.predict import (  # noqa: E402
     PARAMETROS_SERVICIO,
     SERVICIOS_CANONICOS,
+    obtener_comparacion_real,
+    obtener_efectos_eventos,
+    obtener_indicadores_cuellos_botella,
     obtener_llegadas_reales,
     obtener_ocupacion_real,
+    obtener_pronostico_largo_plazo,
     obtener_turnos_reales,
     predecir,
     predecir_rango,
@@ -130,6 +134,8 @@ def endpoint_predecir(payload: PrediccionRequest) -> dict[str, Any]:
         if "real" not in resultado:
             resultado["real"] = obtener_llegadas_reales(payload.fecha, payload.servicio)
         return resultado
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -179,5 +185,61 @@ def endpoint_predecir_rango(payload: RangoRequest) -> dict[str, Any]:
                 for p in serie
             ],
         }
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/comparacion/{servicio}")
+def endpoint_comparacion_real(
+    servicio: str,
+    fecha_inicio: date | None = None,
+    fecha_fin: date | None = None,
+) -> dict[str, Any]:
+    """Devuelve predicho vs. real walk-forward en fechas pasadas con métricas de exactitud."""
+    try:
+        return obtener_comparacion_real(servicio, fecha_inicio=fecha_inicio, fecha_fin=fecha_fin)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/efectos-eventos/{servicio}")
+def endpoint_efectos_eventos(servicio: str) -> dict[str, Any]:
+    """Devuelve el efecto promedio histórico de cada evento por servicio."""
+    try:
+        return obtener_efectos_eventos(servicio)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/largo-plazo/{servicio}")
+def endpoint_largo_plazo(
+    servicio: str,
+    fecha_inicio: date | None = None,
+    fecha_fin: date | None = None,
+) -> dict[str, Any]:
+    """Devuelve el pronóstico de largo plazo (ago–nov 2026) y su backtest a 120 días."""
+    try:
+        return obtener_pronostico_largo_plazo(
+            servicio, fecha_inicio=fecha_inicio, fecha_fin=fecha_fin
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/cuellos-botella")
+def endpoint_cuellos_botella() -> dict[str, Any]:
+    """Devuelve indicadores agregados de duración y saturación por etapa en urgencias."""
+    try:
+        return obtener_indicadores_cuellos_botella()
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
