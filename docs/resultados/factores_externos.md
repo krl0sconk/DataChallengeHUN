@@ -1,6 +1,6 @@
 # Resultados · Evaluación Empírica de Factores Externos
 
-_Generado automáticamente el 2026-11-03 16:41. Solo métricas agregadas._
+_Generado automáticamente el 2026-11-03 20:43. Solo métricas agregadas._
 
 ## Protocolo de Evaluación
 

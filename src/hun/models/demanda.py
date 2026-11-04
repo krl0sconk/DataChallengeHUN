@@ -36,6 +36,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from hun import config
+from hun.data.agregados import OTROS
 from hun.models import evaluacion_factores as ef
 from hun.models import linea_base
 from hun.models.evaluacion_factores import (
@@ -48,7 +49,21 @@ from hun.models.validacion import Pliegue, metricas, pliegues_walk_forward, resu
 log = logging.getLogger("demanda")
 
 # Grupos de factores externos aceptados por el protocolo empírico
-GRUPOS_ACEPTADOS: tuple[str, ...] = ("festivos_y_puentes", "vacaciones_escolares")
+GRUPOS_ACEPTADOS: tuple[str, ...] = ("festivos_y_puentes",)
+
+# Escalones de la escalera de modelos, en orden
+ESCALONES: tuple[str, ...] = (
+    "linea_base",
+    "poisson_calendario",
+    "lgbm_todos_externos",
+    "lgbm_final",
+)
+
+# Vida media (días) del peso de cada observación al entrenar: lo reciente pesa más
+VIDA_MEDIA_DIAS: int = 180
+
+# Exactitud mínima pedida por servicio y día del horizonte
+META_EXACTITUD: float = 0.80
 
 # Rezagos semanales seguros para horizonte de hasta 7 días
 SEMANAS_REZAGOS: tuple[int, ...] = (1, 2, 3, 4, 5, 6, 7, 8)
@@ -284,6 +299,29 @@ def ajustar_predecir_poisson(
     return np.maximum(0.0, np.asarray(pred, dtype=float))
 
 
+def _preparar_lgbm(
+    train: pd.DataFrame, columnas: list[str]
+) -> tuple[list[str], list[str], pd.DataFrame]:
+    """Columnas, categóricas y filas de entrenamiento válidas para los modelos LightGBM."""
+    cols = list(columnas)
+    if "serie_cod" in train.columns and "serie_cod" not in cols:
+        cols.append("serie_cod")
+    elif "serie" in train.columns and "serie" not in cols and "serie_cod" not in train.columns:
+        cols.append("serie")
+
+    train_valid = train[train["y"].notna() & (train["y"] >= 0)].copy()
+
+    # Descartar filas iniciales que no tienen rezagos calculados
+    filtro_rezagos = [c for c in ("rezago_prom_4s", "llegadas_lag_7") if c in cols]
+    if filtro_rezagos:
+        filtrado = train_valid.dropna(subset=[filtro_rezagos[0]])
+        if len(filtrado) > 0:
+            train_valid = filtrado
+
+    cats = [c for c in ("serie_cod", "serie") if c in cols]
+    return cols, cats, train_valid
+
+
 def ajustar_predecir_lgbm(
     train: pd.DataFrame,
     test: pd.DataFrame,
@@ -303,25 +341,9 @@ def ajustar_predecir_lgbm(
     Returns:
         Arreglo 1D de numpy con las predicciones para `test`.
     """
-    cols = list(columnas)
-    if "serie_cod" in train.columns and "serie_cod" not in cols:
-        cols.append("serie_cod")
-    elif "serie" in train.columns and "serie" not in cols and "serie_cod" not in train.columns:
-        cols.append("serie")
-
-    train_valid = train[train["y"].notna() & (train["y"] >= 0)].copy()
-
-    # Descartar filas iniciales que no tienen rezagos calculados
-    filtro_rezagos = [c for c in ("rezago_prom_4s", "llegadas_lag_7") if c in cols]
-    if filtro_rezagos:
-        filtrado = train_valid.dropna(subset=[filtro_rezagos[0]])
-        if len(filtrado) > 0:
-            train_valid = filtrado
-
+    cols, cats, train_valid = _preparar_lgbm(train, columnas)
     if len(train_valid) == 0:
         return np.zeros(len(test), dtype=float)
-
-    cats = [c for c in ("serie_cod", "serie") if c in cols]
 
     modelo = lgb.LGBMRegressor(
         objective="poisson",
@@ -341,6 +363,62 @@ def ajustar_predecir_lgbm(
 
     pred = modelo.predict(test[cols])
     return np.maximum(0.0, np.asarray(pred, dtype=float))
+
+
+def _nivel_local(df: pd.DataFrame) -> np.ndarray:
+    """Nivel reciente de cada fila: mediana de 8 semanas (o promedio de 4 si falta), mínimo 0,5."""
+    for col in ("rezago_mediana_8s", "rezago_prom_4s"):
+        if col in df.columns:
+            base = df[col].astype(float)
+            if col == "rezago_mediana_8s" and "rezago_prom_4s" in df.columns:
+                base = base.fillna(df["rezago_prom_4s"])
+            return np.maximum(base.fillna(0.0).to_numpy(), 0.5)
+    raise ValueError("Se necesita 'rezago_mediana_8s' o 'rezago_prom_4s' para el nivel local.")
+
+
+def ajustar_predecir_lgbm_nivel(
+    train: pd.DataFrame,
+    test: pd.DataFrame,
+    columnas: list[str],
+    vida_media_dias: float = VIDA_MEDIA_DIAS,
+) -> np.ndarray:
+    """LightGBM Poisson que aprende el CAMBIO respecto del nivel reciente, no el nivel absoluto.
+
+    Dos ideas, ambas pensadas para series cuyo volumen cambia con el tiempo (rehabilitación
+    ronda 900/día y a veces baja a 30; un árbol no puede predecir fuera de lo que vio):
+
+    1. Nivel local: el modelo parte de `log(mediana de 8 semanas)` (`init_score`) y solo aprende
+       la razón real/nivel (festivo, día de la semana...). Así la predicción escala con el nivel.
+    2. Recencia: cada fila pesa `0.5 ** (edad / vida_media_dias)`, así que lo de hace un año
+       cuenta menos que lo de la semana pasada.
+
+    Misma firma que `ajustar_predecir_lgbm` (sirve en el protocolo de factores).
+    """
+    cols, cats, train_valid = _preparar_lgbm(train, columnas)
+    if len(train_valid) == 0:
+        return np.zeros(len(test), dtype=float)
+
+    edad = (train_valid["ts"].max() - train_valid["ts"]).dt.days.to_numpy()
+    pesos = 0.5 ** (edad / vida_media_dias)
+
+    modelo = lgb.LGBMRegressor(
+        objective="poisson",
+        random_state=config.RANDOM_SEED,
+        n_estimators=200,
+        learning_rate=0.05,
+        num_leaves=15,
+        min_child_samples=15,
+        verbose=-1,
+    )
+    modelo.fit(
+        train_valid[cols],
+        train_valid["y"],
+        sample_weight=pesos,
+        init_score=np.log(_nivel_local(train_valid)),
+        categorical_feature=cats if cats else "auto",
+    )
+    bruto = modelo.predict(test[cols], raw_score=True)
+    return np.exp(np.asarray(bruto, dtype=float) + np.log(_nivel_local(test)))
 
 
 def evaluar_poisson(
@@ -441,8 +519,8 @@ def evaluar_escalera(
     Escalones evaluados:
     1. "linea_base": mediana histórica de 8 semanas.
     2. "poisson_calendario": regresión de Poisson con variables de calendario.
-    3. "lgbm_todos_externos": LightGBM Poisson con rezagos y todos los factores externos.
-    4. "lgbm_final": LightGBM Poisson con rezagos y únicamente los grupos aceptados.
+    3. "lgbm_todos_externos": LightGBM Poisson con nivel local, rezagos y todos los externos.
+    4. "lgbm_final": LightGBM Poisson con nivel local, rezagos y solo los grupos aceptados.
 
     Args:
         serie: DataFrame de llegadas diarias con columnas `ts`, `serie`, `y`.
@@ -505,8 +583,8 @@ def evaluar_escalera(
         es_fest = test["es_festivo"].astype(int)
 
         pred_p = ajustar_predecir_poisson(train, test, cols_poisson)
-        pred_todos = ajustar_predecir_lgbm(train, test, cols_lgbm_todos)
-        pred_final = ajustar_predecir_lgbm(train, test, cols_lgbm_final)
+        pred_todos = ajustar_predecir_lgbm_nivel(train, test, cols_lgbm_todos)
+        pred_final = ajustar_predecir_lgbm_nivel(train, test, cols_lgbm_final)
 
         res_poisson.append(
             pd.DataFrame(
@@ -605,11 +683,184 @@ def resumen_completo(
     }
 
 
+def techo_exactitud_poisson(media: float, dias: int = 1) -> float:
+    """Exactitud máxima esperable por puro azar de conteo: 1 − E|X − μ| / μ con X ~ Poisson(μ).
+
+    μ = `media` × `dias`. Es el techo de un modelo que conociera la tasa exacta de cada día:
+    aun así fallaría porque el número de llegadas de un día es aleatorio. Con ~12 llegadas/día
+    el techo diario ronda 77 %; sumando 7 días sube porque el azar se promedia.
+    """
+    from scipy.stats import poisson
+
+    mu = float(media) * dias
+    if mu <= 0:
+        return 0.0
+    k = np.arange(0, int(mu + 12 * np.sqrt(mu) + 20))
+    error_esperado = float(np.sum(poisson.pmf(k, mu) * np.abs(k - mu)))
+    return 1.0 - error_esperado / mu
+
+
+def sin_otros(df: pd.DataFrame) -> pd.DataFrame:
+    """Quita la serie "Otros" (tipos de visita de bajo volumen agrupados) de las métricas."""
+    return df[df["serie"] != OTROS]
+
+
+def exactitud_por_servicio_horizonte(
+    df_res: pd.DataFrame, nombres_series: dict[Any, str] | None = None
+) -> pd.DataFrame:
+    """Exactitud (1 − WAPE) por servicio y día del horizonte, más el total por servicio.
+
+    Devuelve una fila por servicio (sin "Otros"), columnas 1..7 y "Total".
+    """
+    nombres_series = nombres_series or {}
+    df = sin_otros(df_res).dropna(subset=["y", "pred"])
+    filas = {}
+    for serie, g in df.groupby("serie"):
+        fila = {
+            int(d): 1.0 - metricas(sub["y"], sub["pred"])["wape"]
+            for d, sub in g.groupby("dia_horizonte")
+        }
+        fila["Total"] = 1.0 - metricas(g["y"], g["pred"])["wape"]
+        filas[nombres_series.get(serie, str(serie))] = fila
+    tabla = pd.DataFrame.from_dict(filas, orient="index")
+    return tabla[sorted(c for c in tabla.columns if c != "Total") + ["Total"]]
+
+
+def exactitud_semanal(df_res: pd.DataFrame, serie: Any) -> dict[str, float]:
+    """Exactitud de la semana completa (suma de los 7 días de cada pliegue) para un servicio.
+
+    Sirve para servicios de pocas llegadas por día, donde el azar de conteo impide acertar cada
+    día pero la suma semanal sí es útil. Incluye el techo de Poisson diario y semanal.
+    """
+    df = df_res[df_res["serie"] == serie].dropna(subset=["y", "pred"])
+    semanas = df.groupby("pliegue")[["y", "pred"]].sum()
+    media_diaria = float(df["y"].mean())
+    return {
+        "pliegues": int(len(semanas)),
+        "media_diaria": media_diaria,
+        "exactitud": 1.0 - metricas(semanas["y"], semanas["pred"])["wape"],
+        "exactitud_diaria": 1.0 - metricas(df["y"], df["pred"])["wape"],
+        "techo_diario": techo_exactitud_poisson(media_diaria),
+        "techo": techo_exactitud_poisson(media_diaria, dias=7),
+    }
+
+
+_DIAS_ES = ("lun", "mar", "mié", "jue", "vie", "sáb", "dom")
+
+
+def _dia_semana_del_horizonte(df_res: pd.DataFrame) -> dict[int, str]:
+    """Día de la semana más frecuente de cada día del horizonte (los orígenes se repiten)."""
+    dias = pd.to_datetime(df_res["ts"]).dt.day_of_week
+    moda = dias.groupby(df_res["dia_horizonte"]).agg(lambda x: int(x.mode().iloc[0]))
+    return {int(d): _DIAS_ES[w] for d, w in moda.items()}
+
+
+def _seccion_exactitud(
+    res_df: pd.DataFrame, nombres: dict[Any, str], servicio_semanal: Any = None
+) -> list[str]:
+    """Secciones 3.1 y 3.2 del reporte: exactitud por servicio × día y servicio de bajo volumen."""
+    ex = exactitud_por_servicio_horizonte(res_df, nombres)
+    dias = _dia_semana_del_horizonte(sin_otros(res_df))
+    sin = sin_otros(res_df)
+    prom = (
+        sin.groupby(["serie", "dia_horizonte"])["y"].mean().unstack().rename(index=nombres)
+        if len(sin)
+        else pd.DataFrame()
+    )
+    cab = [f"{d} ({dias.get(d, '?')})" for d in range(1, 8)]
+    lineas = [
+        "",
+        "### 3.1 Exactitud por servicio y día del horizonte",
+        "",
+        f"Exactitud = 1 − WAPE. Meta: ≥ {META_EXACTITUD:.0%} (⚠️ marca lo que no la alcanza). "
+        "El horizonte siempre arranca el mismo día de la semana, por eso cada día del horizonte "
+        "es siempre el mismo día de la semana.",
+        "",
+        "| Servicio | " + " | ".join(cab) + " | Total |",
+        "|---|" + "---|" * 8,
+    ]
+    for servicio, fila in ex.iterrows():
+        celdas = []
+        for d in range(1, 8):
+            v = fila.get(d, float("nan"))
+            celdas.append(f"{v:.1%}{' ⚠️' if v < META_EXACTITUD else ''}")
+        v = fila["Total"]
+        celdas.append(f"{v:.1%}{' ⚠️' if v < META_EXACTITUD else ''}")
+        lineas.append(f"| {servicio} | " + " | ".join(celdas) + " |")
+    lineas.extend(
+        [
+            "",
+            "Llegadas diarias promedio en cada día del horizonte (para leer la tabla anterior: "
+            "un día con pocas llegadas casi no se puede acertar en porcentaje):",
+            "",
+            "| Servicio | " + " | ".join(cab) + " |",
+            "|---|" + "---|" * 7,
+        ]
+    )
+    for servicio, fila in prom.iterrows():
+        lineas.append(
+            f"| {servicio} | "
+            + " | ".join(f"{fila.get(d, float('nan')):.1f}" for d in range(1, 8))
+            + " |"
+        )
+
+    # celdas bajo la meta: se explican por volumen para no dejarlas sin contexto
+    bajas = [
+        f"{servicio} el {dias.get(d, '?')} (día {d}, {prom.loc[servicio, d]:.0f} llegadas/día)"
+        for servicio, fila in ex.iterrows()
+        for d in range(1, 8)
+        if fila.get(d, 1.0) < META_EXACTITUD
+        and servicio in prom.index
+        and prom.loc[servicio, d] < 100
+    ]
+    if bajas:
+        lineas.extend(
+            [
+                "",
+                "Días bajo la meta con pocas llegadas (atiende poco o a ratos, y el nivel cambia "
+                "mucho de una semana a otra; en porcentaje casi no se pueden acertar): "
+                + "; ".join(bajas)
+                + ". Para estos días mira el error en visitas (MAE) de la sección 3, "
+                "no el porcentaje.",
+            ]
+        )
+
+    # servicio de bajo volumen, reportado también por semana
+    if servicio_semanal is None and len(sin):
+        servicio_semanal = sin.groupby("serie")["y"].mean().idxmin()
+    if servicio_semanal is not None and len(sin):
+        sem = exactitud_semanal(sin, servicio_semanal)
+        nombre = nombres.get(servicio_semanal, str(servicio_semanal))
+        lineas.extend(
+            [
+                "",
+                f"### 3.2 {nombre}: reporte por semana y techo",
+                "",
+                f"Promedio real: {sem['media_diaria']:.1f} llegadas por día. Con tan pocas "
+                "llegadas el número de un día es en buena parte azar de conteo (Poisson): "
+                "aunque el modelo conociera la tasa exacta, fallaría. Ese es el *techo*.",
+                "",
+                "| Medida | Exactitud |",
+                "|---|---|",
+                f"| Techo por azar, un día | {sem['techo_diario']:.1%} |",
+                f"| Modelo, un día | {sem['exactitud_diaria']:.1%} |",
+                f"| Techo por azar, semana completa (suma de 7 días) | {sem['techo']:.1%} |",
+                f"| Modelo, semana completa ({sem['pliegues']} semanas) | {sem['exactitud']:.1%} |",
+                "",
+                "El techo es un tope optimista: supone que la tasa verdadera de cada día es "
+                "conocida y que el conteo es Poisson puro. En la práctica la tasa también cambia "
+                "de una semana a otra, por eso el modelo queda por debajo.",
+            ]
+        )
+    return lineas
+
+
 def reporte_markdown(
     resultados: dict[str, pd.DataFrame],
     nombres_series: dict[Any, str] | None = None,
     pliegues: list[Pliegue] | None = None,
     ruta_entrada: str = "entradas_por_hora.parquet",
+    servicio_semanal: Any = None,
 ) -> str:
     """Genera el contenido markdown para `docs/resultados/modelo_demanda.md`.
 
@@ -621,6 +872,8 @@ def reporte_markdown(
         nombres_series: Mapeo opcional de IDs de servicio a nombres legibles.
         pliegues: Lista de pliegues utilizados en la validación walk-forward.
         ruta_entrada: Nombre o ruta del archivo de entrada de datos.
+        servicio_semanal: Servicio que se reporta también por semana. Si es None, el de menor
+            volumen diario (sin "Otros").
 
     Returns:
         Cadena de texto en formato Markdown con el reporte completo.
@@ -658,6 +911,9 @@ def reporte_markdown(
         "|---|---|---|---|---|---|",
     ]
 
+    # "Otros" agrupa tipos de visita de casi cero llegadas: su WAPE no significa nada y
+    # no debe mezclarse con las métricas globales.
+    resultados = {nombre: sin_otros(df) for nombre, df in resultados.items()}
     resumenes: dict[str, dict[str, pd.DataFrame]] = {
         nombre: resumen_completo(df, nombres_series) for nombre, df in resultados.items()
     }
@@ -667,8 +923,8 @@ def reporte_markdown(
     nombres_legibles = {
         "linea_base": "1. Línea base (mediana 8 semanas)",
         "poisson_calendario": "2. Poisson con calendario",
-        "lgbm_todos_externos": "3. LightGBM (todos los externos)",
-        "lgbm_final": "4. LightGBM (grupos aceptados)",
+        "lgbm_todos_externos": "3. LightGBM con nivel local (todos los externos)",
+        "lgbm_final": "4. LightGBM con nivel local (grupos aceptados)",
     }
 
     for clave, nombre_mostrado in nombres_legibles.items():
@@ -719,6 +975,14 @@ def reporte_markdown(
             f"| {int(fila['dia_horizonte'])} | {fila['wape']:.1%} | "
             f"{fila['mae']:.2f} | {fila['sesgo']:+.2f} |"
         )
+
+    lineas.extend(
+        _seccion_exactitud(
+            res_df=resultados[modelo_clave],
+            nombres=nombres_series,
+            servicio_semanal=servicio_semanal,
+        )
+    )
 
     lineas.extend(
         [

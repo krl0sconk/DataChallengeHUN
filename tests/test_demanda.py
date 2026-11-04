@@ -10,6 +10,7 @@ from __future__ import annotations
 import holidays
 import numpy as np
 import pandas as pd
+import pytest
 
 from hun.models import demanda, validacion
 from hun.models import evaluacion_factores as ef
@@ -244,3 +245,89 @@ def test_evaluar_poisson_y_evaluar_lgbm_funciones_directas():
     assert len(res_l) == len(pliegues) * 7 * 2
     assert "pred" in res_l.columns
     assert not res_l["pred"].isna().any()
+
+
+# --------------------------------------------------------------------------- exactitud (paso 3)
+def test_ajustar_predecir_lgbm_nivel_extrapola_cuando_el_nivel_sube():
+    """Con nivel local el modelo escala la predicción aunque la base supere lo visto al entrenar."""
+    rng = np.random.default_rng(0)
+    n = 600
+    base_tr = rng.uniform(50, 150, n)
+    train = pd.DataFrame(
+        {
+            "ts": pd.date_range("2023-01-01", periods=n, freq="D"),
+            "serie": 1,
+            "rezago_prom_4s": base_tr,
+            "rezago_mediana_8s": base_tr,
+            "y": rng.poisson(1.5 * base_tr),
+        }
+    )
+    base_te = np.array([200.0, 250.0, 300.0])  # fuera del rango de entrenamiento
+    test = pd.DataFrame(
+        {
+            "ts": pd.date_range("2025-01-01", periods=3, freq="D"),
+            "serie": 1,
+            "rezago_prom_4s": base_te,
+            "rezago_mediana_8s": base_te,
+            "y": 1.5 * base_te,
+        }
+    )
+    cols = ["rezago_prom_4s", "rezago_mediana_8s"]
+    nivel = demanda.ajustar_predecir_lgbm_nivel(train, test, cols)
+    plano = demanda.ajustar_predecir_lgbm(train, test, cols)
+    assert np.all(np.isfinite(nivel)) and np.all(nivel >= 0)
+    assert np.allclose(nivel, 1.5 * base_te, rtol=0.15)
+    # el modelo sin nivel no puede pasar del máximo que vio al entrenar
+    assert plano.max() < 1.5 * 250
+
+
+def test_techo_poisson_baja_con_el_volumen_bajo_y_sube_al_sumar_dias():
+    diario = demanda.techo_exactitud_poisson(12.4)
+    assert 0.74 < diario < 0.82  # ~15 llegadas/día no pasan de ~79 % por puro azar
+    assert demanda.techo_exactitud_poisson(12.4, dias=7) > diario + 0.1
+    assert demanda.techo_exactitud_poisson(1000.0) > 0.97
+    assert demanda.techo_exactitud_poisson(0.0) == 0.0
+
+
+def _resultados_servicios():
+    filas = []
+    for pliegue in range(2):
+        origen = pd.Timestamp("2026-01-02") + pd.Timedelta(days=14 * pliegue)
+        for dia in range(1, 8):
+            ts = origen + pd.Timedelta(days=dia - 1)
+            filas += [
+                (ts, 9203, 100.0, 90.0, dia, pliegue, origen),
+                (ts, 581479, 10.0, 12.0, dia, pliegue, origen),
+                (ts, -1, 1.0, 5.0, dia, pliegue, origen),  # "Otros": no cuenta
+            ]
+    return pd.DataFrame(
+        filas, columns=["ts", "serie", "y", "pred", "dia_horizonte", "pliegue", "origen"]
+    )
+
+
+def test_exactitud_por_servicio_y_horizonte_excluye_otros():
+    nombres = {9203: "Urgencias", 581479: "Rehabilitación", -1: "Otros (agrupados)"}
+    t = demanda.exactitud_por_servicio_horizonte(_resultados_servicios(), nombres)
+    assert list(t.index) == ["Urgencias", "Rehabilitación"]
+    assert list(t.columns) == [1, 2, 3, 4, 5, 6, 7, "Total"]
+    assert t.loc["Urgencias", 1] == pytest.approx(0.90)
+    assert t.loc["Rehabilitación", "Total"] == pytest.approx(0.80)
+
+
+def test_exactitud_semanal_suma_los_siete_dias_de_cada_pliegue():
+    res = _resultados_servicios()
+    semanal = demanda.exactitud_semanal(res, 581479)
+    assert semanal["pliegues"] == 2
+    assert semanal["media_diaria"] == pytest.approx(10.0)
+    # cada semana: real 70, predicho 84 → error 14 → exactitud 80 %
+    assert semanal["exactitud"] == pytest.approx(0.80)
+    assert semanal["techo"] > demanda.techo_exactitud_poisson(10.0)
+
+
+def test_reporte_incluye_exactitud_por_horizonte_y_semana_sin_otros():
+    nombres = {9203: "Urgencias", 581479: "Rehabilitación", -1: "Otros (agrupados)"}
+    res = {k: _resultados_servicios().assign(es_festivo=0) for k in demanda.ESCALONES}
+    texto = demanda.reporte_markdown(res, nombres, servicio_semanal=581479)
+    assert "Exactitud por servicio y día del horizonte" in texto
+    assert "por semana" in texto and "techo" in texto.lower()
+    assert "Otros (agrupados)" not in texto
