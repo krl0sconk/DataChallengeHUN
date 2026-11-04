@@ -243,3 +243,7 @@ def endpoint_cuellos_botella() -> dict[str, Any]:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+from app.api.chat import router as chat_router  # noqa: E402
+
+app.include_router(chat_router)

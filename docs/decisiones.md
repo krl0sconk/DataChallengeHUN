@@ -20,6 +20,19 @@ Si una decisión reemplaza a otra, no borres la anterior: márcala como **Reempl
 
 ---
 
+### DEC-009 · Asistente conversacional `/api/chat` con herramientas del modelo y respaldo determinista
+
+- **Fecha:** 2026-11-03
+- **Sprint:** 3
+- **Responsable:** Krlos
+- **Estado:** Aceptada (implementada en `app/api/chat.py` y `docs/guia_chatbot.md`)
+- **Decisión:** Implementar el endpoint `POST /api/chat` conectado a Claude Haiku (`claude-haiku-5-5`, clave `ANTHROPIC_API_KEY` exclusivamente en `.env`), inyectando como prompt de sistema la guía y glosario (`docs/guia_chatbot.md`) junto con el estado actual de la pantalla enviado por la web (`servicio`, `fecha`, `prediccion`, `intervalo`, `alerta`, `factores`). El asistente dispone de cinco herramientas de solo lectura sobre la propia API (`predecir`, `predecir_rango`, `simular_escenario`, `efecto_promedio_evento`, `indicadores_cuellos_botella`), límite de 150 palabras, timeout de 12 s, rate-limit por minuto y un modo de respaldo determinista que responde con las cifras reales del modelo si la IA no está disponible.
+- **Motivo:** Ayudar a jefes de servicio y coordinadores (usuarios no técnicos) a entender qué significan la predicción, el intervalo p10–p90, el semáforo y los aportes de factores sin exponer datos de pacientes ni depender de que el proveedor externo de IA responda para que la aplicación siga funcionando.
+- **Alternativas consideradas:** (1) Chatbot con acceso SQL directo a la base: descartado por privacidad y porque en producción no hay base ni carpeta `data/`. (2) Chatbot sin herramientas (solo texto libre): descartado por riesgo de alucinación de cifras.
+- **Consecuencias:** Toda cifra citada por el asistente sale del paquete del modelo o del estado de pantalla. Si falta `ANTHROPIC_API_KEY` o falla la red, `/api/chat` responde en modo `respaldo` usando las mismas herramientas reales.
+
+---
+
 ### DEC-008 · Modelo de demanda de largo plazo a 4 meses (sin rezagos cortos)
 
 - **Fecha:** 2026-11-03
