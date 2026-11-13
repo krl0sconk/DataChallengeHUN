@@ -80,3 +80,4 @@ agregados; ninguna trae filas de pacientes.
 | `17_duracion_etapas_por_franja.sql` | `duracion_etapas_por_franja` | Duración de las etapas por día de la semana y hora de inicio |
 | `18_transiciones_etapas.sql` | `transiciones_etapas` | Esperas entre una etapa y la siguiente, por mes |
 | `19`–`22` `conceptos_*.sql` | grupo `conceptos` | Nombres de los conceptos usados (visitas, etapas, sexo, top de diagnósticos, procedimientos y mediciones). `python -m hun.data.conceptos` los une en `data/processed/conceptos.parquet` |
+| `23_duracion_etapas_percentiles.sql` | `duracion_etapas_percentiles` | Percentiles (p50, p90, p99) y duración máxima por tipo de etapa para calibrar el período de calentamiento (warm-up) del censo |

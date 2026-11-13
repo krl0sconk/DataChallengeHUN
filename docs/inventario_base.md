@@ -19,7 +19,7 @@
 | Etapas (`visit_detail_concept_id`) | 4 conceptos, los mismos 4 tipos de visita; no hay triage ni observación |
 | ¿Horas reales? | Sí en urgencias; en rehabilitación son citas programadas (34 % en minuto 0) |
 | Duración en `visit_occurrence` | 0 h siempre (`visit_end_datetime` = `visit_start_datetime`): tiempos y censo salen de `visit_detail` |
-| Tamaño de cada tabla | TODO: completar con `data/raw/tablas_tamano.parquet` |
+| Tamaño de cada tabla | 7 tablas principales: `procedure_occurrence` (47,0M filas, 3,86 GB), `condition_occurrence` (38,6M, 3,79 GB), `measurement` (16,6M, 15 GB), `concept` (10,0M, 1,07 GB), `visit_detail` (3,28M, 318 MB), `visit_occurrence` (1,71M, 153 MB), `person` (912k, 92 MB) |
 
 ## Volumen por tipo de visita
 
@@ -39,7 +39,7 @@ Nada se baja a nivel de fila. Todo sale agregado dentro del SQL:
 - `measurement`, `condition_occurrence` y `procedure_occurrence`: solo frecuencias por concepto
   (`20`–`22`), con conceptos de menos de 10 registros omitidos. Cualquier uso adicional se agrega en SQL.
 
-## Pendiente
+## Estado del inventario
 
-- TODO: completar el tamaño de cada tabla.
-- La calidad de los datos y la prueba de fechas corridas siguen en [calidad_datos.md](calidad_datos.md) (#12).
+- Tamaño y volumetría de tablas completados con `data/raw/tablas_tamano.parquet`.
+- La calidad de los datos y la prueba de fechas corridas están validadas en [calidad_datos.md](calidad_datos.md) (#12).

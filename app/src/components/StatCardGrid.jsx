@@ -1,6 +1,6 @@
 import { AlertTriangle, CheckCircle2, ShieldAlert, Users, WifiOff } from 'lucide-react';
 
-export function StatCardGrid({ alerta, prediccion, p10, p90, servicio, isApiConnected }) {
+export function StatCardGrid({ alerta, prediccion, real, p10, p90, servicio, isApiConnected }) {
   const { etiqueta, accion, colorBg, colorBorder, colorDot, colorTexto, iconoColor, nivel } = alerta;
 
   return (
@@ -65,11 +65,23 @@ export function StatCardGrid({ alerta, prediccion, p10, p90, servicio, isApiConn
 
         {isApiConnected ? (
           <>
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-4xl font-extrabold font-mono-num text-[#2D283E] dark:text-[#C4E5CA]">
-                {prediccion}
-              </span>
-              <span className="text-sm font-bold text-[#1E4D57] dark:text-[#A8E2AF]">pacientes</span>
+            <div className="mt-3 flex items-baseline justify-between gap-2">
+              <div className="flex items-baseline gap-2">
+                <span className="text-4xl font-extrabold font-mono-num text-[#2D283E] dark:text-[#C4E5CA]">
+                  {prediccion}
+                </span>
+                <span className="text-sm font-bold text-[#1E4D57] dark:text-[#A8E2AF]">pacientes (p50)</span>
+              </div>
+              {real !== null && real !== undefined && (
+                <div className="text-right">
+                  <span className="text-[10px] font-extrabold uppercase text-[#7E22CE] dark:text-[#C084FC] block">
+                    Real Observado
+                  </span>
+                  <span className="text-lg font-black font-mono-num text-[#7E22CE] dark:text-[#C084FC]">
+                    {real} pac.
+                  </span>
+                </div>
+              )}
             </div>
             <footer className="mt-3.5 flex items-center justify-between text-xs p-2.5 rounded-xl border border-[#D6E0C2] dark:border-[#1B524F] bg-[#F1F7D4] dark:bg-[#071D22] text-[#2D283E] dark:text-[#C4E5CA] font-mono-num font-semibold">
               <span>p10: <strong className="text-[#1E4D57] dark:text-[#A8E2AF]">{p10}</strong></span>

@@ -33,36 +33,38 @@ con factores externos (clima, festivos, temporadas escolares y epidemiológicas)
 
 ```
 ├── data/                 # datos (solo README y .gitkeep se versionan)
-│   ├── raw/              # datos originales del hospital (NUNCA se suben)
-│   ├── external/         # clima, festivos, temporadas
-│   ├── interim/          # datos en limpieza
-│   └── processed/        # datasets finales para el modelo
+│   ├── raw/              # extracciones agregadas de la base (NUNCA se suben)
+│   ├── external/         # clima, festivos, temporadas (manuales y cache)
+│   ├── interim/          # datos intermedios
+│   ├── processed/        # datasets finales y bundle para la web
+│   └── externos.parquet  # dataset unificado de factores externos
 ├── notebooks/            # 01_exploracion, 02_preparacion, 03_modelado
-├── src/hun/              # paquete Python del proyecto
-│   ├── config.py         # rutas y parámetros leídos de .env
-│   ├── data/             # carga y limpieza
-│   ├── external/         # descarga de datos externos
-│   ├── features/         # ingeniería de variables
-│   ├── models/           # entrenamiento, predicción, evaluación
-│   └── visualization/    # gráficas con Plotly
-├── models/               # artefactos entrenados (no se suben)
-├── app/                  # aplicación web
+├── src/
+│   ├── external/         # descarga y consolidación de datos externos
+│   └── hun/              # paquete Python del proyecto
+│       ├── config.py     # rutas y parámetros leídos de .env
+│       ├── data/         # conexión DB, auditoría, conceptos y agregaciones
+│       ├── features/     # ingeniería de variables y rezagos anti-fuga
+│       ├── models/       # demanda, saturación, explicabilidad, predict, validación
+│       └── visualization/# utilidades de visualización y reportes
+├── models/               # artefactos locales de modelos
+├── app/                  # aplicación web (React + Vite) y backend FastAPI (`app/api/`)
 ├── dashboards/powerbi/   # plantillas .pbit (sin datos)
-├── reports/figures/      # figuras para informes
-├── docs/                 # documentación y bitácora de decisiones
-├── tests/                # pruebas con pytest
+├── reports/figures/      # figuras generadas para informes
+├── docs/                 # documentación, auditorías, hallazgos y bitácora de decisiones
+├── tests/                # 81 pruebas unitarias y de integración con pytest
 └── .github/              # plantillas de PR e issues
 ```
 
 ## Instalación del entorno
 
-Requisitos: **Python 3.11 o superior** y Git.
+Requisitos: **Python 3.11 o superior**, Node.js 18+ y Git.
 
 ```bash
 git clone https://github.com/<usuario>/data-challenge-hun.git
 cd data-challenge-hun
 
-# 1. Entorno virtual
+# 1. Entorno virtual Python
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 
@@ -76,21 +78,42 @@ pre-commit install
 # 4. Variables de entorno
 cp .env.example .env               # Windows: copy .env.example .env
 
-# 5. Verificar
+# 5. Verificar suite de tests (81 pruebas)
 pytest
 ```
 
-Luego, en cualquier notebook o script:
+## Ejecución de la aplicación
+
+El proyecto cuenta con un backend FastAPI conectado a los modelos entrenados y una interfaz web moderna en React:
+
+```bash
+# Terminal 1: Backend API (FastAPI)
+uvicorn app.api:app --reload --port 8000
+
+# Terminal 2: Frontend Web (React + Vite)
+cd app
+npm install
+npm run dev
+```
+
+La API estará disponible en `http://localhost:8000/docs` (Swagger UI) y el frontend en `http://localhost:5173`.
+
+Luego, en cualquier notebook o script de Python:
 
 ```python
 from hun import config
 import pandas as pd
 
-df = pd.read_csv(config.RAW_DIR / "archivo.csv")
+df = pd.read_parquet(config.RAW_DIR / "02_flujo_horario_urgencias.parquet")
 ```
 
 ## Documentación
 
+- [AI.md](AI.md): contexto y reglas del proyecto para asistentes de IA.
 - [CONTRIBUTING.md](CONTRIBUTING.md): flujo de trabajo (ramas, commits, PR, notebooks).
-- [docs/decisiones.md](docs/decisiones.md): bitácora de decisiones técnicas.
-- [data/README.md](data/README.md): organización y manejo de los datos.
+- [docs/decisiones.md](docs/decisiones.md): bitácora de decisiones técnicas (ADR).
+- [docs/calidad_datos.md](docs/calidad_datos.md): reporte de auditoría y calidad de datos (0 días de desplazamiento).
+- [docs/hallazgos.md](docs/hallazgos.md): hallazgos operacionales y clínicos preliminares.
+- [docs/objetivo_prediccion.md](docs/objetivo_prediccion.md): definición del alcance y servicios modelados.
+- [docs/resultados/](docs/resultados/): métricas del modelo de demanda, factores externos, saturación e intervalos SHAP.
+- [data/README.md](data/README.md): inventario y manejo de datos.

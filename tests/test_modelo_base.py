@@ -245,3 +245,87 @@ def test_agrupar_bajo_volumen_junta_los_tipos_raros():
     r = agrupar_bajo_volumen(df, min_por_dia=1.0)
     assert set(r["serie"]) == {1, OTROS}
     assert r.loc[r["serie"] == OTROS, "y"].sum() == 2
+
+
+# --------------------------------------------------------------------------- placebo de festivos
+def _externos_calendario():
+    from external.calendario import festivos
+
+    idx = pd.date_range("2022-01-01", "2025-12-31", freq="D", name="fecha")
+    return festivos(idx).drop(columns=["nombre_festivo", "es_fin_de_semana"])
+
+
+def test_placebo_festivos_mueve_cada_festivo_a_otro_dia_de_la_misma_semana_tipo():
+    ext = _externos_calendario()
+    cols = list(ext.columns)
+    p = ef.placebo_festivos(ext, cols)
+    real = ext.index[ext["es_festivo"] == 1]
+    falso = p.index[p["es_festivo"] == 1]
+    assert len(falso) == len(real)  # mismos festivos, en otras fechas
+    assert not set(falso) & set(real)  # ninguno cae donde está el festivo real
+    # el día de la semana de cada festivo se conserva (se compara la distribución)
+    assert sorted(falso.dayofweek) == sorted(real.dayofweek)
+    # el placebo no debe desplazar más de 4 semanas a ningún festivo
+    desvios = [min(abs((f - r).days) for r in real) for f in falso]
+    assert max(desvios) > 0
+
+
+def test_placebo_festivos_recalcula_las_columnas_derivadas():
+    ext = _externos_calendario()
+    p = ef.placebo_festivos(ext, list(ext.columns))
+    assert (p.loc[p["es_festivo"] == 1, "dias_a_festivo"] == 0).all()
+    assert (p.loc[p["es_festivo"] == 1, "dias_desde_festivo"] == 0).all()
+    # fines de semana intactos: la estacionalidad semanal no se rompe
+    finde = p.index.dayofweek >= 5
+    assert (p.loc[finde, "es_dia_no_laboral"] == 1).all()
+    # cuenta de no laborales = fines de semana + festivos entre semana
+    habil = ~finde
+    assert (p.loc[habil, "es_dia_no_laboral"] == p.loc[habil, "es_festivo"]).all()
+
+
+def test_placebo_festivos_es_reproducible_y_no_toca_otras_columnas():
+    ext = _externos_calendario()
+    ext["clima_x"] = np.arange(len(ext), dtype=float)
+    cols = [c for c in ext.columns if c != "clima_x"]
+    a = ef.placebo_festivos(ext, cols)
+    b = ef.placebo_festivos(ext, cols)
+    pd.testing.assert_frame_equal(a, b)
+    pd.testing.assert_series_equal(a["clima_x"], ext["clima_x"])
+
+
+def test_placebo_de_festivos_no_imita_un_efecto_festivo_real():
+    """Con un efecto festivo real, el placebo (festivos movidos de día) casi no mejora."""
+    cal = _externos_calendario()
+    fechas = cal.index
+    rng = np.random.default_rng(3)
+    externos = cal.assign(
+        dia_semana=fechas.dayofweek,
+        mes=fechas.month,
+        sin_dia_anio=np.sin(2 * np.pi * fechas.dayofyear / 365.25),
+        cos_dia_anio=np.cos(2 * np.pi * fechas.dayofyear / 365.25),
+        es_fin_de_semana=(fechas.dayofweek >= 5).astype(int),
+    )
+    tasa = 100 * np.where(fechas.dayofweek < 5, 1.0, 0.7) * np.where(cal["es_festivo"] == 1, 0.2, 1)
+    serie = pd.DataFrame({"ts": fechas, "serie": "rehab", "y": rng.poisson(tasa)})
+    pliegues = validacion.pliegues_walk_forward(serie["ts"], paso="30D")
+    grupo = ef.GrupoFactor(
+        "festivos_y_puentes", columnas=tuple(cal.columns), placebo=ef.placebo_festivos
+    )
+    (r,) = ef.evaluar_grupos(serie, externos, pliegues, (grupo,), _modelo_rapido)
+    # con pliegues de 30 días varios no traen ningún festivo, así que la prueba de signo no se exige
+    assert r.mejora_mediana > 0.05
+    assert r.mejora_placebo_mediana < 0.5 * r.mejora_mediana
+
+
+def test_evaluar_grupos_usa_el_placebo_propio_del_grupo():
+    serie, externos = _serie_diaria_con_factor()
+    pliegues = validacion.pliegues_walk_forward(serie["ts"], paso="60D")
+    llamadas = []
+
+    def mi_placebo(ext, cols):
+        llamadas.append(list(cols))
+        return ef.placebo(ext, cols, "7D")
+
+    g = ef.GrupoFactor("clima", prefijos=("clima_",), placebo=mi_placebo)
+    ef.evaluar_grupos(serie, externos, pliegues, (g,), _modelo_rapido)
+    assert llamadas == [["clima_precipitation_sum"]]

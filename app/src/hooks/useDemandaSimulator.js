@@ -102,6 +102,7 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
           simulado: punto.simulado ?? punto.prediccion,
           habitual: punto.habitual ?? punto.prediccion,
           prediccion: punto.prediccion,
+          real: punto.real ?? null,
           min: punto.min,
           max: punto.max,
           factores: punto.factores || [],
@@ -112,6 +113,7 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
 
       return {
         prediccion: apiData.prediccion,
+        real: apiData.real ?? null,
         min: apiData.min,
         max: apiData.max,
         deltaTotal: apiData.delta_total ?? 0,
@@ -127,6 +129,7 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
     // Sin conexión: no se inventan cálculos en frontend
     return {
       prediccion: 0,
+      real: null,
       min: 0,
       max: 0,
       deltaTotal: 0,

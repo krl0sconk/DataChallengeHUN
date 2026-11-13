@@ -38,8 +38,8 @@ Un sistema de **pronóstico de demanda y saturación hospitalaria** en tres capa
 | Capa | Qué hace | Dónde vive |
 |---|---|---|
 | Entender | Cuellos de botella, factores de retraso, perfiles de pacientes | Notebooks + Power BI |
-| Predecir | Llegadas por servicio, duración de estancia y saturación | `src/model/` |
-| Decidir | Semáforo por servicio, explicación de cada alerta y simulador "¿qué pasa si?" | `web/` |
+| Predecir | Llegadas por servicio, duración de estancia y saturación | `src/hun/models/` |
+| Decidir | Semáforo por servicio, explicación de cada alerta y simulador "¿qué pasa si?" | `app/` |
 
 **Usuarios finales:** jefes de servicio y coordinadores del hospital, no científicos de datos. Todo lo que ve el usuario debe estar en lenguaje simple y terminar en una acción concreta.
 
@@ -55,14 +55,15 @@ Trabajamos en **Scrum con sprints de una semana**. Las tareas viven en Notion.
 
 ### Estado actual
 
-- **La base ya está disponible** (PostgreSQL por VPN, solo lectura; ver `docs/guia_sesion_bd.md`). Se trabaja con extracciones agregadas en `data/raw/`, nunca con filas de pacientes.
+- **Extracciones de base de datos completadas al 100%** (PostgreSQL por VPN, solo lectura; ver `docs/guia_sesion_bd.md`). Se generaron 24 archivos parquet agregados en `data/raw/`, respetando estrictamente la privacidad y anonimización de pacientes.
 - **Inventario cerrado el 2026-10-15** (detalle en `docs/objetivo_prediccion.md` y DEC-002 de `docs/decisiones.md`):
   datos del 2023-01-01 al 2026-07-17; servicios = `visit_concept_id` (rehabilitación ambulatoria, urgencias,
   urgencia-tratamiento; hospitalización y "sin concepto" se agrupan por bajo volumen); horas reales en urgencias.
-- **`visit_end_datetime` = `visit_start_datetime` en toda la base**, así que el censo no se reconstruye con `visit_occurrence`: se hará con las etapas de `visit_detail` (extracción pendiente).
+- **Auditoría de calidad y desplazamiento:** confirmados 0 días de desplazamiento temporal (anclaje perfecto en festivos nacionales y domingos, ver `docs/calidad_datos.md`).
+- **`visit_end_datetime` = `visit_start_datetime` en toda la base**, resuelto mediante la extracción de etapas en `visit_detail`: el censo y saturación se reconstruyeron exitosamente a partir de los tiempos de etapas (ver `docs/resultados/saturacion.md`).
+- **Escalera de modelos completada:** evaluada mediante walk-forward de 26 pliegues (Línea base WAPE 18.0% → Poisson 17.5% → LightGBM Cuantil WAPE 16.5% diario, cobertura p10-p90 de 81.3%; ver `docs/resultados/modelo_demanda.md`).
+- **Contrato modelo-web operativo:** `src/hun/models/predict.py` y el backend FastAPI (`app/api/__init__.py`) cargan el bundle entrenado (`data/processed/modelos_web_bundle.joblib`) y proveen explicabilidad SHAP real en milisegundos.
 - La base termina ~3 meses antes de hoy: no hay rezagos para predecir el futuro real; la web re-simula dentro del rango y ofrece el simulador "¿qué pasa si?".
-- Línea base (mediana de 8 semanas): WAPE 29,4 % por hora y 18,0 % por día (`docs/resultados/`). Es la referencia a superar.
-- Antes de modelar, verifica nombres y rangos en `docs/objetivo_prediccion.md`; no los asumas.
 
 ---
 
@@ -159,10 +160,10 @@ La lógica reutilizable va en `src/`. Los notebooks y la web **importan** de `sr
 
 ## 6. Contrato modelo–web
 
-La web solo interactúa con el modelo a través de esta función en `src/hun/models/predict.py` (aún no existe):
+La web interactúa con el modelo a través de las funciones en `src/hun/models/predict.py` (respaldadas por el bundle entrenado en `data/processed/modelos_web_bundle.joblib` con fallback calibrado) expuestas mediante la API FastAPI en `app/api/__init__.py`:
 
 ```python
-def predecir(fecha: date, servicio: str) -> dict:
+def predecir(fecha: date, servicio: str, horizonte_dias: int = 1) -> dict:
     """Devuelve la predicción de llegadas para un servicio en una fecha."""
     return {
         "prediccion": 47,  # int, mediana (p50)
@@ -175,6 +176,11 @@ def predecir(fecha: date, servicio: str) -> dict:
         ],
     }
 ```
+
+Funciones complementarias disponibles en `predict.py` para la API y la interfaz web:
+- `obtener_llegadas_reales(fecha, servicio)`: histórico real de llegadas para validación/comparativa visual.
+- `obtener_turnos_reales(fecha, servicio)`: desglose real por turnos (Mañana, Tarde, Noche).
+- `obtener_ocupacion_real(fecha, servicio)`: censo horario y saturación por etapas del servicio.
 
 Cualquier cambio en esta estructura se acuerda entre Krlos y Daniel y se actualiza aquí.
 

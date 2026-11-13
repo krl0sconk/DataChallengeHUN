@@ -40,18 +40,66 @@ class GrupoFactor:
     `desplazamiento_placebo`: cuánto se corre el grupo en el placebo.
     - Variables continuas (clima, epidemiología): 364 días → misma temporada y mismo día de
       la semana, pero el valor de OTRO año. Si "aporta" igual, solo estaba midiendo la temporada.
-    - Eventos de calendario (festivos, Carnaval): 7 días → el evento cae en una fecha equivocada.
+    - Eventos de calendario (Carnaval, vacaciones): 7 o 14 días → el evento cae en una fecha
+      equivocada.
+    - `placebo`: función propia `(externos, columnas) -> externos` cuando correr las fechas no
+      basta. Los festivos la usan (`placebo_festivos`): correr 7 días conserva los fines de
+      semana y la forma del calendario, y el placebo terminaba "aportando" lo que ya es
+      estacionalidad. Si se define, `desplazamiento_placebo` se ignora.
     """
 
     nombre: str
     prefijos: tuple[str, ...] = ()
     columnas: tuple[str, ...] = ()
     desplazamiento_placebo: str = "364D"
+    placebo: Callable[[pd.DataFrame, list[str]], pd.DataFrame] | None = None
 
     def resolver(self, disponibles: list[str]) -> list[str]:
         cols = [c for c in self.columnas if c in disponibles]
         cols += [c for c in disponibles if self.prefijos and c.startswith(self.prefijos)]
         return sorted(set(cols))
+
+
+def placebo_festivos(
+    externos: pd.DataFrame, columnas: list[str], semana_max: int = 4, semilla: int | None = None
+) -> pd.DataFrame:
+    """Placebo de festivos: cada festivo se muda a otro día del MISMO día de la semana.
+
+    Mueve cada festivo `k` semanas (1 ≤ |k| ≤ `semana_max`, elegido con una semilla fija) a una
+    fecha que no sea festivo real ni ya usada, así conserva el día de la semana, los fines de
+    semana, la cantidad de festivos por año y la temporada, y rompe SOLO la relación con el día
+    real. Luego recalcula todas las columnas derivadas (puentes, días a/desde festivo...) con la
+    misma regla de `external.calendario.columnas_festivos`. Si el placebo "aporta" casi lo mismo
+    que el real, el aporte venía de la estacionalidad, no de los festivos.
+    """
+    from external.calendario import columnas_festivos
+    from hun import config
+
+    ext = externos.copy()
+    ext.index = pd.to_datetime(ext.index).normalize()
+    idx = ext.index
+    reales = set(idx[ext["es_festivo"].astype(bool).to_numpy()])
+    rng = np.random.default_rng(config.RANDOM_SEED if semilla is None else semilla)
+    ocupadas = set(reales)
+    nuevos = set()
+    saltos = [k for k in range(-semana_max, semana_max + 1) if k]
+    for dia in sorted(reales):
+        opciones = [
+            dia + pd.Timedelta(days=7 * k)
+            for k in saltos
+            if idx.min() <= dia + pd.Timedelta(days=7 * k) <= idx.max()
+            and dia + pd.Timedelta(days=7 * k) not in ocupadas
+        ]
+        if not opciones:
+            continue
+        destino = opciones[int(rng.integers(len(opciones)))]
+        ocupadas.add(destino)
+        nuevos.add(destino)
+    es_festivo = pd.Series(idx.isin(list(nuevos)), index=idx)
+    derivadas = columnas_festivos(idx, es_festivo)
+    comunes = [c for c in columnas if c in derivadas.columns]
+    ext[comunes] = derivadas[comunes].to_numpy()
+    return ext
 
 
 GRUPOS_POR_DEFECTO = (
@@ -65,7 +113,7 @@ GRUPOS_POR_DEFECTO = (
             "dias_a_festivo",
             "dias_desde_festivo",
         ),
-        desplazamiento_placebo="7D",
+        placebo=placebo_festivos,
     ),
     GrupoFactor(
         "carnaval_y_semana_santa",
@@ -224,7 +272,11 @@ def evaluar_grupos(
         if not cols:
             continue
         wape_con = _error_por_pliegue(df, cols_base + cols, pliegues, ajustar_predecir)
-        df_placebo = unir_externos(base, placebo(externos, cols, g.desplazamiento_placebo))
+        if g.placebo is not None:
+            ext_placebo = g.placebo(externos, cols)
+        else:
+            ext_placebo = placebo(externos, cols, g.desplazamiento_placebo)
+        df_placebo = unir_externos(base, ext_placebo)
         if "hora" in cols_base:
             df_placebo["hora"] = df["hora"]
         wape_placebo = _error_por_pliegue(df_placebo, cols_base + cols, pliegues, ajustar_predecir)
