@@ -109,6 +109,30 @@ df = pd.read_parquet(config.RAW_DIR / "02_flujo_horario_urgencias.parquet")
 
 ## Documentación
 
+## Despliegue
+
+El frontend no contiene una URL fija de la API. En desarrollo usa el proxy de Vite (`app/vite.config.js`); en producción se configura la variable pública:
+
+```env
+VITE_API_URL=https://<url-publica-de-la-api>
+```
+
+Para construir el frontend:
+
+```bash
+cd app
+npm ci
+npm run build
+```
+
+La carpeta `app/dist/` es el artefacto estático que debe publicar el proveedor web. La API debe arrancar con:
+
+```bash
+uvicorn app.api:app --host 0.0.0.0 --port ${PORT:-8000}
+```
+
+Antes de publicar, verificar que el despliegue incluya únicamente el paquete del modelo autorizado y no copie `data/`, archivos `.parquet`, CSV hospitalarios, `.env` ni credenciales. La URL pública del frontend y de la API se añadirán aquí después de crear el despliegue en el proveedor elegido.
+
 - [AI.md](AI.md): contexto y reglas del proyecto para asistentes de IA.
 - [CONTRIBUTING.md](CONTRIBUTING.md): flujo de trabajo (ramas, commits, PR, notebooks).
 - [docs/decisiones.md](docs/decisiones.md): bitácora de decisiones técnicas (ADR).

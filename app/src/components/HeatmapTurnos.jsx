@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Flame } from 'lucide-react';
-
-const API_BASE_URL = 'http://localhost:8000';
+import { CircleHelp, Flame } from 'lucide-react';
+import { getTurnos } from '../lib/api';
 
 const FRANJAS_DEFAULT = ['Mañana (06-12h)', 'Tarde (12-18h)', 'Noche (18-24h)', 'Madrugada (00-06h)'];
 const DIAS_DEFAULT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -24,12 +23,9 @@ export function HeatmapTurnos({ servicio, isDark }) {
 
     async function cargarTurnos() {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/turnos/${servicio.id}`);
-        if (res.ok) {
-          const data = await res.json();
-          turnosCache[servicio.id] = data; // Guardado en el diccionario
-          if (!cancelado) setDatosTurnos(data);
-        }
+        const data = await getTurnos(servicio.id);
+        turnosCache[servicio.id] = data; // Guardado en el diccionario
+        if (!cancelado) setDatosTurnos(data);
       } catch {
         // Fallback defensivo silencioso
       }
@@ -67,37 +63,38 @@ export function HeatmapTurnos({ servicio, isDark }) {
     }
     if (nivel === 'verde') {
       return isDark
-        ? 'bg-[#12544F] text-[#C4E5CA] border-[#2A835F]'
-        : 'bg-[#EBF5EE] text-[#14472C] border-[#7CB592] font-semibold';
+        ? 'bg-[#0E3E5B] text-[#D8EFF7] border-[#1B8CC9]'
+        : 'bg-[#EBF5EE] text-[#14472C] border-[#71B5CC] font-semibold';
     }
     // Valle
     return isDark
-      ? 'bg-[#071D22] text-[#A8D4AE] border-[#1B524F]'
-      : 'bg-[#F4F9EA] text-[#332E47] border-[#D6E0C2] font-medium';
+      ? 'bg-[#071B2A] text-[#B9E2F0] border-[#19506B]'
+      : 'bg-[#F7FAFC] text-[#332E47] border-[#D1DEE7] font-medium';
   };
 
   return (
-    <section className="rounded-3xl p-6 border border-[#D6E0C2] dark:border-[#1B524F] bg-white dark:bg-[#12544F] transition-colors flex flex-col justify-between">
+    <section className="rounded-3xl p-6 border border-[#D1DEE7] dark:border-[#19506B] bg-white dark:bg-[#0E3E5B] transition-colors flex flex-col justify-between">
       <div>
         <header className="flex flex-wrap items-center justify-between gap-4 mb-4">
-          <div>
-            <h2 className="text-base font-bold font-heading flex items-center gap-2 text-[#2D283E] dark:text-[#C4E5CA]">
-              <Flame className="h-5 w-5 text-[#1E4D57] dark:text-[#A8E2AF]" />
+          <div className="flex items-start gap-2">
+            <h2 className="text-base font-bold font-heading flex items-center gap-2 text-[#102A43] dark:text-[#D8EFF7]">
+              <Flame className="h-5 w-5 text-[#14516B] dark:text-[#B9E2F0]" />
               Afluencia por Turno
             </h2>
-            <p className="text-xs font-semibold mt-0.5 text-[#2D283E] dark:text-[#C4E5CA]">
+            <p className="text-xs font-semibold mt-0.5 text-[#102A43] dark:text-[#D8EFF7]">
               Distribución de pacientes según día y guardia horaria
             </p>
+            <CircleHelp className="mt-1 h-4 w-4 shrink-0 text-[#14516B] dark:text-[#B9E2F0]" title="Distribución por día y franja; colores según p75 y p90" />
           </div>
           <div className="flex items-center gap-3 text-xs font-bold">
-            <span className="flex items-center gap-1.5 text-[#14472C] dark:text-[#C4E5CA]">
-              <span className="h-2.5 w-2.5 rounded-sm bg-[#7CB592] dark:bg-[#12544F] border border-[#14472C]" /> Normal
+            <span className="flex items-center gap-1.5 text-[#14472C] dark:text-[#D8EFF7]">
+              <span className="h-2.5 w-2.5 rounded-sm bg-[#A9D6B5] dark:bg-[#0E3E5B] border border-[#14516B]" /> Bajo p75
             </span>
             <span className="flex items-center gap-1.5 text-[#663E00] dark:text-[#FFD875]">
-              <span className="h-2.5 w-2.5 rounded-sm bg-[#E0BA42] dark:bg-[#D98A00]" /> Concurrido
+              <span className="h-2.5 w-2.5 rounded-sm bg-[#F0C86A] dark:bg-[#D98A00]" /> p75–p90
             </span>
             <span className="flex items-center gap-1.5 text-[#781827] dark:text-[#FFA8B6]">
-              <span className="h-2.5 w-2.5 rounded-sm bg-[#C5304C]" /> Pico Crítico
+              <span className="h-2.5 w-2.5 rounded-sm bg-[#D96B78]" /> Sobre p90
             </span>
           </div>
         </header>
@@ -106,13 +103,13 @@ export function HeatmapTurnos({ servicio, isDark }) {
           <table className="w-full text-xs font-mono-num text-center border-collapse">
             <thead>
               <tr>
-                <th className="p-2.5 text-left font-sans font-extrabold text-[#2D283E] dark:text-[#C4E5CA]">
+                <th className="p-2.5 text-left font-sans font-extrabold text-[#102A43] dark:text-[#D8EFF7]">
                   Guardia
                 </th>
                 {dias.map((dia) => (
                   <th
                     key={dia}
-                    className="p-2 font-heading font-extrabold text-[#2D283E] dark:text-[#C4E5CA]"
+                    className="p-2 font-heading font-extrabold text-[#102A43] dark:text-[#D8EFF7]"
                   >
                     {dia}
                   </th>
@@ -122,7 +119,7 @@ export function HeatmapTurnos({ servicio, isDark }) {
             <tbody>
               {matriz.map((fila, fIdx) => (
                 <tr key={franjas[fIdx] || fIdx}>
-                  <td className="p-2 text-left font-sans font-bold text-[#2D283E] dark:text-[#C4E5CA]">
+                  <td className="p-2 text-left font-sans font-bold text-[#102A43] dark:text-[#D8EFF7]">
                     {franjas[fIdx]}
                   </td>
                   {fila.map((celda, dIdx) => (
@@ -133,7 +130,7 @@ export function HeatmapTurnos({ servicio, isDark }) {
                         )}`}
                       >
                         {celda.estimado}
-                        <span className="block text-[10px] font-semibold text-[#2D283E] dark:text-[#C4E5CA]">pac.</span>
+                        <span className="block text-[10px] font-semibold text-[#102A43] dark:text-[#D8EFF7]">pac.</span>
                       </div>
                     </td>
                   ))}
@@ -144,9 +141,10 @@ export function HeatmapTurnos({ servicio, isDark }) {
         </div>
       </div>
 
-      <footer className="mt-4 pt-3 border-t border-[#D6E0C2] dark:border-[#1B524F] text-[11px] text-[#2D283E] dark:text-[#C4E5CA] leading-relaxed font-sans font-medium">
+      <footer className="mt-4 pt-3 border-t border-[#D1DEE7] dark:border-[#19506B] text-[11px] text-[#102A43] dark:text-[#D8EFF7] leading-relaxed font-sans font-medium">
         💡 <strong>Cómo leer esta tabla:</strong> Las celdas rojas marcan las horas con mayor congestión donde se recomienda reforzar la atención médica inicial.
       </footer>
     </section>
   );
 }
+

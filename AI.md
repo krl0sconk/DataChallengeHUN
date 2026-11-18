@@ -181,6 +181,10 @@ Funciones complementarias disponibles en `predict.py` para la API y la interfaz 
 - `obtener_llegadas_reales(fecha, servicio)`: histórico real de llegadas para validación/comparativa visual.
 - `obtener_turnos_reales(fecha, servicio)`: desglose real por turnos (Mañana, Tarde, Noche).
 - `obtener_ocupacion_real(fecha, servicio)`: censo horario y saturación por etapas del servicio.
+- `obtener_indicadores_cuellos_botella()`: duraciones y umbrales de censo por etapa hospitalaria.
+- `obtener_efectos_eventos(servicio)`: impacto porcentual y en visitas de festivos, Carnaval y temporadas.
+- `obtener_pronostico_largo_plazo(servicio, fecha_inicio, fecha_fin)`: proyección a 4 meses sin rezagos cortos.
+- Endpoint `/api/chat`: asistente asistencial seguro basado en estado de pantalla y salidas agregadas (documentado en `docs/contrato_modelo_web.md`).
 
 Cualquier cambio en esta estructura se acuerda entre Krlos y Daniel y se actualiza aquí.
 

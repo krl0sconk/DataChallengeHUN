@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, CircleHelp } from 'lucide-react';
 import {
   Bar,
   BarChart,
@@ -7,11 +7,11 @@ import {
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
+  LabelList,
   XAxis,
   YAxis,
 } from 'recharts';
-
-const API_BASE_URL = 'http://localhost:8000';
+import { getOcupacion } from '../lib/api';
 
 // Diccionario en memoria para las métricas de ocupación (se descarga una sola vez)
 let ocupacionCache = null;
@@ -31,12 +31,9 @@ export function ComparadorServicios({ servicios, servicioActivoId, onSeleccionar
 
     async function cargarOcupacion() {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/ocupacion`);
-        if (res.ok) {
-          const data = await res.json();
-          ocupacionCache = data; // Guardado en el diccionario
-          if (!cancelado) setDatosBackend(data);
-        }
+        const data = await getOcupacion();
+        ocupacionCache = data; // Guardado en el diccionario
+        if (!cancelado) setDatosBackend(data);
       } catch {
         // Fallback local defensivo
       }
@@ -51,136 +48,159 @@ export function ComparadorServicios({ servicios, servicioActivoId, onSeleccionar
     id: s.id,
     nombreCorto: s.nombre.replace('Tratamiento Urgencias', 'Tratamiento Urg.'),
     nombreCompleto: s.nombre,
-    ocupacion: Math.round((s.mediaDiaria / s.p90) * 100),
-    mediaDiaria: s.mediaDiaria,
-    p75: s.p75,
-    p90: s.p90,
-    alertaPct: Math.round((s.p75 / s.p90) * 100),
-  }))).map((item) => ({
-    ...item,
-    esActivo: item.id === servicioActivoId,
-  }));
+    mediaDiaria: s.mediaDiaria ?? 0,
+    p75: s.p75 ?? 0,
+    p90: s.p90 ?? 0,
+  }))).map((item) => {
+    const demanda = item.prediccion ?? item.mediaDiaria ?? 0;
+    const p75 = item.p75 || 1;
+    const p90 = item.p90 || 1;
+    const pctAlerta = Math.round((demanda / p75) * 100);
+    const nivel = demanda >= p90 ? 'rojo' : demanda >= p75 ? 'amarillo' : 'verde';
+    const estado = nivel === 'rojo' ? 'SATURACIÓN' : nivel === 'amarillo' ? 'ALERTA' : 'NORMAL';
+    const badgeClass = nivel === 'rojo'
+      ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+      : nivel === 'amarillo'
+        ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300'
+        : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300';
+
+    return {
+      ...item,
+      demanda,
+      pctAlerta,
+      nivel,
+      estado,
+      badgeClass,
+      etiquetaBarra: `${demanda} pac. / Alerta: ${item.p75 ?? 0}`,
+      esActivo: item.id === servicioActivoId,
+    };
+  });
 
   return (
-    <section className="rounded-3xl p-6 border border-[#D6E0C2] dark:border-[#1B524F] bg-white dark:bg-[#12544F] transition-colors flex flex-col justify-between">
+    <section className="rounded-xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur-sm transition-all dark:border-slate-800/80 dark:bg-slate-900/80 flex flex-col justify-between">
       <div>
         <header className="flex flex-wrap items-center justify-between gap-4 mb-4">
-          <div>
-            <h2 className="text-base font-bold font-heading flex items-center gap-2 text-[#2D283E] dark:text-[#C4E5CA]">
-              <BarChart3 className="h-5 w-5 text-[#1E4D57] dark:text-[#A8E2AF]" />
-              Ocupación por Servicio
+          <div className="flex items-start gap-2">
+            <h2 className="text-base font-semibold tracking-tight flex items-center gap-2 text-slate-900 dark:text-white">
+              <BarChart3 className="h-5 w-5 text-sky-600 dark:text-sky-400" />
+              Presión Asistencial por Servicio
             </h2>
-            <p className="text-xs font-semibold mt-0.5 text-[#2D283E] dark:text-[#C4E5CA]">
-              Presión hospitalaria en cada área frente a su límite máximo (p90)
-            </p>
+            <CircleHelp className="mt-1 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" title="Afluencia proyectada frente a umbrales institucionales (p75 y p90)" />
           </div>
-          <div className="flex items-center gap-4 text-xs font-bold">
-            <span className="flex items-center gap-1.5 text-[#1E4D57] dark:text-[#C4E5CA]">
-              <span className="h-2.5 w-2.5 rounded-sm bg-[#1E4D57] dark:bg-[#8BBB92]" /> Nivel de carga
+          <div className="flex items-center gap-4 text-xs font-medium">
+            <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+              <span className="h-2.5 w-2.5 rounded-sm bg-emerald-500" /> Normal (&lt; p75)
             </span>
-            <span className="flex items-center gap-1.5 text-[#8C5800] dark:text-[#FFD875]">
-              <span className="h-0.5 w-3 bg-[#8C5800] dark:bg-[#FFD875] inline-block border-t border-dashed" /> Alerta (p75)
+            <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+              <span className="h-0.5 w-3 bg-amber-500 inline-block" /> Alerta (100% p75)
             </span>
           </div>
         </header>
 
-        {/* Gráfico horizontal intuitivo de barras */}
-        <div className="h-48 w-full font-mono-num text-xs">
+        {/* Gráfico horizontal de presión frente a umbrales institucionales */}
+        <div className="h-60 w-full font-sans tabular-nums text-xs">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               layout="vertical"
               data={lista}
-              margin={{ top: 5, right: 35, left: 10, bottom: 5 }}
+              margin={{ top: 14, right: 120, left: 10, bottom: 5 }}
             >
               <XAxis
                 type="number"
-                domain={[0, 100]}
-                stroke={isDark ? '#C4E5CA' : '#2D283E'}
+                domain={[0, (dataMax) => Math.max(120, Math.ceil(dataMax * 1.15))]}
+                stroke={isDark ? '#94a3b8' : '#64748b'}
                 fontSize={11}
+                tickLine={false}
+                axisLine={false}
                 tickFormatter={(val) => `${val}%`}
               />
               <YAxis
                 dataKey="nombreCorto"
                 type="category"
-                stroke={isDark ? '#C4E5CA' : '#2D283E'}
+                stroke={isDark ? '#e2e8f0' : '#0f172a'}
                 fontSize={11}
+                tickLine={false}
+                axisLine={false}
                 width={120}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: isDark ? '#071D22' : '#FFFFFF',
-                  borderColor: isDark ? '#206E4E' : '#7CB592',
-                  borderRadius: '12px',
-                  color: isDark ? '#C4E5CA' : '#2D283E',
+                  backgroundColor: isDark ? '#0f172a' : '#FFFFFF',
+                  borderColor: isDark ? '#1e293b' : '#e2e8f0',
+                  borderRadius: '10px',
+                  color: isDark ? '#f8fafc' : '#0f172a',
                   fontSize: '12px',
-                  fontFamily: 'var(--font-mono)',
                 }}
                 formatter={(val, name, item) => [
-                  `${val}% (${item.payload.mediaDiaria} pac. / límite p90: ${item.payload.p90})`,
-                  'Ocupación',
+                  `${item.payload.demanda} pac. (${val}% del umbral p75: ${item.payload.p75} · p90: ${item.payload.p90})`,
+                  'Afluencia proyectada frente a umbrales institucionales',
                 ]}
               />
               <ReferenceLine
-                x={85}
-                stroke="#B26B00"
-                strokeDasharray="4 4"
+                x={100}
+                stroke="#f59e0b"
+                strokeWidth={1.5}
                 label={{
-                  value: 'Umbral Alerta (~85%)',
-                  fill: isDark ? '#FFD875' : '#8C5800',
+                  value: 'Umbral Alerta (p75)',
+                  fill: isDark ? '#fbbf24' : '#d97706',
                   fontSize: 10,
                   position: 'top',
-                  fontWeight: 'bold',
+                  fontWeight: 600,
                 }}
               />
               <Bar
-                dataKey="ocupacion"
-                radius={[0, 8, 8, 0]}
+                dataKey="pctAlerta"
+                barSize={22}
+                radius={[0, 4, 4, 0]}
                 className="cursor-pointer"
                 onClick={(entry) => onSeleccionarServicio(entry.id)}
               >
                 {lista.map((s) => {
-                  let barColor = s.esActivo
-                    ? isDark ? '#8BBB92' : '#3B7D8C'
-                    : isDark ? '#2A835F' : '#9FCBAD';
-                  if (s.ocupacion >= 90) barColor = '#C5304C';
+                  const barColor = s.nivel === 'rojo'
+                    ? '#e11d48'
+                    : s.nivel === 'amarillo'
+                      ? '#f59e0b'
+                      : '#10b981';
                   return <Cell key={s.id} fill={barColor} />;
                 })}
+                <LabelList dataKey="etiquetaBarra" position="right" fill={isDark ? '#e2e8f0' : '#0f172a'} fontSize={11} fontWeight={600} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         {/* Botones interactivos para cambiar de servicio con un clic */}
-        <div className="grid grid-cols-3 gap-2.5 mt-3 pt-3 border-t border-[#D6E0C2] dark:border-[#1B524F]">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-3 pt-3 border-t border-slate-200/80 dark:border-slate-800">
           {lista.map((s) => (
             <button
               key={s.id}
               onClick={() => onSeleccionarServicio(s.id)}
-              className={`p-2.5 rounded-2xl text-left border transition-all cursor-pointer ${
+              className={`p-3 rounded-xl text-left border transition-all cursor-pointer ${
                 s.esActivo
-                  ? 'bg-[#F1F7D4] dark:bg-[#206E4E]/40 border-[#206E4E] shadow-2xs ring-1 ring-[#206E4E]'
-                  : 'bg-[#FAFCF6] dark:bg-[#071D22] border-[#D6E0C2] dark:border-[#1B524F] hover:border-[#1E4D57]'
+                  ? 'ring-1 ring-sky-500 bg-sky-50/50 border-sky-300 dark:bg-sky-950/30 dark:border-sky-800'
+                  : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
               }`}
             >
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-xs truncate text-[#2D283E] dark:text-[#C4E5CA]">
+              <div className="flex justify-between items-center gap-1.5">
+                <span className="font-semibold text-xs truncate text-slate-900 dark:text-white">
                   {s.nombreCorto}
                 </span>
-                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-[#E3ECCB] dark:bg-[#071D22] text-[#1E4D57] dark:text-[#A8E2AF]">
-                  {s.ocupacion}%
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${s.badgeClass}`}>
+                  {s.estado}
                 </span>
               </div>
-              <p className="text-[10px] font-semibold text-[#2D283E] dark:text-[#C4E5CA] mt-1">
-                {s.mediaDiaria} pac. promedio
+              <p className="text-[11px] font-medium text-slate-600 dark:text-slate-300 mt-1.5 font-mono">
+                {s.mediaDiaria} pac. promedio (Umbral: {s.p75})
               </p>
             </button>
           ))}
         </div>
       </div>
 
-      <footer className="mt-3 pt-3 border-t border-[#D6E0C2] dark:border-[#1B524F] text-[11px] text-[#2D283E] dark:text-[#C4E5CA] leading-relaxed font-sans font-medium">
-        💡 <strong>Haz clic en cualquier servicio</strong> para seleccionarlo e inspeccionar su pronóstico detallado y simulaciones.
+      <footer className="mt-3 border-t border-slate-200/80 pt-3 text-xs font-medium text-slate-500 dark:border-slate-800 dark:text-slate-400">
+        Afluencia proyectada frente a umbrales institucionales. Selecciona un servicio para ver su pronóstico.
       </footer>
     </section>
   );
 }
+
