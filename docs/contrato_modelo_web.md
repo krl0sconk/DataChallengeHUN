@@ -86,3 +86,36 @@ Devuelve siempre un diccionario con:
 - `GET /api/turnos/{servicio}` — Matriz 4×7 de afluencia por franja horaria y día de la semana.
 - `GET /api/ocupacion` — Presión hospitalaria actual por servicio.
 - `GET /api/cuellos-botella` — Duraciones (`p50`, `p90`, `p99`) y umbrales de censo por etapa de `visit_detail`.
+
+### 3.6 Asistente Clínico Operativo (`/api/chat`)
+
+- `POST /api/chat`
+- **Entrada:**
+  ```json
+  {
+    "mensaje": "¿Por qué hay alerta roja en urgencias el lunes?",
+    "estado_pantalla": {
+      "servicio": "urgencias",
+      "fecha": "2026-07-10",
+      "prediccion": 462,
+      "intervalo": [342, 592],
+      "alerta": "rojo",
+      "factores": [
+        { "nombre": "Festivo", "aporte": 8.0 }
+      ]
+    }
+  }
+  ```
+- **Salida:**
+  ```json
+  {
+    "respuesta": "Texto conciso (~150 palabras) con análisis asistencial y recomendación operativa.",
+    "herramientas_usadas": ["predecir", "efecto_promedio_evento"],
+    "proveedor": "claude-haiku-5-5 | fallback"
+  }
+  ```
+- **Garantías de seguridad y confidencialidad:**
+  - El chatbot **nunca accede a registros individuales ni datos de pacientes**; solo consume funciones de agregados y salidas del modelo (`predecir`, `predecir_rango`, `simular_escenario`, `efecto_promedio_evento`, `indicadores_cuellos_botella`).
+  - Rate limit de 20 consultas/minuto por cliente y tiempo de espera máximo de 12 segundos.
+  - Modo de contingencia (*fallback*) determinista offline si no hay conexión a la API externa.
+
