@@ -81,6 +81,7 @@ models/*
 *.pkl
 *.pickle
 *.joblib
+!models/modelos_web_bundle.joblib
 *.h5
 *.onnx
 
