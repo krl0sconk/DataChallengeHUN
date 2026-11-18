@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CircleHelp } from 'lucide-react';
-import { getCachedJson } from '../lib/apiCache';
-import { apiUrl } from '../lib/api';
+import { getEfectosEventos } from '../lib/api';
 
 export function EventEffectsChart({ servicio }) {
   const [eventos, setEventos] = useState([]);
@@ -10,7 +9,7 @@ export function EventEffectsChart({ servicio }) {
   useEffect(() => {
     let activo = true;
     setEstado('cargando');
-    getCachedJson(apiUrl(`/api/efectos-eventos/${servicio.id}`))
+    getEfectosEventos(servicio.id)
       .then((data) => { if (activo) { setEventos(Array.isArray(data.eventos) ? data.eventos : []); setEstado('ok'); } })
       .catch(() => activo && setEstado('error'));
     return () => { activo = false; };

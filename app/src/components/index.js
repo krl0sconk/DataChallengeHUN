@@ -6,6 +6,7 @@ export { Chatbot } from './Chatbot';
 export { LongTermForecast } from './LongTermForecast';
 export { Metodologia } from './Metodologia';
 export { HeatmapTurnos } from './HeatmapTurnos';
+export { BottleneckGauge } from './BottleneckGauge';
 export { ComparadorServicios } from './ComparadorServicios';
 export { HallazgosCards } from './HallazgosCards';
 export { RadarPresionServicios } from './RadarPresionServicios';

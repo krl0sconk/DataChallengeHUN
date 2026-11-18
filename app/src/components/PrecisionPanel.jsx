@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Activity, CalendarDays, CircleHelp, ShieldCheck, Target } from 'lucide-react';
 import { CartesianGrid, Legend, Line, LineChart, ReferenceArea, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { getCachedJson } from '../lib/apiCache';
-import { apiUrl } from '../lib/api';
+import { getComparacion } from '../lib/api';
 
 function shortDate(value) {
   return new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'short' }).format(new Date(`${value}T12:00:00`)).replace('.', '');
@@ -21,7 +20,7 @@ export function PrecisionPanel({ servicio }) {
     if (rango.inicio) params.set('fecha_inicio', rango.inicio);
     if (rango.fin) params.set('fecha_fin', rango.fin);
     const query = params.toString();
-    getCachedJson(apiUrl(`/api/comparacion/${servicio.id}${query ? `?${query}` : ''}`))
+    getComparacion(servicio.id, query)
       .then((data) => {
         if (!activo) return;
         setResultado(data);

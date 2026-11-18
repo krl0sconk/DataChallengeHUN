@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CircleHelp, Flame } from 'lucide-react';
-import { apiUrl } from '../lib/api';
+import { getTurnos } from '../lib/api';
 
 const FRANJAS_DEFAULT = ['Mañana (06-12h)', 'Tarde (12-18h)', 'Noche (18-24h)', 'Madrugada (00-06h)'];
 const DIAS_DEFAULT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -23,12 +23,9 @@ export function HeatmapTurnos({ servicio, isDark }) {
 
     async function cargarTurnos() {
       try {
-        const res = await fetch(apiUrl(`/api/turnos/${servicio.id}`));
-        if (res.ok) {
-          const data = await res.json();
-          turnosCache[servicio.id] = data; // Guardado en el diccionario
-          if (!cancelado) setDatosTurnos(data);
-        }
+        const data = await getTurnos(servicio.id);
+        turnosCache[servicio.id] = data; // Guardado en el diccionario
+        if (!cancelado) setDatosTurnos(data);
       } catch {
         // Fallback defensivo silencioso
       }

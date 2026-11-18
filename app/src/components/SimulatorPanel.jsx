@@ -21,7 +21,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { apiUrl } from '../lib/api';
+import { getEfectosEventos } from '../lib/api';
 
 export function SimulatorPanel({
   servicio,
@@ -40,11 +40,7 @@ export function SimulatorPanel({
   useEffect(() => {
     let activo = true;
     setCargandoEventos(true);
-    fetch(apiUrl(`/api/efectos-eventos/${servicio.id}`))
-      .then((respuesta) => {
-        if (!respuesta.ok) throw new Error('Eventos no disponibles');
-        return respuesta.json();
-      })
+    getEfectosEventos(servicio.id)
       .then((data) => {
         if (!activo) return;
         const lista = Array.isArray(data.eventos) ? data.eventos : [];

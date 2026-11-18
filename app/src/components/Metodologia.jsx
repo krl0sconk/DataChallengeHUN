@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getCachedJson } from '../lib/apiCache';
-import { apiUrl } from '../lib/api';
+import { getParametros } from '../lib/api';
 import {
   Activity,
   AlertCircle,
@@ -21,7 +20,7 @@ export function Metodologia() {
   const [parametros, setParametros] = useState(null);
 
   useEffect(() => {
-    getCachedJson(apiUrl('/api/parametros')).then(setParametros).catch(() => setParametros(null));
+    getParametros().then(setParametros).catch(() => setParametros(null));
   }, []);
 
   return (

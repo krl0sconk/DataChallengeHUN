@@ -13,8 +13,7 @@ import {
   YAxis,
 } from 'recharts';
 import { CalendarRange, CircleHelp } from 'lucide-react';
-import { getCachedJson } from '../lib/apiCache';
-import { apiUrl } from '../lib/api';
+import { getLargoPlazo } from '../lib/api';
 
 function formatWeek(date) {
   return new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'short' })
@@ -31,7 +30,7 @@ export function LongTermForecast({ servicio }) {
   useEffect(() => {
     let activo = true;
     setLoading(true);
-    getCachedJson(apiUrl(`/api/largo-plazo/${servicio.id}?fecha_inicio=2026-08-01&fecha_fin=2026-11-30`))
+    getLargoPlazo(servicio.id, { fecha_inicio: '2026-08-01', fecha_fin: '2026-11-30' })
       .then((result) => {
         if (!activo) return;
         const serieCompleta = result.serie || [];

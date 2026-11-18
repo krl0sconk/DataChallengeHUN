@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { getCachedJson } from '../lib/apiCache';
-import { apiUrl } from '../lib/api';
+import { getCuellosBotella } from '../lib/api';
 
 export function RadarPresionServicios() {
   const [etapas, setEtapas] = useState([]);
@@ -10,7 +9,7 @@ export function RadarPresionServicios() {
 
   useEffect(() => {
     let activo = true;
-    getCachedJson(apiUrl('/api/cuellos-botella'))
+    getCuellosBotella()
       .then((data) => { if (activo) { setEtapas(Array.isArray(data.etapas) ? data.etapas : []); setError(false); } })
       .catch(() => activo && setError(true))
       .finally(() => activo && setCargando(false));

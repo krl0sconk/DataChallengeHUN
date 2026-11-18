@@ -6,17 +6,36 @@ import {
   limitarFechaBase,
   SERVICIOS,
 } from '../constants/servicios';
-import { apiUrl } from '../lib/api';
+import { getServicios, predecirRango } from '../lib/api';
 
 // Diccionario en memoria para respuestas de predicción canónica (0ms)
 const prediccionCache = new Map();
 
 export function useDemandaSimulator(servicioDefault = 'urgencias') {
   const [servicioSel, setServicioSel] = useState(servicioDefault);
+  const [serviciosApi, setServiciosApi] = useState({});
   const [apiData, setApiData] = useState(null);
   const [isApiConnected, setIsApiConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
+
+  // Sincronización dinámica de servicios, medias y umbrales p75/p90 desde Python
+  useEffect(() => {
+    let activo = true;
+    getServicios()
+      .then((lista) => {
+        if (!activo || !Array.isArray(lista)) return;
+        const mapa = {};
+        lista.forEach((s) => {
+          mapa[s.id] = s;
+        });
+        setServiciosApi(mapa);
+      })
+      .catch(() => {
+        // Si la API aún no responde, se reintenta con el flujo principal
+      });
+    return () => { activo = false; };
+  }, []);
 
   // La base termina el 2026-07-16: no se usa la fecha de hoy (DEC-002).
   const [fechaSimulacion, setFechaSimulacionCruda] = useState(FECHA_BASE_POR_DEFECTO);
@@ -24,7 +43,14 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
     if (fecha) setFechaSimulacionCruda(limitarFechaBase(fecha));
   };
 
-  const servicio = SERVICIOS[servicioSel] ?? SERVICIOS.urgencias;
+  const servicioBase = SERVICIOS[servicioSel] ?? SERVICIOS.urgencias;
+  const servicioRemoto = serviciosApi[servicioBase.id];
+  const servicio = {
+    ...servicioBase,
+    mediaDiaria: servicioRemoto?.mediaDiaria ?? 0,
+    p75: servicioRemoto?.p75 ?? 0,
+    p90: servicioRemoto?.p90 ?? 0,
+  };
 
   const consultarApi = useCallback(async (forzar = false) => {
     const cacheKey = `${servicioSel}_${fechaSimulacion}`;
@@ -37,23 +63,14 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
       return;
     }
 
+    setApiData(null);
     setIsLoading(true);
     try {
-      const respuesta = await fetch(apiUrl('/api/predecir-rango'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fecha_inicio: fechaSimulacion,
-          dias: 14,
-          servicio: servicioSel,
-        }),
+      const data = await predecirRango({
+        fecha_inicio: fechaSimulacion,
+        dias: 14,
+        servicio: servicioSel,
       });
-
-      if (!respuesta.ok) {
-        throw new Error(`HTTP ${respuesta.status}`);
-      }
-
-      const data = await respuesta.json();
       prediccionCache.set(cacheKey, data);
       setApiData(data);
       setIsApiConnected(true);
@@ -91,12 +108,8 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
       if (prediccionCache.has(cacheKey)) return;
       window.setTimeout(async () => {
         try {
-          const respuesta = await fetch(apiUrl('/api/predecir-rango'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fecha_inicio: fechaSimulacion, dias: 14, servicio: id }),
-          });
-          if (respuesta.ok) prediccionCache.set(cacheKey, await respuesta.json());
+          const data = await predecirRango({ fecha_inicio: fechaSimulacion, dias: 14, servicio: id });
+          prediccionCache.set(cacheKey, data);
         } catch {
           // La petición principal sigue siendo la fuente de verdad si falla la precarga.
         }
@@ -110,8 +123,9 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
     const [y, m, d] = fechaSimulacion.split('-').map(Number);
     const baseFecha = new Date(y, m - 1, d);
 
-    // Si la API está conectada, toda la proyección proviene exclusivamente de Python
-    if (isApiConnected && apiData) {
+    // Si la API está conectada, no está cargando y el servicio coincide, usar datos de Python
+    const servicioCoincide = !apiData?.servicio || apiData.servicio.toLowerCase() === servicioSel.toLowerCase();
+    if (isApiConnected && !isLoading && apiData && servicioCoincide) {
       const alertaNivel = apiData.alerta;
       const timeline = (apiData.serie || []).map((punto, i) => {
         const fecha = new Date(baseFecha);

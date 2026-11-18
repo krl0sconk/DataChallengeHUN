@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  BottleneckGauge,
   ComparadorServicios,
   Chatbot,
   DemandChart,
@@ -20,13 +21,23 @@ import {
   SERVICIOS,
 } from './constants/servicios';
 import { useDemandaSimulator } from './hooks/useDemandaSimulator';
+import { getCuellosBotella } from './lib/api';
 import { AlertCircle, CalendarDays } from 'lucide-react';
 
 export default function App() {
   const [tabActiva, setTabActiva] = useState('hoy');
+  const [cuellosData, setCuellosData] = useState(null);
   const [isDark, setIsDark] = useState(() => {
     return localStorage.getItem('hun-theme') === 'dark';
   });
+
+  useEffect(() => {
+    let activo = true;
+    getCuellosBotella()
+      .then((data) => { if (activo) setCuellosData(data); })
+      .catch(() => { if (activo) setCuellosData(null); });
+    return () => { activo = false; };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('hun-theme', isDark ? 'dark' : 'light');
@@ -118,6 +129,7 @@ export default function App() {
               p90={proyeccion.max}
               servicio={servicio}
               isApiConnected={isApiConnected}
+              isLoading={isLoading}
             />
             <DemandChart
               serie7d={proyeccion.serie7d}
@@ -129,6 +141,7 @@ export default function App() {
               minFecha={FECHA_INICIO_DATOS}
               maxFecha={FECHA_BASE_MAXIMA}
               isApiConnected={isApiConnected}
+              isLoading={isLoading}
             />
             <LongTermForecast servicio={servicio} />
             <ComparadorServicios
@@ -144,6 +157,29 @@ export default function App() {
 
         {tabActiva === 'atascos' && (
           <section className="space-y-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <BottleneckGauge
+                value={proyeccion.prediccion ?? 0}
+                p75={servicio.p75}
+                p90={servicio.p90}
+                unidad="pacientes/día"
+                label={`Demanda en ${servicio.nombre}`}
+              />
+              <BottleneckGauge
+                value={cuellosData?.etapas?.[0]?.p90_horas ?? 0}
+                p75={cuellosData?.etapas?.[0]?.umbral_p75 ?? 12}
+                p90={cuellosData?.etapas?.[0]?.umbral_p90 ?? 24}
+                unidad="horas (p90)"
+                label={`Demora: ${cuellosData?.etapas?.[0]?.etapa || 'Etapa Crítica'}`}
+              />
+              <BottleneckGauge
+                value={cuellosData?.etapas?.[0]?.mediana_horas ?? 0}
+                p75={Math.round((cuellosData?.etapas?.[0]?.umbral_p75 || 20) * 0.5)}
+                p90={cuellosData?.etapas?.[0]?.umbral_p75 ?? 20}
+                unidad="horas (mediana)"
+                label={`Tiempo Típico: ${cuellosData?.etapas?.[0]?.etapa || 'Espera Piso'}`}
+              />
+            </div>
             <HeatmapTurnos servicio={servicio} isDark={isDark} />
             <RadarPresionServicios servicios={SERVICIOS} servicioActivoId={servicioSel} isDark={isDark} />
           </section>
