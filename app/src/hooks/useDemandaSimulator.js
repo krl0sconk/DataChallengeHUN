@@ -6,8 +6,7 @@ import {
   limitarFechaBase,
   SERVICIOS,
 } from '../constants/servicios';
-
-const API_BASE_URL = 'http://localhost:8000';
+import { apiUrl } from '../lib/api';
 
 // Diccionario en memoria para respuestas de predicción canónica (0ms)
 const prediccionCache = new Map();
@@ -40,7 +39,7 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
 
     setIsLoading(true);
     try {
-      const respuesta = await fetch(`${API_BASE_URL}/api/predecir-rango`, {
+      const respuesta = await fetch(apiUrl('/api/predecir-rango'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -83,6 +82,28 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
     return () => clearInterval(intervalo);
   }, [isApiConnected, consultarApi]);
 
+  // Calienta la caché para que cambiar de servicio no obligue a esperar el cálculo
+  // pesado del modelo si el usuario visita otra pestaña del mismo horizonte.
+  useEffect(() => {
+    if (!isApiConnected || !apiData) return;
+    Object.keys(SERVICIOS).filter((id) => id !== servicioSel).forEach((id, index) => {
+      const cacheKey = `${id}_${fechaSimulacion}`;
+      if (prediccionCache.has(cacheKey)) return;
+      window.setTimeout(async () => {
+        try {
+          const respuesta = await fetch(apiUrl('/api/predecir-rango'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fecha_inicio: fechaSimulacion, dias: 14, servicio: id }),
+          });
+          if (respuesta.ok) prediccionCache.set(cacheKey, await respuesta.json());
+        } catch {
+          // La petición principal sigue siendo la fuente de verdad si falla la precarga.
+        }
+      }, (index + 1) * 150);
+    });
+  }, [isApiConnected, apiData, fechaSimulacion, servicioSel]);
+
   const proyeccion = useMemo(() => {
     const { p75, p90 } = servicio;
 
@@ -102,7 +123,6 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
           simulado: punto.simulado ?? punto.prediccion,
           habitual: punto.habitual ?? punto.prediccion,
           prediccion: punto.prediccion,
-          real: punto.real ?? null,
           min: punto.min,
           max: punto.max,
           factores: punto.factores || [],
@@ -113,7 +133,6 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
 
       return {
         prediccion: apiData.prediccion,
-        real: apiData.real ?? null,
         min: apiData.min,
         max: apiData.max,
         deltaTotal: apiData.delta_total ?? 0,
@@ -129,7 +148,6 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
     // Sin conexión: no se inventan cálculos en frontend
     return {
       prediccion: 0,
-      real: null,
       min: 0,
       max: 0,
       deltaTotal: 0,
@@ -161,3 +179,4 @@ export function useDemandaSimulator(servicioDefault = 'urgencias') {
     reintentarConexion: () => consultarApi(true),
   };
 }
+

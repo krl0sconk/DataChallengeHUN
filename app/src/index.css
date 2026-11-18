@@ -4,39 +4,61 @@
 
 @layer base {
   :root {
+    color-scheme: light;
     --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    --font-heading: 'Outfit', system-ui, -apple-system, sans-serif;
+    --font-heading: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
 
-    /* Paleta Mineral Salud Cozy - Claro */
-    --color-slate-violet: #4A4466;
-    --color-teal: #6EADBC;
-    --color-sage: #9FCBAD;
-    --color-pistachio: #F1F7D4;
-    --color-surface: #FAFCF6;
-    --color-card: #FFFFFF;
-    --color-subtle: #EDF3DC;
+    /* Identidad HUN: azul institucional + negro del logotipo */
+    --hun-blue: #1B8CC9;
+    --hun-blue-dark: #14516B;
+    --hun-blue-light: #E7F4FA;
+    --hun-ink: #1B1B19;
+    --hun-white: #ffffff;
 
-    /* Paleta Modo Oscuro Cozy - #092328 / #12544F / #2A835F / #8BBB92 */
-    --dark-bg: #092328;       /* Fondo oscuro base ceniza */
-    --dark-card: #12544F;     /* Superficie tarjetas y barras */
-    --dark-accent: #2A835F;   /* Acento cálido tierra / moca suave */
-    --dark-text: #8BBB92;     /* Texto claro menta hielo WCAG AAA */
-    --dark-border: #0E3B39;   /* Bordes definidos con contraste */
+    /* Paleta de producto - Claro */
+    --color-slate-violet: #102A43;
+    --color-teal: #2C7A9B;
+    --color-sage: #8CC5D9;
+    --color-pistachio: #E7F4FA;
+    --color-surface: #F7FAFC;
+    --color-card: #FFFFFF;
+    --color-subtle: #E8F0F5;
+
+    /* Paleta de producto - Oscuro; el azul HUN se aclara para conservar contraste */
+    --dark-bg: #071B2A;       /* Fondo oscuro base ceniza */
+    --dark-card: #0E3E5B;     /* Superficie tarjetas y barras */
+    --dark-accent: #1B8CC9;   /* Acento cálido tierra / moca suave */
+    --dark-text: #B9E2F0;     /* Texto claro menta hielo WCAG AAA */
+    --dark-border: #0B3045;   /* Bordes definidos con contraste */
+  }
+
+  /* Tokens de marca disponibles para componentes Tailwind/CSS */
+  :root {
+    --color-brand: var(--hun-blue);
+    --color-brand-dark: var(--hun-blue-dark);
+    --color-brand-soft: var(--hun-blue-light);
+    --color-brand-ink: var(--hun-ink);
   }
 
   body {
     margin: 0;
     font-family: var(--font-sans);
-    background-color: #FAFCF6;
-    color: #4A4466;
+    background-color: #F7FAFC;
+    color: #102A43;
     transition: background-color 0.2s ease, color 0.2s ease;
     -webkit-font-smoothing: antialiased;
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
   }
 
   .dark body {
-    background-color: #092328;
-    color: #8BBB92;
+    background-color: #071B2A;
+    color: #B9E2F0;
+  }
+
+  .dark {
+    color-scheme: dark;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -45,10 +67,356 @@
   }
 }
 
+/* Editorial + brutalismo controlado: la estructura la hacen la tinta y las líneas. */
+.rounded-3xl {
+  border-radius: 0.75rem;
+}
+
+.rounded-2xl {
+  border-radius: 0.5rem;
+}
+
+.shadow-xs, .shadow-2xs {
+  box-shadow: 3px 3px 0 rgba(16, 42, 67, 0.12);
+}
+
+.hun-main > section {
+  border-width: 1px;
+  border-color: #B7C8D5;
+}
+
+.hun-main .editorial-insights {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.hun-main > .space-y-6 {
+  gap: 1.75rem;
+}
+
+.hun-main > .space-y-6 > section {
+  border-color: transparent;
+}
+
+.hun-main > section:first-child {
+  padding-block: 0.25rem 1rem;
+  border: 0;
+}
+
+.hun-hero > div:last-child {
+  padding-top: 0.35rem;
+  white-space: nowrap;
+}
+
+.hun-hero {
+  min-height: 0 !important;
+  padding: 1.25rem 1.5rem 1.5rem !important;
+}
+
+.hun-hero h1 {
+  line-height: 1.05;
+}
+
+.hun-hero p {
+  margin-bottom: 0;
+}
+
+.hun-main .rounded-3xl {
+  padding: clamp(1rem, 1.2vw, 1.5rem);
+}
+
+.hun-main .demand-chart {
+  padding: clamp(1.5rem, 2vw, 2rem) !important;
+}
+
+.hun-main .rounded-2xl {
+  padding: clamp(0.75rem, 0.9vw, 1rem);
+}
+
+.hun-main .rounded-3xl h2 {
+  line-height: 1.2;
+}
+
+h1, h2, h3 {
+  letter-spacing: -0.025em;
+}
+
+/* Los datos operativos permanecen sans; la serif queda para titulares y nombres de sección. */
+.font-mono-num, input, button, nav, label, table {
+  font-family: var(--font-sans);
+}
+
+.font-mono-num {
+  font-family: var(--font-mono) !important;
+}
+
+.hun-main h1, .hun-main h2 {
+  font-family: var(--font-heading);
+}
+
 .font-heading {
   font-family: var(--font-heading);
 }
 
 .font-mono-num {
   font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
+
+/* Firma visual HUN: una franja institucional firme y controles integrados, no una plantilla SaaS. */
+.hun-topbar {
+  box-shadow: 0 10px 28px rgba(7, 27, 42, 0.18);
+}
+
+  .hun-logo {
+  opacity: 0.92;
+}
+
+.hun-topbar h1 {
+  color: #FFFFFF !important;
+  letter-spacing: -0.025em;
+}
+
+.hun-topbar p {
+  color: #D8EFF7 !important;
+}
+
+.hun-topbar nav {
+  border-color: #19506B !important;
+  background: #0B3045 !important;
+}
+
+.hun-topbar nav button {
+  color: #D8EFF7;
+}
+
+.hun-topbar nav button:hover {
+  background: #14516B !important;
+}
+
+.hun-topbar nav button[class*="bg-[#102A43"] {
+  background: #1B8CC9 !important;
+  color: #FFFFFF !important;
+}
+
+.hun-main {
+  position: relative;
+}
+
+.hun-main::before {
+  content: '';
+  position: absolute;
+  inset: 0 1.5rem auto;
+  height: 1px;
+  background: #8CC5D9;
+  opacity: 0.65;
+}
+
+::selection {
+  background: #B9E2F0;
+  color: #102A43;
+}
+
+*:focus-visible {
+  outline: 3px solid #1B8CC9;
+  outline-offset: 3px;
+}
+
+button, a, input, select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, input, select {
+  font: inherit;
+}
+
+button {
+  min-height: 2.5rem;
+}
+
+input, select {
+  min-height: 2.75rem;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #E8F0F5;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #8CC5D9;
+  border: 2px solid #E8F0F5;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #14516B;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #071B2A;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #19506B;
+  border-color: #071B2A;
+}
+
+/* Escala de lectura accesible para el personal operativo */
+@layer utilities {
+  .text-xs {
+    font-size: clamp(0.8125rem, 0.78rem + 0.18vw, 0.875rem);
+    line-height: 1.35rem;
+  }
+
+  .text-\[11px\] {
+    font-size: clamp(0.75rem, 0.72rem + 0.14vw, 0.8rem);
+    line-height: 1.2rem;
+  }
+
+  .text-\[10px\] {
+    font-size: clamp(0.7rem, 0.68rem + 0.12vw, 0.75rem);
+    line-height: 1.1rem;
+  }
+}
+
+/* Em telas estreitas, a tipografia permanece legível sem empurrar o layout para fora da tela. */
+@media (max-width: 640px) {
+  .hun-topbar {
+    padding-inline: 1rem;
+  }
+
+  .hun-topbar > div {
+    align-items: stretch;
+  }
+
+  .hun-topbar > div > div:first-child {
+    width: 100%;
+  }
+
+  .hun-logo-frame {
+    height: 3.75rem;
+    width: 9.25rem;
+  }
+
+  .hun-brand-title {
+    display: flex;
+    align-items: center;
+  }
+
+  .hun-brand-title h1 {
+    display: none;
+  }
+
+  .hun-challenge-badge {
+    display: inline-flex;
+    margin-top: 0;
+    max-width: 100%;
+  }
+
+  .hun-brand-copy > p {
+    max-width: 20rem;
+    font-size: 0.75rem;
+    line-height: 1.1rem;
+  }
+
+  .hun-header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  .hun-question-nav {
+    order: 3;
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.15rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .hun-question-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .hun-question-nav button {
+    width: auto;
+    min-width: max-content;
+    flex: 0 0 auto;
+    justify-content: center;
+    padding-inline: 0.7rem;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .hun-hero > div:last-child {
+    white-space: normal;
+  }
+
+  .hun-hero {
+    padding: 1rem !important;
+  }
+
+  .hun-main .rounded-3xl {
+    padding: 1rem;
+  }
+
+  .hun-main .rounded-2xl {
+    padding: 0.75rem;
+  }
+
+  header nav {
+    max-width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+    scrollbar-width: thin;
+  }
+
+  header nav button {
+    padding-inline: 0.65rem;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 900px) {
+  .hun-brand-title {
+    display: flex;
+    align-items: center;
+  }
+
+  .hun-brand-title h1 {
+    display: none;
+  }
+
+  .hun-challenge-badge {
+    white-space: nowrap;
+  }
+
+  .hun-logo-frame {
+    height: 4.25rem;
+    width: 10.5rem;
+  }
+}
+

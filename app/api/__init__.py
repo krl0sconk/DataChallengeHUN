@@ -243,3 +243,11 @@ def endpoint_cuellos_botella() -> dict[str, Any]:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+try:  # Compatible con `uvicorn api:app` desde app y `app.api` desde la raíz.
+    from app.api.chat import router as chat_router  # noqa: E402
+except ModuleNotFoundError:
+    from api.chat import router as chat_router  # noqa: E402
+
+app.include_router(chat_router)

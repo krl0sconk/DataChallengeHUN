@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, CircleHelp } from 'lucide-react';
 import {
   Bar,
   BarChart,
@@ -7,11 +7,11 @@ import {
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
+  LabelList,
   XAxis,
   YAxis,
 } from 'recharts';
-
-const API_BASE_URL = 'http://localhost:8000';
+import { apiUrl } from '../lib/api';
 
 // Diccionario en memoria para las métricas de ocupación (se descarga una sola vez)
 let ocupacionCache = null;
@@ -31,7 +31,7 @@ export function ComparadorServicios({ servicios, servicioActivoId, onSeleccionar
 
     async function cargarOcupacion() {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/ocupacion`);
+        const res = await fetch(apiUrl('/api/ocupacion'));
         if (res.ok) {
           const data = await res.json();
           ocupacionCache = data; // Guardado en el diccionario
@@ -62,21 +62,20 @@ export function ComparadorServicios({ servicios, servicioActivoId, onSeleccionar
   }));
 
   return (
-    <section className="rounded-3xl p-6 border border-[#D6E0C2] dark:border-[#1B524F] bg-white dark:bg-[#12544F] transition-colors flex flex-col justify-between">
+    <section className="rounded-3xl p-6 border border-[#D1DEE7] dark:border-[#19506B] bg-white dark:bg-[#0E3E5B] transition-colors flex flex-col justify-between">
       <div>
         <header className="flex flex-wrap items-center justify-between gap-4 mb-4">
-          <div>
-            <h2 className="text-base font-bold font-heading flex items-center gap-2 text-[#2D283E] dark:text-[#C4E5CA]">
-              <BarChart3 className="h-5 w-5 text-[#1E4D57] dark:text-[#A8E2AF]" />
+          <div className="flex items-start gap-2">
+            <h2 className="text-base font-bold font-heading flex items-center gap-2 text-[#102A43] dark:text-[#D8EFF7]">
+              <BarChart3 className="h-5 w-5 text-[#14516B] dark:text-[#B9E2F0]" />
               Ocupación por Servicio
             </h2>
-            <p className="text-xs font-semibold mt-0.5 text-[#2D283E] dark:text-[#C4E5CA]">
-              Presión hospitalaria en cada área frente a su límite máximo (p90)
-            </p>
+            <CircleHelp className="mt-1 h-4 w-4 shrink-0 text-[#14516B] dark:text-[#B9E2F0]" title="Verde: bajo p75 · amarillo: p75–p90 · rojo: sobre p90" />
           </div>
+          <CircleHelp className="h-4 w-4 text-[#14516B] dark:text-[#B9E2F0]" title="Verde: bajo p75 · amarillo: p75–p90 · rojo: sobre p90" />
           <div className="flex items-center gap-4 text-xs font-bold">
-            <span className="flex items-center gap-1.5 text-[#1E4D57] dark:text-[#C4E5CA]">
-              <span className="h-2.5 w-2.5 rounded-sm bg-[#1E4D57] dark:bg-[#8BBB92]" /> Nivel de carga
+            <span className="flex items-center gap-1.5 text-[#14516B] dark:text-[#D8EFF7]">
+              <span className="h-2.5 w-2.5 rounded-sm bg-[#14516B] dark:bg-[#B9E2F0]" /> Nivel de carga
             </span>
             <span className="flex items-center gap-1.5 text-[#8C5800] dark:text-[#FFD875]">
               <span className="h-0.5 w-3 bg-[#8C5800] dark:bg-[#FFD875] inline-block border-t border-dashed" /> Alerta (p75)
@@ -85,7 +84,7 @@ export function ComparadorServicios({ servicios, servicioActivoId, onSeleccionar
         </header>
 
         {/* Gráfico horizontal intuitivo de barras */}
-        <div className="h-48 w-full font-mono-num text-xs">
+        <div className="h-60 w-full font-sans tabular-nums text-xs">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               layout="vertical"
@@ -95,23 +94,23 @@ export function ComparadorServicios({ servicios, servicioActivoId, onSeleccionar
               <XAxis
                 type="number"
                 domain={[0, 100]}
-                stroke={isDark ? '#C4E5CA' : '#2D283E'}
+                stroke={isDark ? '#D8EFF7' : '#102A43'}
                 fontSize={11}
                 tickFormatter={(val) => `${val}%`}
               />
               <YAxis
                 dataKey="nombreCorto"
                 type="category"
-                stroke={isDark ? '#C4E5CA' : '#2D283E'}
+                stroke={isDark ? '#D8EFF7' : '#102A43'}
                 fontSize={11}
                 width={120}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: isDark ? '#071D22' : '#FFFFFF',
-                  borderColor: isDark ? '#206E4E' : '#7CB592',
+                  backgroundColor: isDark ? '#071B2A' : '#FFFFFF',
+                  borderColor: isDark ? '#176D98' : '#71B5CC',
                   borderRadius: '12px',
-                  color: isDark ? '#C4E5CA' : '#2D283E',
+                  color: isDark ? '#D8EFF7' : '#102A43',
                   fontSize: '12px',
                   fontFamily: 'var(--font-mono)',
                 }}
@@ -123,6 +122,7 @@ export function ComparadorServicios({ servicios, servicioActivoId, onSeleccionar
               <ReferenceLine
                 x={85}
                 stroke="#B26B00"
+                strokeWidth={2}
                 strokeDasharray="4 4"
                 label={{
                   value: 'Umbral Alerta (~85%)',
@@ -134,43 +134,45 @@ export function ComparadorServicios({ servicios, servicioActivoId, onSeleccionar
               />
               <Bar
                 dataKey="ocupacion"
-                radius={[0, 8, 8, 0]}
+                barSize={24}
+                radius={[0, 4, 4, 0]}
                 className="cursor-pointer"
                 onClick={(entry) => onSeleccionarServicio(entry.id)}
               >
                 {lista.map((s) => {
                   let barColor = s.esActivo
-                    ? isDark ? '#8BBB92' : '#3B7D8C'
-                    : isDark ? '#2A835F' : '#9FCBAD';
+                    ? isDark ? '#B9E2F0' : '#14516B'
+                    : isDark ? '#1B8CC9' : '#8CC5D9';
                   if (s.ocupacion >= 90) barColor = '#C5304C';
                   return <Cell key={s.id} fill={barColor} />;
                 })}
+                <LabelList dataKey="ocupacion" position="right" formatter={(value) => `${value}%`} fill={isDark ? '#D8EFF7' : '#102A43'} fontSize={12} fontWeight={700} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         {/* Botones interactivos para cambiar de servicio con un clic */}
-        <div className="grid grid-cols-3 gap-2.5 mt-3 pt-3 border-t border-[#D6E0C2] dark:border-[#1B524F]">
+        <div className="grid grid-cols-3 gap-2.5 mt-3 pt-3 border-t border-[#D1DEE7] dark:border-[#19506B]">
           {lista.map((s) => (
             <button
               key={s.id}
               onClick={() => onSeleccionarServicio(s.id)}
               className={`p-2.5 rounded-2xl text-left border transition-all cursor-pointer ${
                 s.esActivo
-                  ? 'bg-[#F1F7D4] dark:bg-[#206E4E]/40 border-[#206E4E] shadow-2xs ring-1 ring-[#206E4E]'
-                  : 'bg-[#FAFCF6] dark:bg-[#071D22] border-[#D6E0C2] dark:border-[#1B524F] hover:border-[#1E4D57]'
+                  ? 'bg-[#E7F4FA] dark:bg-[#176D98]/40 border-[#176D98] shadow-2xs ring-1 ring-[#176D98]'
+                  : 'bg-[#F7FAFC] dark:bg-[#071B2A] border-[#D1DEE7] dark:border-[#19506B] hover:border-[#14516B]'
               }`}
             >
               <div className="flex justify-between items-center">
-                <span className="font-bold text-xs truncate text-[#2D283E] dark:text-[#C4E5CA]">
+                <span className="font-bold text-xs truncate text-[#102A43] dark:text-[#D8EFF7]">
                   {s.nombreCorto}
                 </span>
-                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-[#E3ECCB] dark:bg-[#071D22] text-[#1E4D57] dark:text-[#A8E2AF]">
+                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-[#DCEFF7] dark:bg-[#071B2A] text-[#14516B] dark:text-[#B9E2F0]">
                   {s.ocupacion}%
                 </span>
               </div>
-              <p className="text-[10px] font-semibold text-[#2D283E] dark:text-[#C4E5CA] mt-1">
+              <p className="text-[10px] font-semibold text-[#102A43] dark:text-[#D8EFF7] mt-1">
                 {s.mediaDiaria} pac. promedio
               </p>
             </button>
@@ -178,9 +180,10 @@ export function ComparadorServicios({ servicios, servicioActivoId, onSeleccionar
         </div>
       </div>
 
-      <footer className="mt-3 pt-3 border-t border-[#D6E0C2] dark:border-[#1B524F] text-[11px] text-[#2D283E] dark:text-[#C4E5CA] leading-relaxed font-sans font-medium">
-        💡 <strong>Haz clic en cualquier servicio</strong> para seleccionarlo e inspeccionar su pronóstico detallado y simulaciones.
+      <footer className="mt-3 border-t border-[#D1DEE7] pt-3 text-xs font-sans font-medium leading-relaxed text-[#294B63] dark:border-[#19506B] dark:text-[#B9E2F0]">
+        Selecciona un servicio para ver su pronóstico.
       </footer>
     </section>
   );
 }
+

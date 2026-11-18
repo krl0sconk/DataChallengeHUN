@@ -6,7 +6,7 @@ export const SERVICIOS = {
     mediaDiaria: 443,
     p75: 490,
     p90: 540,
-    color: '#6EADBC',
+    color: '#2C7A9B',
   },
   rehabilitacion: {
     id: 'rehabilitacion',
@@ -15,7 +15,7 @@ export const SERVICIOS = {
     mediaDiaria: 827,
     p75: 880,
     p90: 940,
-    color: '#4A4466',
+    color: '#102A43',
   },
   tratamiento_urgencia: {
     id: 'tratamiento_urgencia',
@@ -24,7 +24,7 @@ export const SERVICIOS = {
     mediaDiaria: 15,
     p75: 18,
     p90: 22,
-    color: '#3B7D8C',
+    color: '#14516B',
   },
 };
 
@@ -34,7 +34,7 @@ export const CONFIG_ALERTAS = {
     etiqueta: 'SATURACIÓN',
     subtitulo: 'Supera el percentil p90 histórico del servicio',
     colorTexto: 'text-[#8A1828] dark:text-[#FFA8B6]',
-    colorBg: 'bg-[#FDF0F2] dark:bg-[#12544F]',
+    colorBg: 'bg-[#FDF0F2] dark:bg-[#0E3E5B]',
     colorBorder: 'border-[#EBAAB5] dark:border-[#C5304C]/60',
     colorDot: 'bg-[#C5304C]',
     iconoColor: 'text-[#A81F38] dark:text-[#FFA8B6]',
@@ -45,7 +45,7 @@ export const CONFIG_ALERTAS = {
     etiqueta: 'ALTA DEMANDA',
     subtitulo: 'Afluencia situada entre p75 y p90',
     colorTexto: 'text-[#704200] dark:text-[#FFDF80]',
-    colorBg: 'bg-[#FEF9E2] dark:bg-[#12544F]',
+    colorBg: 'bg-[#FEF9E2] dark:bg-[#0E3E5B]',
     colorBorder: 'border-[#DFC264] dark:border-[#D98A00]/60',
     colorDot: 'bg-[#B26B00]',
     iconoColor: 'text-[#B26B00] dark:text-[#FFDF80]',
@@ -55,11 +55,11 @@ export const CONFIG_ALERTAS = {
     nivel: 'verde',
     etiqueta: 'NORMAL',
     subtitulo: 'Demanda dentro de rangos habituales (< p75)',
-    colorTexto: 'text-[#0E4222] dark:text-[#8AE6A2]',
-    colorBg: 'bg-[#EEF7F1] dark:bg-[#12544F]',
-    colorBorder: 'border-[#7CB592] dark:border-[#1B524F]',
-    colorDot: 'bg-[#1E6B3F] dark:bg-[#4ADE80]',
-    iconoColor: 'text-[#0E4222] dark:text-[#8AE6A2]',
+    colorTexto: 'text-[#0C4A62] dark:text-[#9FE4F5]',
+    colorBg: 'bg-[#E8F6FA] dark:bg-[#0E3E5B]',
+    colorBorder: 'border-[#71B5CC] dark:border-[#19506B]',
+    colorDot: 'bg-[#187A9D] dark:bg-[#4ADE80]',
+    iconoColor: 'text-[#0C4A62] dark:text-[#9FE4F5]',
     accion: 'Operación dentro del histórico normal. Capacidad asistencial adecuada.',
   },
 };
@@ -82,3 +82,4 @@ export function limitarFechaBase(fecha) {
   if (fecha > FECHA_BASE_MAXIMA) return FECHA_BASE_MAXIMA;
   return fecha;
 }
+
