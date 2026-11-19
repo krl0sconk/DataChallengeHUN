@@ -57,7 +57,7 @@ Fuente: llegadas observadas por día y franja / 6 h (grilla con ceros).
 
 ## Ley de Little y altas matutinas
 
-Ingresos cerrados, consistentes con el censo reconstruido; media de estancia ponderada por etapas. Ventanas semiabiertas [14,20) y [08,12), mismo día. Altas fraccionales distribuidas uniformemente: escenario agregado, no agenda individual; no garantiza factibilidad clínica ni causalidad. Umbral p90 fijo. Censo neto reconstruido sin corrección adicional de estancias extremas.
+Ingresos cerrados, consistentes con el censo reconstruido; media de estancia ponderada por etapas. Ventanas semiabiertas [14,20) y [08,12), mismo día. Altas fraccionales distribuidas uniformemente: escenario agregado, no agenda individual; no garantiza factibilidad clínica ni causalidad. Umbral p90 fijo. Las series etapas_entradas_por_hora y etapas_salidas_por_hora ya excluyen estancias superiores al percentil p99.9 por etapa (14/15_etapas_*.sql).
 
 - ingresos_dia_promedio: 83.8439
 - estancia_media_horas: 81.2971
@@ -140,4 +140,4 @@ Horizonte: Seguimiento mensual.
 
 ## Alcance
 
-Resultados históricos agregados, no promesas de impacto. El simulador mantiene tasas fijas y usa interpolación explícita para porcentajes de altas no precalculados. Las estancias extremas del extracto vigente no se eliminan silenciosamente; pueden sesgar el censo. Validar con datos clínicos y la nueva extracción depurada antes de decidir dotaciones.
+Resultados históricos agregados, no promesas de impacto. El simulador mantiene tasas fijas y usa interpolación explícita para porcentajes de altas no precalculados. Las series horarias etapas_entradas_por_hora y etapas_salidas_por_hora ya excluyen estancias superiores al percentil p99.9 por etapa (14/15_etapas_*.sql). Validar con datos clínicos y capacidad real antes de decidir dotaciones.

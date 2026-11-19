@@ -16,9 +16,9 @@ La solución tiene tres capas: **entender** (auditoría, etapas y cuellos de bot
 |---|---|---|
 | WAPE diario: 18.0% → 15.6% → 10.5% | Línea base → Poisson estratificado → `lgbm_final`; mejora relativa final 41.6% frente a la base | [Demanda](../docs/resultados/modelo_demanda.md) |
 | Urgencias: WAPE 8.4%, exactitud 91.6%; Rehabilitación: WAPE 11.0%, exactitud 89.0% | Buen desempeño global en servicios de alto volumen, no garantía por cada día | [Demanda](../docs/resultados/modelo_demanda.md) |
-| Censo mediano: Hospitalización 288.0; Treatment urgency 219.0 | Presión de pacientes concurrentes, no número de camas habilitadas | [Saturación](../docs/resultados/saturacion.md) |
-| Little: 284.29 pacientes | Contraste del nivel global del censo, no certificación de cada estancia | [Optimización](../docs/resultados/optimizacion.md) |
-| Altas adelantadas 35%: horas rojas 9.79% → 6.89% | Reducción relativa 29.6% en simulación histórica; el pico permanece en 378 | [Optimización](../docs/resultados/optimizacion.md) |
+| Censo mediano: Hospitalización 283.0; Treatment urgency 201.0 | Presión de pacientes concurrentes (extracto depurado `p99.9`), no número de camas habilitadas | [Saturación](../docs/resultados/saturacion.md) |
+| Little: 284.01 pacientes | Contraste del nivel global del censo (0.36% frente a mediana 283.0), no certificación de cada estancia | [Optimización](../docs/resultados/optimizacion.md) |
+| Altas adelantadas 35%: horas rojas 9.32% → 6.26% | Reducción relativa 32.8% en simulación histórica; el pico permanece en 359 | [Optimización](../docs/resultados/optimizacion.md) |
 | Urgencias → Hospitalización: 47.670 pasos, p90 mensual ponderado 24.45 h | Señal para auditar transiciones y marcas temporales; no prueba causal de boarding | [Optimización](../docs/resultados/optimizacion.md) |
 
 ### Cinco recomendaciones cuantificadas
@@ -27,9 +27,9 @@ La solución tiene tres capas: **entender** (auditoría, etapas y cuellos de bot
 |---|---|---|---|
 | REC-01 | Planificar equipos equivalentes de Urgencias en 06–12 h | A demanda p90 39.67/h: 15 equipos frente a 12 del régimen normal; espera media modelada 6.09 min | Validar atención media de 20 min y dotación real; no significa contratar tres personas |
 | REC-02 | Planificar equipos equivalentes de Rehabilitación en 06–12 h | A demanda p90 133.33/h: 70 equipos frente a 42 del régimen normal; espera media 5.30 min | Validar atención media de 30 min, agenda y capacidad simultánea |
-| REC-03 | Revisar demoras evitables para reducir estancia de Hospitalización | Reducir 4 h libera teóricamente 13.99 camas medias, 4.92% del censo Little | Mantener criterios clínicos; comprobar factibilidad y resultados del piloto |
-| REC-04 | Adelantar a 08–12 h el 35% de altas elegibles de 14–20 h | Horas rojas 9.79% → 6.89%; pico 378 → 378 | Coordinar alta médica, trámites y salida; evaluar con umbral fijo |
-| REC-05 | Auditar Treatment urgency → Inpatient Visit | 47.670 pasos; p90 mensual ponderado 24.45 h; r mensual con censo = -0.30 | Revisar sellos temporales y causas de demora; no prometer una reducción causal |
+| REC-03 | Revisar demoras evitables para reducir estancia de Hospitalización | Reducir 4 h libera teóricamente 13.97 camas medias, 4.92% del censo Little | Mantener criterios clínicos; comprobar factibilidad y resultados del piloto |
+| REC-04 | Adelantar a 08–12 h el 35% de altas elegibles de 14–20 h | Horas rojas 9.32% → 6.26%; pico 359 → 359 | Coordinar alta médica, trámites y salida; evaluar con umbral fijo |
+| REC-05 | Auditar Treatment urgency → Inpatient Visit | 47.670 pasos; p90 mensual ponderado 24.45 h; r mensual con censo = -0.48 | Revisar sellos temporales y causas de demora; no prometer una reducción causal |
 
 Todos los impactos proceden de [REC-01 a REC-05](../docs/resultados/optimizacion.md#recomendaciones-cuantificadas). Son hipótesis operativas cuantificadas, no efectos clínicos demostrados.
 
@@ -55,19 +55,19 @@ El censo horario se reconstruye como entradas acumuladas menos salidas acumulada
 
 | Etapa | Censo mediano | p75 | p90 |
 |---|---:|---:|---:|
-| Inpatient Visit | 288.0 | 306.0 | 319.0 |
-| Treatment urgency | 219.0 | 260.0 | 300.0 |
-| Emergency Room Visit | 6.0 | 7.0 | 10.0 |
+| Inpatient Visit | 283.0 | 297.0 | 309.0 |
+| Treatment urgency | 201.0 | 239.0 | 272.0 |
+| Emergency Room Visit | 0.0 | 1.0 | 3.0 |
 
-Fuente: [saturación](../docs/resultados/saturacion.md). Verde corresponde a censo < p75; amarillo a p75 ≤ censo ≤ p90; rojo a censo > p90. Son umbrales históricos, no límites clínicos de seguridad.
+Fuente: [saturación](../docs/resultados/saturacion.md) (extracto horario con filtro `p99.9`). Verde corresponde a censo < p75; amarillo a p75 ≤ censo ≤ p90; rojo a censo > p90. Son umbrales históricos, no límites clínicos de seguridad.
 
-La Ley de Little contrasta el censo de Hospitalización: **83.93 ingresos/día × 81.30 h / 24 ≈ 284.29 pacientes**, usando valores sin redondear de 83.9266 y 81.2971. Es consistente con la mediana observada de 288.0, aunque promedio teórico y mediana no son el mismo estimador.
+La Ley de Little contrasta el censo de Hospitalización: **83.84 ingresos/día × 81.30 h / 24 ≈ 284.01 pacientes**, usando valores sin redondear de 83.8439 y 81.2971. Es consistente con la mediana observada de 283.0 (brecha de 0.36%), aunque promedio teórico y mediana no son el mismo estimador.
 
 ### Transición prioritaria
 
 Treatment urgency → Inpatient Visit registra **47.670 pasos**, p50 mensual ponderado **0.0 h** y p90 mensual ponderado **24.45 h**. `espera_h` se define como `start_siguiente - end_anterior` en OMOP y admite solapamientos negativos. No equivale necesariamente al tiempo de asignación de cama ni al boarding clínico.
 
-El p90 reportado es un promedio de percentiles mensuales ponderado por pasos, no el percentil exacto del conjunto. La correlación ecológica mensual con censo es **r = -0.30**; los p90 ponderados en censo normal y alto son **24.53 h** y **24.35 h**, respectivamente. No hay evidencia aquí para atribuir la demora a congestión ni para prometer su reducción mediante altas tempranas.
+El p90 reportado es un promedio de percentiles mensuales ponderado por pasos, no el percentil exacto del conjunto. La correlación ecológica mensual con censo es **r = -0.48** (-0.481); los p90 ponderados en censo normal y alto son **25.13 h** y **23.70 h**, respectivamente. No hay evidencia aquí para atribuir la demora a congestión ni para prometer su reducción mediante altas tempranas.
 
 ## 3. Calidad, preparación e integración de los datos (15 %)
 
@@ -84,11 +84,11 @@ La [auditoría OMOP](../docs/calidad_datos.md) comprueba completitud, duplicados
 
 La auditoría registra 0.43% de duplicados sobrantes en `visit_detail`; no debe confundirse con la tasa de `visit_occurrence`.
 
-### Estancias extremas y estado real de la depuración
+### Estancias extremas y depuración aplicada (`p99.9`)
 
-El extracto actual conserva máximos de **28,070.3 h** en Treatment urgency y **11,213.6 h** en Inpatient Visit. Las consultas `14_etapas_entradas_por_hora.sql`, `15_etapas_salidas_por_hora.sql` y `23_duracion_etapas_percentiles.sql` ya incorporan el filtro `p99.9`, pero la **reextracción está pendiente de acceso VPN/BD**.
+La auditoría completa de `duracion_etapas_percentiles.parquet` (`23_duracion_etapas_percentiles.sql`) documenta los máximos crudos sin recorte (**28,070.3 h** en Treatment urgency, **20,730.3 h** en Emergency Room Visit y **11,213.6 h** en Inpatient Visit) junto con los umbrales `p99.9` por etapa (**1,176.3 h** en Inpatient Visit, **283.7 h** en Treatment urgency, **17.5 h** en Emergency Room Visit y **0.0 h** en Ambulatory Rehabilitation Visit).
 
-Por tanto, ni el censo publicado ni la simulación de altas se presentan como recalculados sin extremos. La concordancia Little 284.29 frente a mediana 288.0 respalda el orden de magnitud del censo, no demuestra ausencia de sesgo. La [nota metodológica de saturación](../docs/resultados/saturacion.md) documenta esta limitación.
+Las consultas `14_etapas_entradas_por_hora.sql`, `15_etapas_salidas_por_hora.sql` y `23_duracion_etapas_percentiles.sql` ya fueron ejecutadas contra PostgreSQL aplicando este filtro `p99.9`, y se regeneraron `docs/resultados/saturacion.md`, `docs/resultados/optimizacion.md` y `models/modelos_web_bundle.joblib`. Al remover las estancias fantasma y colas administrativas extremas, Hospitalización pasó de `288 / 306 / 319` (máximo `378`) a **`283 / 297 / 309`** (máximo **`359`**), Treatment urgency pasó de `219 / 260 / 300` a **`201 / 239 / 272`**, y Urgencias quedó en **`0 / 1 / 3`**. La concordancia Little (`284.01`) frente a la mediana observada (`283.0`) se estrechó a 0.36%, sin reemplazar la validación frente a capacidad física instalada. La [nota metodológica de saturación](../docs/resultados/saturacion.md) documenta este recorte.
 
 ### Integración externa sin atribuciones espurias
 
@@ -186,32 +186,32 @@ La sensibilidad demuestra por qué medir tiempos de atención y disponibilidad r
 
 ### 5.2 Ley de Little: reducir permanencia de forma segura
 
-**L = λ · W**, con λ en ingresos/día y W en días. Para Hospitalización se usan ingresos cerrados consistentes con el censo y estancia media ponderada por etapas: λ = **83.9266/día**, W = **81.2971 h**, L = **284.2912 pacientes**. La mediana de estancia **45.9611 h** no se usa como sustituto de la media en la identidad.
+**L = λ · W**, con λ en ingresos/día y W en días. Para Hospitalización se usan ingresos cerrados consistentes con el censo depurado (`p99.9`) y estancia media ponderada por etapas: λ = **83.8439/día**, W = **81.2971 h**, L = **284.0111 pacientes**. La mediana de estancia **45.9611 h** no se usa como sustituto de la media en la identidad.
 
 | Reducción de estancia | Nueva media (h) | Camas medias liberadas teóricas | Reducción del censo Little |
 |---|---:|---:|---:|
-| −2 h | 79.297 | 6.994 | 2.460% |
-| −4 h | 77.297 | 13.988 | 4.920% |
-| −6 h | 75.297 | 20.982 | 7.380% |
-| −8 h | 73.297 | 27.976 | 9.840% |
+| −2 h | 79.297 | 6.987 | 2.460% |
+| −4 h | 77.297 | 13.974 | 4.920% |
+| −6 h | 75.297 | 20.961 | 7.380% |
+| −8 h | 73.297 | 27.948 | 9.840% |
 
 Fuente: [Ley de Little](../docs/resultados/optimizacion.md#ley-de-little-y-altas-matutinas). «Camas liberadas» expresa menor ocupación media equivalente a tasa fija, no ampliación física ni reducción clínicamente garantizada.
 
 ### 5.3 Simulación horaria de rondas de alta temprana
 
-Se reconstruye el censo con `etapas_entradas_por_hora.parquet` y `etapas_salidas_por_hora.parquet`. Se traslada una fracción de altas de **[14:00, 20:00)** a **[08:00, 12:00)** del mismo día, distribuida uniformemente, manteniendo ingresos y umbral rojo **319** fijos. Son altas fraccionales agregadas, no una agenda individual ni una selección clínica de pacientes.
+Se reconstruye el censo con `etapas_entradas_por_hora.parquet` y `etapas_salidas_por_hora.parquet` (ya filtrados por `p99.9`). Se traslada una fracción de altas de **[14:00, 20:00)** a **[08:00, 12:00)** del mismo día, distribuida uniformemente, manteniendo ingresos y umbral rojo **309** fijos. Son altas fraccionales agregadas, no una agenda individual ni una selección clínica de pacientes.
 
 | Altas adelantadas | Horas rojas base | Horas rojas simuladas | Reducción relativa | Pico base → simulado |
 |---|---:|---:|---:|---:|
-| 20% | 9.786% | 7.854% | 19.745% | 378 → 378 |
-| 35% | 9.786% | 6.892% | 29.568% | 378 → 378 |
-| 50% | 9.786% | 6.505% | 33.523% | 378 → 378 |
+| 20% | 9.320% | 7.119% | 23.618% | 359 → 359 |
+| 35% | 9.320% | 6.259% | 32.841% | 359 → 359 |
+| 50% | 9.320% | 5.902% | 36.677% | 359 → 359 |
 
-Así, a dos decimales, el escenario de **35%** pasa de **9.79% a 6.89%** de horas rojas (**29.6%** menos en términos relativos); el de **50%** llega a **6.51%** (**33.5%** menos). Los porcentajes relativos se calculan con valores sin redondear. El pico no baja: el beneficio modelado está en la duración de la presión, no en su máximo absoluto.
+Así, a dos decimales, el escenario de **35%** pasa de **9.32% a 6.26%** de horas rojas (**32.8%** menos en términos relativos); el de **50%** llega a **5.90%** (**36.7%** menos). Los porcentajes relativos se calculan con valores sin redondear. El pico no baja: el beneficio modelado está en la duración de la presión, no en su máximo absoluto.
 
 ### 5.4 Cuello de botella y priorización
 
-La prioridad empírica es revisar las **47.670 transiciones** y el **p90 mensual ponderado de 24.45 h**, validando semántica de sellos temporales y registro administrativo. La correlación **r = -0.30** no respalda una explicación causal simple de saturación de piso. La simulación de altas no estima directamente cuánto se reduciría esa espera.
+La prioridad empírica es revisar las **47.670 transiciones** y el **p90 mensual ponderado de 24.45 h**, validando semántica de sellos temporales y registro administrativo. La correlación **r = -0.48** (-0.481) no respalda una explicación causal simple de saturación de piso. La simulación de altas no estima directamente cuánto se reduciría esa espera.
 
 Se propone ejecutar REC-01 y REC-02 en planificación de turnos, REC-03 en un piloto de revisión de demoras evitables, REC-04 en un piloto intradía de egreso seguro y REC-05 en seguimiento mensual. La tabla ejecutiva conserva la trazabilidad individual de las cinco recomendaciones y sus condiciones.
 
@@ -284,7 +284,7 @@ El dominio `mediflow.example.org` es ilustrativo: debe reemplazarse por el orige
 | Evidencia | Corte y uso |
 |---|---|
 | [Demanda](../docs/resultados/modelo_demanda.md) y [factores externos](../docs/resultados/factores_externos.md) | Corrida del 2026-11-18; fuente vigente para selección y WAPE puntual |
-| [Saturación](../docs/resultados/saturacion.md) | Tablas del 2026-11-03 con nota explícita de extremos y reextracción pendiente |
+| [Saturación](../docs/resultados/saturacion.md) | Corrida del 2026-11-18 sobre el extracto depurado con tope `p99.9` en SQL `14/15/23` |
 | [Optimización](../docs/resultados/optimizacion.md) | Fuente de todas las tablas Erlang C, Little, altas y recomendaciones |
 | [Intervalos/SHAP](../docs/resultados/intervalos_shap.md) y [largo plazo](../docs/resultados/largo_plazo.md) | Reportes separados del 2026-11-03; no se atribuyen a una nueva corrida puntual |
 | [Calidad](../docs/calidad_datos.md), [decisiones](../docs/decisiones.md) y [contrato](../docs/contrato_modelo_web.md) | Fundamento del pipeline; las entradas históricas no sustituyen los endpoints y métricas vigentes aquí descritos |
@@ -293,14 +293,14 @@ El dominio `mediflow.example.org` es ilustrativo: debe reemplazarse por el orige
 
 ### Conclusiones accionables
 
-MediFlow conecta pronóstico, incertidumbre y escenarios operativos sin inventar dotaciones. El modelo seleccionado reduce el WAPE diario de **18.0% a 10.5%** y permite planificar servicios de alto volumen. El contraste Little respalda un censo hospitalario cercano a la mediana **288.0**, corrigiendo interpretaciones exploratorias menores.
+MediFlow conecta pronóstico, incertidumbre y escenarios operativos sin inventar dotaciones. El modelo seleccionado reduce el WAPE diario de **18.0% a 10.5%** y permite planificar servicios de alto volumen. El contraste Little (**284.01**) respalda el censo hospitalario depurado con mediana **283.0** (brecha de 0.36%), corrigiendo interpretaciones exploratorias menores.
 
-El piloto más directamente cuantificado es adelantar altas elegibles: el escenario **35%** reduce horas rojas de **9.79% a 6.89%**, pero no el pico. Esta separación entre intensidad máxima y tiempo en presión orienta una evaluación más honesta del beneficio.
+El piloto más directamente cuantificado es adelantar altas elegibles: el escenario **35%** reduce horas rojas de **9.32% a 6.26%** (−32.8% relativo), pero no el pico (**359**). Esta separación entre intensidad máxima y tiempo en presión orienta una evaluación más honesta del beneficio.
 
 ### Limitaciones que condicionan el uso
 
 - **Sin dotación ni capacidad instalada en OMOP:** Erlang C determina requerimientos equivalentes bajo supuestos, no contrataciones ni ocupación sobre camas habilitadas.
-- **Extremos aún en el extracto:** la reextracción `p99.9` depende de VPN/BD. Deben regenerarse censo, umbrales y simulación antes de convertir estimaciones en decisiones asistenciales.
+- **Recorte estadístico de extremos (`p99.9`):** el extracto horario vigente excluye estancias superiores al percentil `p99.9` por etapa (`14/15_etapas_*.sql`), lo que limpia artefactos administrativos pero constituye un umbral estadístico agregado, no una auditoría clínica caso a caso de estancias prolongadas reales.
 - **Semántica de `espera_h`:** diferencia entre marcas de etapas, con posibles solapamientos; p90 mensual ponderado y correlación ecológica no prueban boarding clínico ni causalidad.
 - **Desempeño heterogéneo:** Tratamiento Urgencias y fines de semana de Rehabilitación no cumplen la meta diaria. Las coberturas de intervalos tampoco son uniformes por servicio.
 - **Horizonte y versión:** el pronóstico extendido parte del cierre de julio y pierde exactitud con el horizonte. Intervalos y auditoría independiente tienen cortes anteriores; deben revalidarse con la versión a desplegar.
@@ -311,7 +311,7 @@ El piloto más directamente cuantificado es adelantar altas elegibles: el escena
 
 | Horizonte | Acción | Responsable funcional propuesto | Evidencia de aceptación |
 |---|---|---|---|
-| Corto plazo | Restablecer acceso autorizado, reextraer con `p99.9` y recalcular | Datos y sistemas HUN con equipo analítico | Comparación antes/después de censo, umbrales, duraciones y escenarios |
+| Corto plazo | Validar los umbrales depurados (`p99.9`) contra camas censales habilitadas | Datos y gestión de camas HUN | Contraste de p75/p90 de ocupación y estancias largas reales frente a capacidad física instalada |
 | Corto plazo | Auditar REC-05 y medir atención y dotación para REC-01/02 | Coordinación de Urgencias, Hospitalización y Rehabilitación | Semántica validada de transiciones y contraste de equipos requeridos con disponibles |
 | Mediano plazo | Pilotar REC-04 y revisar demoras evitables de REC-03 | Gestión de camas, equipos clínicos y egreso | Horas rojas con umbral fijo, estancia, seguridad de altas y demoras; sin atribución causal automática |
 | Mediano plazo | Recalibrar intervalos y validar prospectivamente la versión completa | Analítica y validación independiente | WAPE, MAE, sesgo y cobertura por servicio, día y horizonte |
