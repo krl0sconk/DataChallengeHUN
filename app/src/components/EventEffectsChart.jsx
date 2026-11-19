@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CircleHelp } from 'lucide-react';
 import { getEfectosEventos } from '../lib/api';
+import { SectionPanel } from './SectionPanel';
 
 export function EventEffectsChart({ servicio }) {
   const [eventos, setEventos] = useState([]);
@@ -10,38 +11,173 @@ export function EventEffectsChart({ servicio }) {
     let activo = true;
     setEstado('cargando');
     getEfectosEventos(servicio.id)
-      .then((data) => { if (activo) { setEventos(Array.isArray(data.eventos) ? data.eventos : []); setEstado('ok'); } })
-      .catch(() => activo && setEstado('error'));
-    return () => { activo = false; };
+      .then((data) => {
+        if (activo) {
+          setEventos(Array.isArray(data.eventos) ? data.eventos : []);
+          setEstado('ok');
+        }
+      })
+      .catch(() => {
+        if (activo) setEstado('error');
+      });
+    return () => {
+      activo = false;
+    };
   }, [servicio.id]);
 
-  const escala = Math.max(...eventos.flatMap((evento) => [evento.media_normal, evento.media_evento]), 1);
+  const escala = Math.max(
+    ...eventos.flatMap((evento) => [Number(evento.media_normal || 0), Number(evento.media_evento || 0)]),
+    1,
+  );
+
+  const leyenda = (
+    <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--mf-ink-2)]">
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-2.5 w-2.5 rounded-sm bg-[var(--mf-series-2)]" aria-hidden="true" />
+        Día normal
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-2.5 w-2.5 rounded-sm bg-[var(--mf-warn)]" aria-hidden="true" />
+        Aumento en evento
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-2.5 w-2.5 rounded-sm bg-[var(--mf-accent)]" aria-hidden="true" />
+        Descenso o estable
+      </span>
+    </div>
+  );
 
   return (
-    <section className="min-w-0 rounded-3xl border border-[#D1DEE7] bg-white p-6 dark:border-[#19506B] dark:bg-[#0E3E5B]">
-      <header className="mb-5 flex items-start justify-between gap-3 border-b border-[#E8F0F5] pb-4 dark:border-[#0B3045]">
-        <div>
-          <h2 className="flex items-center gap-2 text-base font-bold font-heading text-[#102A43] dark:text-[#D8EFF7]">Efectos históricos por evento <CircleHelp className="h-4 w-4 text-[#14516B] dark:text-[#B9E2F0]" title="Promedios observados por la API, no una simulación" /></h2>
-          <p className="mt-1 text-xs text-[#46657A] dark:text-[#B9D4DF]">{servicio.nombre} · promedio de llegadas observadas.</p>
+    <SectionPanel
+      id="efectos-eventos"
+      title={
+        <span className="inline-flex items-center gap-2">
+          <span>Efectos históricos por evento</span>
+          <span title="Promedios observados por la API, no una simulación" className="text-[var(--mf-ink-3)]">
+            <CircleHelp className="h-4 w-4" aria-hidden="true" />
+          </span>
+        </span>
+      }
+      subtitle={`${servicio.nombre} · Promedio de llegadas observadas en el histórico clínico (no es una simulación).`}
+      actions={leyenda}
+    >
+      {estado === 'cargando' && (
+        <div className="space-y-3 py-2" role="status" aria-label="Cargando efectos históricos">
+          {[1, 2, 3, 4].map((item) => (
+            <div key={item} className="grid gap-3 py-2 sm:grid-cols-[12rem_1fr_7rem] sm:items-center">
+              <div className="mf-skeleton h-4 w-36" />
+              <div className="space-y-2">
+                <div className="mf-skeleton h-2.5 w-full" />
+                <div className="mf-skeleton h-2.5 w-4/5" />
+              </div>
+              <div className="mf-skeleton h-6 w-24 sm:ml-auto" />
+            </div>
+          ))}
         </div>
-        <span className="text-xs font-bold text-[#46657A] dark:text-[#B9D4DF]">Histórico</span>
-      </header>
-      {estado === 'cargando' && <div className="flex h-64 items-center justify-center text-sm text-[#46657A] dark:text-[#B9D4DF]">Cargando efectos…</div>}
-      {estado === 'error' && <div className="border border-[#DFC264] bg-[#FEF9E2] p-4 text-sm text-[#704200] dark:border-[#7A5A00] dark:bg-[#201B0E] dark:text-[#FFDF80]">No se pudieron cargar los efectos históricos.</div>}
-      {estado === 'ok' && !eventos.length && <div className="flex h-64 items-center justify-center text-sm text-[#46657A] dark:text-[#B9D4DF]">La API no devolvió eventos.</div>}
-      {estado === 'ok' && eventos.length > 0 && <div className="space-y-3">
-        <div className="grid grid-cols-[1fr_auto] items-end border-b border-[#E8F0F5] pb-2 text-[11px] font-bold uppercase tracking-wider text-[#46657A] dark:border-[#0B3045] dark:text-[#B9D4DF]"><span>Evento</span><span>Impacto histórico</span></div>
-        {eventos.map((evento) => {
-          const diferencia = Number(evento.cambio_visitas || 0);
-          const positivo = diferencia > 0;
-          const porcentaje = Number(evento.cambio_pct || 0);
-          return <article key={evento.evento} className="grid gap-3 border-b border-[#E8F0F5] pb-3 last:border-0 last:pb-0 dark:border-[#0B3045] sm:grid-cols-[minmax(12rem,1fr)_minmax(15rem,2fr)_auto] sm:items-center">
-            <div><h3 className="text-sm font-bold text-[#102A43] dark:text-[#D8EFF7]">{evento.etiqueta}</h3><p className="mt-0.5 text-xs text-[#46657A] dark:text-[#B9D4DF]">{evento.n_dias} días observados</p></div>
-            <div className="space-y-1.5"><div className="flex items-center gap-2 text-[11px] text-[#46657A] dark:text-[#B9D4DF]"><span className="w-16">Normal</span><span className="h-2 flex-1 rounded-full bg-[#E3EBF0]"><span className="block h-2 rounded-full bg-[#9FB5C2]" style={{ width: `${(evento.media_normal / escala) * 100}%` }} /></span><strong className="w-14 text-right font-mono-num">{evento.media_normal}</strong></div><div className="flex items-center gap-2 text-[11px] text-[#46657A] dark:text-[#B9D4DF]"><span className="w-16">Evento</span><span className={`h-2 flex-1 rounded-full ${positivo ? 'bg-[#DCEFF7]' : 'bg-[#EDF8F0]'}`}><span className={`block h-2 rounded-full ${positivo ? 'bg-[#2C7A9B]' : 'bg-[#5D9A72]'}`} style={{ width: `${(evento.media_evento / escala) * 100}%` }} /></span><strong className="w-14 text-right font-mono-num">{evento.media_evento}</strong></div></div>
-            <div className={`text-right font-mono-num text-sm font-extrabold ${positivo ? 'text-[#2C7A9B]' : diferencia < 0 ? 'text-[#5D9A72]' : 'text-[#46657A] dark:text-[#B9D4DF]'}`}>{diferencia > 0 ? '+' : ''}{diferencia} <span className="text-xs font-bold">({porcentaje > 0 ? '+' : ''}{porcentaje}%)</span></div>
-          </article>;
-        })}
-      </div>}
-    </section>
+      )}
+
+      {estado === 'error' && (
+        <div
+          role="alert"
+          className="rounded-lg border border-[var(--mf-warn-border)] bg-[var(--mf-warn-soft)] p-4 text-sm text-[var(--mf-warn)]"
+        >
+          No se pudieron cargar los efectos históricos.
+        </div>
+      )}
+
+      {estado === 'ok' && !eventos.length && (
+        <div className="flex h-40 items-center justify-center text-sm text-[var(--mf-ink-2)]">
+          La API no devolvió eventos para este servicio.
+        </div>
+      )}
+
+      {estado === 'ok' && eventos.length > 0 && (
+        <div>
+          <div className="hidden sm:grid sm:grid-cols-[minmax(12rem,1fr)_minmax(15rem,2fr)_8.5rem] items-center gap-4 border-b border-[var(--mf-border)] pb-2.5 text-xs font-semibold text-[var(--mf-ink-3)]">
+            <span>Evento</span>
+            <span>Comparativa de llegadas promedio</span>
+            <span className="text-right">Impacto histórico</span>
+          </div>
+
+          <div className="divide-y divide-[var(--mf-border)]">
+            {eventos.map((evento) => {
+              const diferencia = Number(evento.cambio_visitas || 0);
+              const porcentaje = Number(evento.cambio_pct || 0);
+              const positivo = diferencia > 0;
+              const critico = positivo && porcentaje >= 15;
+
+              const anchoNormal = Math.max(2, (Number(evento.media_normal || 0) / escala) * 100);
+              const anchoEvento = Math.max(2, (Number(evento.media_evento || 0) / escala) * 100);
+
+              const barEventoColor = critico
+                ? 'bg-[var(--mf-crit)]'
+                : positivo
+                  ? 'bg-[var(--mf-warn)]'
+                  : 'bg-[var(--mf-accent)]';
+
+              const badgeClase = critico
+                ? 'mf-badge-crit'
+                : positivo
+                  ? 'mf-badge-warn'
+                  : diferencia < 0
+                    ? 'mf-badge-ok'
+                    : 'border border-[var(--mf-border)] bg-[var(--mf-surface-2)] text-[var(--mf-ink-2)]';
+
+              return (
+                <article
+                  key={evento.evento}
+                  className="grid gap-3 py-3.5 first:pt-3 last:pb-1 sm:grid-cols-[minmax(12rem,1fr)_minmax(15rem,2fr)_8.5rem] sm:items-center sm:gap-4"
+                >
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold text-[var(--mf-ink)]">{evento.etiqueta}</h3>
+                    <p className="mt-0.5 text-xs text-[var(--mf-ink-3)] font-mono-num">
+                      {evento.n_dias} días observados
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2.5 text-xs text-[var(--mf-ink-2)]">
+                      <span className="w-14 shrink-0">Normal</span>
+                      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-[var(--mf-surface-2)]">
+                        <div
+                          className="h-full rounded-full bg-[var(--mf-series-2)]"
+                          style={{ width: `${anchoNormal}%` }}
+                        />
+                      </div>
+                      <strong className="w-12 text-right font-mono-num font-semibold text-[var(--mf-ink)]">
+                        {evento.media_normal}
+                      </strong>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 text-xs text-[var(--mf-ink-2)]">
+                      <span className="w-14 shrink-0">Evento</span>
+                      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-[var(--mf-surface-2)]">
+                        <div
+                          className={`h-full rounded-full ${barEventoColor}`}
+                          style={{ width: `${anchoEvento}%` }}
+                        />
+                      </div>
+                      <strong className="w-12 text-right font-mono-num font-semibold text-[var(--mf-ink)]">
+                        {evento.media_evento}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className="flex sm:justify-end">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold font-mono-num ${badgeClase}`}
+                    >
+                      {diferencia > 0 ? '+' : ''}
+                      {diferencia} ({porcentaje > 0 ? '+' : ''}
+                      {porcentaje}%)
+                    </span>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </SectionPanel>
   );
 }

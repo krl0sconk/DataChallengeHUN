@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="14" fill="#0B2532"/>
+  <rect x="2" y="2" width="60" height="60" rx="12" stroke="#1C4B60" stroke-width="2"/>
+  <!-- Architectural clinical cross backdrop (subtle geometry) -->
+  <path d="M27 14H37V27H50V37H37V50H27V37H14V27H27V14Z" fill="#133A4C"/>
+  <!-- Dynamic fluid pulse/flow ribbon symbolizing patient flow stability -->
+  <path d="M12 34H22L27.5 20.5L35 43.5L41 29.5L44.5 34H52" stroke="#2BB8AD" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="52" cy="34" r="3" fill="#E8F2F6"/>
+</svg>

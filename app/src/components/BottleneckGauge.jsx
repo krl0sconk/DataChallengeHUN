@@ -1,91 +1,108 @@
-import { CircleHelp } from 'lucide-react';
+import { FlowBandBar } from './FlowBandBar';
 
-function polarToCartesian(cx, cy, r, frac) {
-  const angleRad = Math.PI * (1 - frac);
-  return {
-    x: cx + r * Math.cos(angleRad),
-    y: cy - r * Math.sin(angleRad),
-  };
-}
-
-function arcPath(cx, cy, r, startFrac, endFrac) {
-  if (endFrac <= startFrac) return '';
-  const start = polarToCartesian(cx, cy, r, startFrac);
-  const end = polarToCartesian(cx, cy, r, endFrac);
-  return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${r} ${r} 0 0 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`;
+function formatNumber(val) {
+  const num = Number(val);
+  if (!Number.isFinite(num)) return '0';
+  return Number.isInteger(num) ? String(num) : num.toFixed(1);
 }
 
 export function BottleneckGauge({
   value = 0,
   p75 = 0,
   p90 = 0,
+  min = null,
+  max = null,
   unidad = '',
   label = 'Presión actual',
 }) {
-  const val = Number(value) || 0;
-  const umbral75 = Number(p75) || 1;
-  const umbral90 = Math.max(umbral75, Number(p90) || umbral75);
-  const maxEscala = Math.max(Math.ceil(umbral90 * 1.25), Math.ceil(val * 1.15), 1);
-
-  const angle = -90 + (Math.min(Math.max(val, 0), maxEscala) / maxEscala) * 180;
-  const frac75 = Math.min(1, umbral75 / maxEscala);
-  const frac90 = Math.min(1, umbral90 / maxEscala);
+  const val = Number.isFinite(Number(value)) ? Number(value) : 0;
+  const umbral75 = Number.isFinite(Number(p75)) && Number(p75) > 0 ? Number(p75) : 1;
+  const umbral90 = Math.max(umbral75, Number.isFinite(Number(p90)) ? Number(p90) : umbral75);
 
   const nivel = val >= umbral90 ? 'rojo' : val >= umbral75 ? 'amarillo' : 'verde';
   const estadoTexto = { verde: 'Normal', amarillo: 'Alerta', rojo: 'Saturación' }[nivel];
   const badgeClass = {
-    verde: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300',
-    amarillo: 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300',
-    rojo: 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300',
+    verde: 'mf-badge-ok',
+    amarillo: 'mf-badge-warn',
+    rojo: 'mf-badge-crit',
+  }[nivel];
+  const deltaClass = {
+    verde: 'text-[var(--mf-ok)]',
+    amarillo: 'text-[var(--mf-warn)]',
+    rojo: 'text-[var(--mf-crit)]',
   }[nivel];
 
-  const verdePath = arcPath(80, 80, 64, 0, frac75);
-  const amarilloPath = arcPath(80, 80, 64, frac75, frac90);
-  const rojoPath = arcPath(80, 80, 64, frac90, 1);
+  const deltaP75 = val - umbral75;
+  const deltaPrefix = deltaP75 > 0 ? '+' : '';
+  const hasInterval =
+    min !== null &&
+    max !== null &&
+    Number.isFinite(Number(min)) &&
+    Number.isFinite(Number(max));
 
   return (
     <article
-      className="rounded-xl border border-slate-200/80 bg-white/80 p-5 shadow-sm backdrop-blur-sm transition-all dark:border-slate-800/80 dark:bg-slate-900/80"
-      title={`Normal < ${p75} · Alerta ${p75}–${p90} · Saturación >= ${p90}`}
+      className="mf-panel flex flex-col justify-between gap-4 p-5 sm:p-6"
+      title={`Normal < ${umbral75} · Alerta ${umbral75}–${umbral90} · Saturación >= ${umbral90}`}
     >
-      <header className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold text-slate-900 dark:text-white truncate">{label}</span>
-        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold shrink-0 ${badgeClass}`}>
+      <header className="flex items-start justify-between gap-3">
+        <h2 className="min-w-0 text-base font-semibold tracking-[-0.015em] text-[var(--mf-ink)]">
+          {label}
+        </h2>
+        <span
+          className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${badgeClass}`}
+        >
           {estadoTexto}
         </span>
       </header>
 
-      <svg viewBox="0 0 160 92" className="mx-auto w-full max-w-[180px]" role="img" aria-label={`${val} ${unidad}, estado ${estadoTexto}`}>
-        {verdePath && <path d={verdePath} fill="none" stroke="#10b981" strokeWidth="14" strokeLinecap="butt" />}
-        {amarilloPath && <path d={amarilloPath} fill="none" stroke="#f59e0b" strokeWidth="14" strokeLinecap="butt" />}
-        {rojoPath && <path d={rojoPath} fill="none" stroke="#e11d48" strokeWidth="14" strokeLinecap="butt" />}
-        <line
-          x1="80"
-          y1="80"
-          x2="80"
-          y2="27"
-          className="stroke-slate-900 dark:stroke-slate-100"
-          strokeWidth="3.5"
-          strokeLinecap="round"
-          transform={`rotate(${angle} 80 80)`}
-        />
-        <circle cx="80" cy="80" r="5.5" className="fill-slate-900 dark:fill-slate-100" />
-      </svg>
-
-      <div className="-mt-1 text-center">
-        <div className="flex items-baseline justify-center gap-1.5">
-          <strong className="font-mono text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
-            {val}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+        <div className="flex items-baseline gap-2">
+          <strong className="font-mono-num text-3xl sm:text-[2.125rem] font-semibold tracking-tight leading-none text-[var(--mf-ink)]">
+            {formatNumber(val)}
           </strong>
           {unidad && (
-            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{unidad}</span>
+            <span className="text-sm font-medium text-[var(--mf-ink-2)]">{unidad}</span>
           )}
         </div>
-        <p className="mt-1.5 flex items-center justify-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-          <CircleHelp className="h-3 w-3 shrink-0" />
-          <span>Alerta: {p75} · Crítico: {p90}</span>
+
+        <p className="font-mono-num text-xs font-medium text-[var(--mf-ink-2)]">
+          <span>Δ vs p75: </span>
+          <strong className={`font-semibold ${deltaClass}`}>
+            {deltaPrefix}
+            {formatNumber(deltaP75)}
+          </strong>
         </p>
       </div>
+
+      <FlowBandBar
+        value={val}
+        p75={umbral75}
+        p90={umbral90}
+        min={min}
+        max={max}
+        unit={unidad}
+        label={label}
+      />
+
+      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--mf-border)] pt-3 text-xs text-[var(--mf-ink-2)] font-mono-num">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span>
+            Alerta p75: <strong className="font-semibold text-[var(--mf-ink)]">{formatNumber(umbral75)}</strong>
+          </span>
+          <span>
+            Saturación p90: <strong className="font-semibold text-[var(--mf-ink)]">{formatNumber(umbral90)}</strong>
+          </span>
+        </div>
+        {hasInterval && (
+          <span>
+            Banda p10–p90:{' '}
+            <strong className="font-semibold text-[var(--mf-ink)]">
+              {Math.round(Number(min))}–{Math.round(Number(max))}
+            </strong>
+          </span>
+        )}
+      </footer>
     </article>
   );
 }

@@ -1,36 +1,61 @@
 import { useEffect, useState } from 'react';
 import {
+  AlertCircle,
+  CalendarDays,
+  RefreshCw,
+} from 'lucide-react';
+import {
   BottleneckGauge,
-  ComparadorServicios,
   Chatbot,
+  ComparadorServicios,
   DemandChart,
-  Header,
+  EventEffectsChart,
   HallazgosCards,
+  Header,
   HeatmapTurnos,
   LongTermForecast,
-  RadarPresionServicios,
+  MediFlowLogo,
   Metodologia,
   NavTabs,
-  PrecisionPanel,
-  EventEffectsChart,
   OptimizationPanel,
+  PrecisionPanel,
+  RadarPresionServicios,
   SimulatorPanel,
   StatCardGrid,
 } from './components';
-import {
-  FECHA_BASE_MAXIMA,
-  FECHA_INICIO_DATOS,
-  SERVICIOS,
-} from './constants/servicios';
+import { FECHA_BASE_MAXIMA, FECHA_INICIO_DATOS, SERVICIOS } from './constants/servicios';
 import { useDemandaSimulator } from './hooks/useDemandaSimulator';
 import { getOptimizacion } from './lib/api';
-import { AlertCircle, CalendarDays } from 'lucide-react';
+
+const TITULOS_VISTA = {
+  hoy: {
+    titulo: 'Resumen operativo de demanda',
+    descripcion: 'Proyección diaria por servicio frente a umbrales históricos p75 y p90.',
+  },
+  atascos: {
+    titulo: 'Cuellos de botella y presión por turno',
+    descripcion: 'Censo histórico, concentración horaria y etapas con mayor tiempo de permanencia.',
+  },
+  simulador: {
+    titulo: 'Simulador de escenarios y dotación',
+    descripcion: 'Efecto histórico de eventos locales y recomendación de personal acoplada al pronóstico.',
+  },
+  precision: {
+    titulo: 'Precisión histórica del pronóstico',
+    descripcion: 'Comparación entre demanda real observada y predicción del modelo en la ventana seleccionada.',
+  },
+  metodologia: {
+    titulo: 'Guía operativa y metodología',
+    descripcion: 'Criterios clínicos, parámetros OMOP CDM v5.4 y reglas de interpretación de alertas.',
+  },
+};
 
 export default function App() {
   const [tabActiva, setTabActiva] = useState('hoy');
   const [optimizacionData, setOptimizacionData] = useState(null);
   const [isDark, setIsDark] = useState(() => {
-    return localStorage.getItem('hun-theme') === 'dark';
+    const saved = localStorage.getItem('mediflow-theme') || localStorage.getItem('hun-theme');
+    return saved === 'dark';
   });
 
   useEffect(() => {
@@ -42,7 +67,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('hun-theme', isDark ? 'dark' : 'light');
+    const theme = isDark ? 'dark' : 'light';
+    localStorage.setItem('mediflow-theme', theme);
+    localStorage.setItem('hun-theme', theme);
     if (isDark) {
       document.documentElement.classList.add('dark');
     } else {
@@ -62,10 +89,14 @@ export default function App() {
     proyeccion,
     isApiConnected,
     isLoading,
+    reintentarConexion,
   } = useDemandaSimulator('urgencias');
 
+  const metaVista = TITULOS_VISTA[tabActiva] || TITULOS_VISTA.hoy;
+  const mostrarSelectorServicios = ['hoy', 'atascos', 'precision', 'simulador'].includes(tabActiva);
+
   return (
-    <div className="min-h-screen flex flex-col font-sans bg-[#F7FAFC] dark:bg-[#071B2A] text-[#102A43] dark:text-[#D8EFF7] transition-colors">
+    <div className="min-h-screen flex flex-col lg:flex-row bg-[var(--mf-bg)] text-[var(--mf-ink)] transition-colors">
       <Header
         tabActiva={tabActiva}
         onCambiarTab={setTabActiva}
@@ -74,137 +105,191 @@ export default function App() {
         isApiConnected={isApiConnected}
       />
 
-      {['hoy', 'atascos', 'precision', 'simulador'].includes(tabActiva) && (
-        <NavTabs
-          servicios={listaServicios}
-          servicioActivoId={servicioSel}
-          onSeleccionarServicio={setServicioSel}
-        />
-      )}
+      <div className="flex min-w-0 flex-1 flex-col">
+        {mostrarSelectorServicios && (
+          <NavTabs
+            servicios={listaServicios}
+            servicioActivoId={servicioSel}
+            onSeleccionarServicio={setServicioSel}
+            fechaSimulacion={fechaSimulacion}
+          />
+        )}
 
-      <main className="hun-main max-w-7xl mx-auto px-6 py-8 flex-1 w-full space-y-6">
-        {tabActiva === 'hoy' && (
-          <section className="hun-hero grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
-            <div>
-              <p className="mb-2 text-sm font-bold uppercase tracking-[0.12em] text-[#14516B] dark:text-[#B9E2F0]">Centro de decisiones HUN</p>
-              <h1 className="max-w-3xl font-heading text-3xl font-extrabold tracking-[-0.035em] text-[#102A43] dark:text-[#D8EFF7] sm:text-4xl">
-                ¿Cómo viene hoy la demanda?
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-6">
+          {/* Encabezado limpio de vista (sin kicker/eyebrow decorativo) */}
+          <header className="flex flex-col gap-3 border-b border-[var(--mf-border)] pb-5 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-[1.75rem] font-bold tracking-[-0.025em] leading-tight text-[var(--mf-ink)]">
+                {metaVista.titulo}
               </h1>
+              <p className="mt-1.5 text-sm text-[var(--mf-ink-2)] max-w-[68ch]">
+                {metaVista.descripcion}
+              </p>
             </div>
-            <div className="flex items-center gap-3 text-sm font-semibold text-[#14516B] dark:text-[#B9E2F0]">
-              <CalendarDays className="h-5 w-5" />
-              <span>Base histórica HUN · 2023–2026</span>
+
+            <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--mf-ink-2)] shrink-0">
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--mf-border)] bg-[var(--mf-surface)] px-3 py-1.5 font-medium">
+                <CalendarDays className="h-3.5 w-3.5 text-[var(--mf-accent)]" aria-hidden="true" />
+                <span>Base HUN</span>
+                <span className="font-mono-num text-[var(--mf-ink)]">2023–2026</span>
+              </span>
             </div>
-          </section>
-        )}
+          </header>
 
-        {tabActiva === 'atascos' && (
-          <h1 className="font-heading text-3xl font-bold tracking-tight text-[#102A43] dark:text-[#D8EFF7]">¿Dónde se atasca?</h1>
-        )}
+          {/* Aviso accionable cuando la API no está disponible */}
+          {!isApiConnected && !isLoading && tabActiva !== 'metodologia' && (
+            <div
+              role="alert"
+              className="flex flex-col gap-3 rounded-xl border border-[var(--mf-warn-border)] bg-[var(--mf-warn-soft)] p-4 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-[var(--mf-warn)] shrink-0 mt-0.5" aria-hidden="true" />
+                <div>
+                  <h2 className="text-sm font-semibold text-[var(--mf-warn)]">
+                    Motor analítico temporalmente sin conexión
+                  </h2>
+                  <p className="mt-0.5 text-sm text-[var(--mf-ink-2)]">
+                    No se pudo consultar la API de pronóstico. Verifica que el backend FastAPI esté activo y vuelve a intentar.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={reintentarConexion}
+                className="mf-btn-secondary shrink-0 self-start sm:self-center"
+              >
+                <RefreshCw className="h-4 w-4" aria-hidden="true" />
+                <span>Reintentar</span>
+              </button>
+            </div>
+          )}
 
-        {tabActiva === 'simulador' && (
-          <h1 className="font-heading text-3xl font-bold tracking-tight text-[#102A43] dark:text-[#D8EFF7]">Eventos y escenarios de optimización</h1>
-        )}
+          {tabActiva === 'hoy' && (
+            <div className="space-y-6">
+              <StatCardGrid
+                alerta={proyeccion.alerta}
+                prediccion={proyeccion.prediccion}
+                p10={proyeccion.min}
+                p90={proyeccion.max}
+                servicio={servicio}
+                isApiConnected={isApiConnected}
+                isLoading={isLoading}
+              />
+              <HallazgosCards
+                servicio={servicio}
+                proyeccion={proyeccion}
+                isApiConnected={isApiConnected}
+              />
+              <DemandChart
+                serie7d={proyeccion.serie7d}
+                factores={proyeccion.factores}
+                servicio={servicio}
+                isDark={isDark}
+                fechaSimulacion={fechaSimulacion}
+                onCambiarFecha={setFechaSimulacion}
+                minFecha={FECHA_INICIO_DATOS}
+                maxFecha={FECHA_BASE_MAXIMA}
+                isApiConnected={isApiConnected}
+                isLoading={isLoading}
+              />
+              <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+                <div className="xl:col-span-7 min-w-0">
+                  <LongTermForecast servicio={servicio} isDark={isDark} />
+                </div>
+                <div className="xl:col-span-5 min-w-0">
+                  <ComparadorServicios
+                    servicios={SERVICIOS}
+                    servicioActivoId={servicioSel}
+                    onSeleccionarServicio={setServicioSel}
+                    isDark={isDark}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
-        {/* Banner institucional cuando el servicio no está disponible */}
-        {tabActiva === 'hoy' && !isApiConnected && !isLoading && (
-          <div className="rounded-2xl border border-[#DFC264] dark:border-[#7A5A00] bg-[#FEF9E2] dark:bg-[#201B0E] p-4 flex items-start gap-3 shadow-xs">
-            <AlertCircle className="h-5 w-5 text-[#B26B00] dark:text-[#FFDF80] shrink-0 mt-0.5" />
-            <div>
-              <h2 className="text-sm font-extrabold text-[#704200] dark:text-[#FFDF80]">
-                Servicio de Pronóstico No Disponible
-              </h2>
-              <p className="text-xs text-[#704200]/90 dark:text-[#FFDF80]/80 mt-0.5">
-                No se pudo establecer conexión con el motor analítico de estimación hospitalaria. Verifica que el servicio esté en ejecución o contacta al administrador del sistema.
+          {tabActiva === 'simulador' && (
+            <div className="space-y-6">
+              <OptimizationPanel
+                key={servicio.id}
+                servicio={servicio}
+                fechaSimulacion={fechaSimulacion}
+                onCambiarFecha={setFechaSimulacion}
+                proyeccion={proyeccion}
+              />
+              <SimulatorPanel
+                servicio={servicio}
+                fechaSimulacion={fechaSimulacion}
+                setFechaSimulacion={setFechaSimulacion}
+                proyeccion={proyeccion}
+                isDark={isDark}
+              />
+              <EventEffectsChart servicio={servicio} />
+            </div>
+          )}
+
+          {tabActiva === 'atascos' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                {isApiConnected && !isLoading ? (
+                  <BottleneckGauge
+                    value={proyeccion.prediccion ?? 0}
+                    p75={servicio.p75}
+                    p90={servicio.p90}
+                    min={proyeccion.min}
+                    max={proyeccion.max}
+                    unidad="pacientes/día"
+                    label={`Demanda proyectada en ${servicio.nombre}`}
+                  />
+                ) : (
+                  <div className="mf-panel p-5 space-y-3" aria-busy={isLoading}>
+                    <div className="mf-skeleton h-5 w-48" />
+                    <div className="mf-skeleton h-20 w-full" />
+                    <div className="mf-skeleton h-3 w-full" />
+                  </div>
+                )}
+
+                {Number.isFinite(optimizacionData?.ley_little_camas?.censo_mediana_observada) ? (
+                  <BottleneckGauge
+                    value={optimizacionData.ley_little_camas.censo_mediana_observada}
+                    p75={optimizacionData.ley_little_camas.umbral_p75}
+                    p90={optimizacionData.ley_little_camas.umbral_p90}
+                    unidad="pacientes simultáneos"
+                    label="Hospitalización: censo mediano histórico"
+                  />
+                ) : (
+                  <div role="status" className="mf-panel flex items-center justify-center p-6 text-sm text-[var(--mf-ink-2)]">
+                    Censo de referencia no disponible con el estado actual del motor.
+                  </div>
+                )}
+              </div>
+
+              <HeatmapTurnos servicio={servicio} isDark={isDark} />
+              <RadarPresionServicios servicios={SERVICIOS} servicioActivoId={servicioSel} isDark={isDark} />
+            </div>
+          )}
+
+          {tabActiva === 'precision' && (
+            <PrecisionPanel servicio={servicio} proyeccion={proyeccion} isDark={isDark} />
+          )}
+
+          {tabActiva === 'metodologia' && <Metodologia />}
+        </main>
+
+        <footer className="border-t border-[var(--mf-border)] bg-[var(--mf-surface)] px-4 py-5 sm:px-6 lg:px-8 transition-colors">
+          <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <MediFlowLogo variant="on-light" size="sm" />
+            <div className="text-xs text-[var(--mf-ink-2)] sm:text-right">
+              <p className="font-medium text-[var(--mf-ink)]">
+                Hospital Universidad del Norte · Optimización de Capacidad Asistencial (Data Challenge 2026)
+              </p>
+              <p className="mt-0.5 text-[var(--mf-ink-3)]">
+                Gobernanza OMOP CDM v5.4 · Privacidad por diseño sin almacenamiento de PHI/PII.
               </p>
             </div>
           </div>
-        )}
-
-        {tabActiva === 'hoy' && (
-          <section className="space-y-6">
-            <HallazgosCards />
-            <StatCardGrid
-              alerta={proyeccion.alerta}
-              prediccion={proyeccion.prediccion}
-              p10={proyeccion.min}
-              p90={proyeccion.max}
-              servicio={servicio}
-              isApiConnected={isApiConnected}
-              isLoading={isLoading}
-            />
-            <DemandChart
-              serie7d={proyeccion.serie7d}
-              factores={proyeccion.factores}
-              servicio={servicio}
-              isDark={isDark}
-              fechaSimulacion={fechaSimulacion}
-              onCambiarFecha={setFechaSimulacion}
-              minFecha={FECHA_INICIO_DATOS}
-              maxFecha={FECHA_BASE_MAXIMA}
-              isApiConnected={isApiConnected}
-              isLoading={isLoading}
-            />
-            <LongTermForecast servicio={servicio} />
-            <ComparadorServicios
-              servicios={SERVICIOS}
-              servicioActivoId={servicioSel}
-              onSeleccionarServicio={setServicioSel}
-              isDark={isDark}
-            />
-          </section>
-        )}
-
-        {tabActiva === 'simulador' && (
-          <section className="space-y-6">
-            <EventEffectsChart servicio={servicio} />
-            <SimulatorPanel
-              servicio={servicio}
-              fechaSimulacion={fechaSimulacion}
-              setFechaSimulacion={setFechaSimulacion}
-              proyeccion={proyeccion}
-              isDark={isDark}
-            />
-            <OptimizationPanel
-              key={servicio.id}
-              servicio={servicio}
-              fechaSimulacion={fechaSimulacion}
-              onCambiarFecha={setFechaSimulacion}
-              proyeccion={proyeccion}
-            />
-          </section>
-        )}
-
-        {tabActiva === 'atascos' && (
-          <section className="space-y-6">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {isApiConnected && !isLoading && <BottleneckGauge
-                value={proyeccion.prediccion ?? 0}
-                p75={servicio.p75}
-                p90={servicio.p90}
-                unidad="pacientes/día"
-                label={`Demanda en ${servicio.nombre}`}
-              />}
-              {Number.isFinite(optimizacionData?.ley_little_camas?.censo_mediana_observada) && <BottleneckGauge
-                value={optimizacionData.ley_little_camas.censo_mediana_observada}
-                p75={optimizacionData.ley_little_camas.umbral_p75}
-                p90={optimizacionData.ley_little_camas.umbral_p90}
-                unidad="pacientes simultáneos"
-                label="Hospitalización: censo mediano histórico (no actual)"
-              />}
-            </div>
-            {!Number.isFinite(optimizacionData?.ley_little_camas?.censo_mediana_observada) && (
-              <p role="status">Censo de referencia no disponible.</p>
-            )}
-            <HeatmapTurnos servicio={servicio} isDark={isDark} />
-            <RadarPresionServicios servicios={SERVICIOS} servicioActivoId={servicioSel} isDark={isDark} />
-          </section>
-        )}
-
-        {tabActiva === 'precision' && <PrecisionPanel servicio={servicio} proyeccion={proyeccion} />}
-
-        {tabActiva === 'metodologia' && <Metodologia />}
-      </main>
+        </footer>
+      </div>
 
       <Chatbot
         pantalla={tabActiva}
@@ -215,16 +300,6 @@ export default function App() {
         alerta={proyeccion.alerta}
         factores={proyeccion.factores}
       />
-
-      {/* Footer Institucional */}
-      <footer className="border-t border-[#D1DEE7] dark:border-[#19506B] bg-white dark:bg-[#0E3E5B] py-6 px-6 text-center text-xs font-semibold text-[#102A43]/80 dark:text-[#D8EFF7]/80 transition-colors">
-        <p>
-          Hospital Universidad del Norte · Proyecto de Optimización de Capacidad Asistencial (Data Challenge 2026)
-        </p>
-        <p className="text-[11px] font-normal text-[#102A43]/60 dark:text-[#D8EFF7]/60 mt-1">
-          Gobernanza OMOP CDM v5.4 estricta · Privacidad por diseño sin almacenamiento de PHI/PII.
-        </p>
-      </footer>
     </div>
   );
 }

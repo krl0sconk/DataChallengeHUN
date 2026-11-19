@@ -4,7 +4,6 @@ import {
   AreaChart,
   CartesianGrid,
   Line,
-  LineChart,
   ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
@@ -12,8 +11,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { CalendarRange, CircleHelp } from 'lucide-react';
 import { getLargoPlazo } from '../lib/api';
+import { SectionPanel } from './SectionPanel';
 
 function formatWeek(date) {
   return new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'short' })
@@ -22,8 +21,8 @@ function formatWeek(date) {
     .replace(' de ', ' ');
 }
 
-export function LongTermForecast({ servicio }) {
-  const [data, setData] = useState([]);
+export function LongTermForecast({ servicio, isDark = false }) {
+  const [rawSeries, setRawSeries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -34,89 +33,170 @@ export function LongTermForecast({ servicio }) {
       .then((result) => {
         if (!activo) return;
         const serieCompleta = result.serie || [];
-        const serieSemanal = serieCompleta.filter((_, index) => index % 7 === 0 || index === serieCompleta.length - 1);
-        setData(serieSemanal.map((point) => ({
-          ...point,
-          etiqueta: formatWeek(point.fecha),
-          p75: servicio.p75,
-          p90: servicio.p90,
-          intervaloBase: point.min,
-          intervaloAncho: Math.max(0, point.max - point.min),
-        })));
+        const serieSemanal = serieCompleta.filter(
+          (_, index) => index % 7 === 0 || index === serieCompleta.length - 1,
+        );
+        setRawSeries(serieSemanal);
         setError(false);
       })
-      .catch(() => activo && setError(true))
-      .finally(() => activo && setLoading(false));
+      .catch(() => {
+        if (activo) setError(true);
+      })
+      .finally(() => {
+        if (activo) setLoading(false);
+      });
 
     return () => { activo = false; };
   }, [servicio.id]);
 
+  const data = useMemo(
+    () =>
+      rawSeries.map((point) => ({
+        ...point,
+        etiqueta: formatWeek(point.fecha),
+        p75: servicio.p75,
+        p90: servicio.p90,
+        intervaloBase: point.min,
+        intervaloAncho: Math.max(0, point.max - point.min),
+      })),
+    [rawSeries, servicio.p75, servicio.p90],
+  );
+
   const resumen = useMemo(() => {
     if (!data.length) return null;
-    const max = data.reduce((item, current) => current.prediccion > item.prediccion ? current : item, data[0]);
+    const max = data.reduce(
+      (item, current) => (current.prediccion > item.prediccion ? current : item),
+      data[0],
+    );
     return { max, semanas: data.length };
   }, [data]);
 
-  return (
-    <section className="long-term-panel mt-10 space-y-5 rounded-3xl border border-[#D1DEE7] border-t-4 border-t-[#2C7A9B] bg-white p-5 shadow-xs dark:border-[#19506B] dark:border-t-[#71B5CC] dark:bg-[#0E3E5B] sm:p-7" aria-labelledby="long-term-title">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-[#14516B] dark:text-[#B9E2F0]">
-            <CalendarRange className="h-4 w-4" />
-            <span>Horizonte largo · agosto–noviembre 2026</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <h2 id="long-term-title" className="font-heading text-xl font-extrabold text-[#102A43] dark:text-[#D8EFF7]">
-              Planificación de capacidad
-            </h2>
-            <span title="Proyección semanal con intervalo ampliado; no sustituye el detalle de 7 días.">
-              <CircleHelp className="h-4 w-4 text-[#14516B] dark:text-[#B9E4F2]" />
-            </span>
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-[#46657A] dark:text-[#B9D4DF]">
-            <span className="rounded-md border border-[#71B5CC] bg-[#E8F6FA] px-2 py-1 text-[#0C4A62] dark:border-[#2C7A9B] dark:bg-[#0E3E5B] dark:text-[#B9E2F0]">Intervalo ampliado</span>
-          </div>
-        </div>
-        {resumen && (
-          <div className="shrink-0 border-l-2 border-[#71B5CC] pl-4 text-sm dark:border-[#2C7A9B]">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#46657A] dark:text-[#B9D4DF]">Pico esperado</p>
-            <p className="mt-1 font-mono-num text-2xl font-bold tabular-nums text-[#102A43] dark:text-[#D8EFF7]">{resumen.max.prediccion}</p>
-            <p className="text-xs text-[#46657A] dark:text-[#B9D4DF]">{resumen.max.etiqueta} · {resumen.semanas} semanas</p>
-          </div>
-        )}
-      </div>
+  const theme = isDark
+    ? {
+        accent: '#149A93',
+        series2: '#5BA4D6',
+        grid: '#1B3545',
+        axis: '#8EB0C2',
+        warn: '#FCD34D',
+        crit: '#FCA5A5',
+        okFill: '#149A93',
+        warnFill: '#FCD34D',
+        critFill: '#FCA5A5',
+      }
+    : {
+        accent: '#0B7A75',
+        series2: '#1D5F8A',
+        grid: '#DFE8EE',
+        axis: '#526D7D',
+        warn: '#9A4A06',
+        crit: '#A81C1C',
+        okFill: '#0B7A75',
+        warnFill: '#9A4A06',
+        critFill: '#A81C1C',
+      };
 
-      <div className="h-72 w-full" aria-label="Pronóstico semanal de largo plazo">
-        {loading && <p className="pt-24 text-center text-sm text-[#46657A] dark:text-[#B9D4DF]">Cargando horizonte largo…</p>}
-        {error && <p className="pt-24 text-center text-sm text-[#8A1828] dark:text-[#FFA8B6]">Endpoint de largo plazo no disponible.</p>}
-        {!loading && !error && (
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="2 5" stroke="#D5E1E8" vertical={false} />
-              <ReferenceArea y1={0} y2={data[0]?.p75 ?? 0} fill="#A9D6B5" fillOpacity={0.10} ifOverflow="extendDomain" />
-              <ReferenceArea y1={data[0]?.p75 ?? 0} y2={data[0]?.p90 ?? 0} fill="#F0C86A" fillOpacity={0.10} ifOverflow="extendDomain" />
-              <ReferenceArea y1={data[0]?.p90 ?? 0} y2="auto" fill="#D96B78" fillOpacity={0.08} ifOverflow="extendDomain" />
-              <ReferenceLine y={data[0]?.p75} stroke="#B26B00" strokeDasharray="5 4" strokeWidth={1.5} />
-              <ReferenceLine y={data[0]?.p90} stroke="#C5304C" strokeDasharray="5 4" strokeWidth={1.5} />
-              <XAxis dataKey="etiqueta" interval={0} tick={{ fill: '#46657A', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#B7CBD6' }} />
-              <YAxis tick={{ fill: '#46657A', fontSize: 12 }} tickLine={false} axisLine={false} width={42} />
-              <Tooltip
-                contentStyle={{ border: '1px solid #D5E1E8', borderRadius: 6, boxShadow: '0 8px 24px rgba(16,42,67,.12)' }}
-                labelFormatter={(label, payload) => payload?.[0]?.payload?.fecha || label}
-                formatter={(value, name) => [value, name === 'prediccion' ? 'p50 esperado' : name === 'intervaloAncho' ? 'Ancho del intervalo' : null]}
-              />
-              <Area type="monotone" dataKey="intervaloBase" stackId="intervalo" stroke="none" fill="transparent" fillOpacity={0} />
-              <Area type="monotone" dataKey="intervaloAncho" stackId="intervalo" stroke="none" fill="#71B5CC" fillOpacity={0.16} />
-              <Line type="monotone" dataKey="prediccion" name="prediccion" stroke="#0F2942" strokeWidth={2.5} dot={false} activeDot={{ r: 5, fill: '#2C7A9B' }} />
-            </AreaChart>
-          </ResponsiveContainer>
-        )}
+  const peakActions = resumen ? (
+    <div className="mf-subsurface inline-flex items-center gap-3 px-3.5 py-2 text-xs">
+      <span className="text-[var(--mf-ink-2)]">Pico semanal esperado</span>
+      <span className="font-mono-num text-base font-semibold text-[var(--mf-ink)]">
+        {resumen.max.prediccion}
+      </span>
+      <span className="font-mono-num text-[var(--mf-ink-3)]">
+        {resumen.max.etiqueta} · {resumen.semanas} sem.
+      </span>
+    </div>
+  ) : null;
+
+  return (
+    <SectionPanel
+      id="long-term"
+      title="Planificación de capacidad"
+      subtitle="Horizonte largo semanal · agosto–noviembre 2026 · intervalo ampliado"
+      actions={peakActions}
+      className="h-full flex flex-col justify-between"
+    >
+      <div className="space-y-4">
+        <div className="h-72 w-full font-mono-num text-xs" aria-label="Pronóstico semanal de largo plazo">
+          {loading && (
+            <div className="space-y-3 py-6" aria-busy="true">
+              <div className="mf-skeleton h-4 w-44" />
+              <div className="mf-skeleton h-52 w-full" />
+            </div>
+          )}
+
+          {error && !loading && (
+            <div role="alert" className="mf-subsurface flex h-full items-center justify-center p-6 text-center text-sm font-medium text-[var(--mf-crit)]">
+              Endpoint de largo plazo no disponible en este momento.
+            </div>
+          )}
+
+          {!loading && !error && (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data} margin={{ top: 10, right: 16, left: 0, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="2 5" stroke={theme.grid} vertical={false} />
+                <ReferenceArea y1={0} y2={data[0]?.p75 ?? 0} fill={theme.okFill} fillOpacity={0.05} ifOverflow="extendDomain" />
+                <ReferenceArea y1={data[0]?.p75 ?? 0} y2={data[0]?.p90 ?? 0} fill={theme.warnFill} fillOpacity={0.06} ifOverflow="extendDomain" />
+                <ReferenceArea y1={data[0]?.p90 ?? 0} y2="auto" fill={theme.critFill} fillOpacity={0.06} ifOverflow="extendDomain" />
+                <ReferenceLine y={data[0]?.p75} stroke={theme.warn} strokeDasharray="5 4" strokeWidth={1.5} />
+                <ReferenceLine y={data[0]?.p90} stroke={theme.crit} strokeDasharray="5 4" strokeWidth={1.5} />
+                <XAxis
+                  dataKey="etiqueta"
+                  interval={0}
+                  tick={{ fill: theme.axis, fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={{ stroke: theme.grid }}
+                />
+                <YAxis
+                  tick={{ fill: theme.axis, fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={44}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--mf-surface)',
+                    borderColor: 'var(--mf-border)',
+                    borderRadius: '8px',
+                    color: 'var(--mf-ink)',
+                    fontSize: '12px',
+                    fontFamily: 'var(--font-mono)',
+                  }}
+                  labelFormatter={(label, payload) => payload?.[0]?.payload?.fecha || label}
+                  formatter={(value, name) => [
+                    value,
+                    name === 'prediccion' ? 'p50 esperado' : name === 'intervaloAncho' ? 'Ancho del intervalo' : null,
+                  ]}
+                />
+                <Area type="monotone" dataKey="intervaloBase" stackId="intervalo" stroke="none" fill="transparent" fillOpacity={0} />
+                <Area type="monotone" dataKey="intervaloAncho" stackId="intervalo" stroke="none" fill={theme.series2} fillOpacity={0.18} />
+                <Line
+                  type="monotone"
+                  dataKey="prediccion"
+                  name="prediccion"
+                  stroke={theme.accent}
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 5, fill: theme.accent }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[var(--mf-border)] pt-3 text-xs text-[var(--mf-ink-2)]">
+          <span className="inline-flex items-center gap-2">
+            <span className="h-0.5 w-4 rounded-full bg-[var(--mf-accent)]" />
+            p50 esperado
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <span className="h-2.5 w-4 rounded-xs bg-[var(--mf-chart-band)] border border-[var(--mf-ok-border)]" />
+            Intervalo ampliado
+          </span>
+          <span className="text-[var(--mf-ink-3)]">
+            Muestreo semanal · no sustituye el detalle diario de 7 días
+          </span>
+        </div>
       </div>
-      <div className="flex flex-wrap gap-x-5 gap-y-2 border-t border-[#D5E1E8] pt-3 text-xs text-[#46657A] dark:border-[#19506B] dark:text-[#B9D4DF]">
-        <span><i className="mr-2 inline-block h-2 w-2 rounded-full bg-[#0F2942]" />p50 esperado</span>
-        <span><i className="mr-2 inline-block h-2 w-2 rounded-full bg-[#2C7A9B]" />Intervalo ampliado</span>
-        <span>Semanal · intervalo de incertidumbre ampliado</span>
-      </div>
-    </section>
+    </SectionPanel>
   );
 }

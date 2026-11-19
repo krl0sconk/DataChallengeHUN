@@ -1,16 +1,59 @@
-import { useEffect, useState } from 'react';
-import { CircleHelp, Flame } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Flame } from 'lucide-react';
 import { getTurnos } from '../lib/api';
+import { SectionPanel } from './SectionPanel';
 
-const FRANJAS_DEFAULT = ['Mañana (06-12h)', 'Tarde (12-18h)', 'Noche (18-24h)', 'Madrugada (00-06h)'];
+const FRANJAS_DEFAULT = [
+  'Madrugada (00-06h)',
+  'Mañana (06-12h)',
+  'Tarde (12-18h)',
+  'Noche (18-24h)',
+];
 const DIAS_DEFAULT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+const ORDEN_TURNOS = ['Madrugada', 'Mañana', 'Tarde', 'Noche'];
 
 // Diccionario en memoria que almacena las matrices descargadas (0ms de latencia en cambios de tab)
 const turnosCache = {};
 
+function getIntensityKey(celda) {
+  if (celda?.nivel === 'rojo') return 'pico';
+  if (celda?.nivel === 'amarillo') return 'alerta';
+  if (Number(celda?.estimado) === 0 || Number(celda?.ratio) < 0.5) return 'valle';
+  return 'normal';
+}
+
+function getCellStyles(intensityKey, isDark) {
+  if (intensityKey === 'pico') {
+    return isDark
+      ? 'bg-[#7F1D26] text-[#FFE4E6] border-[#B4323F] font-semibold'
+      : 'bg-[#9E1C1C] text-white border-[#7F1515] font-semibold';
+  }
+  if (intensityKey === 'alerta') {
+    return isDark
+      ? 'bg-[#3B290C] text-[#FDE68A] border-[#8A611B] font-semibold'
+      : 'bg-[#FEF5E6] text-[#7A3803] border-[#ECC98B] font-semibold';
+  }
+  if (intensityKey === 'normal') {
+    return isDark
+      ? 'bg-[#0D3438] text-[#7BE3DA] border-[#1D6362] font-medium'
+      : 'bg-[#E3F4F2] text-[#074D4A] border-[#99D5CE] font-medium';
+  }
+  return isDark
+    ? 'bg-[#122532] text-[#A6C2D0] border-[#1F3C4D] font-normal'
+    : 'bg-[#F3F6F8] text-[#385262] border-[#D4DFE6] font-normal';
+}
+
+const LEYENDA_PASOS = [
+  { key: 'valle', etiqueta: 'Valle (< 0.50×)' },
+  { key: 'normal', etiqueta: 'Normal (0.50×–0.84×)' },
+  { key: 'alerta', etiqueta: 'Alerta (0.85×–1.25×)' },
+  { key: 'pico', etiqueta: 'Pico (> 1.25×)' },
+];
+
 export function HeatmapTurnos({ servicio, isDark }) {
   const [respuesta, setRespuesta] = useState(() => ({
-    servicioId: servicio.id, datos: turnosCache[servicio.id] || null,
+    servicioId: servicio.id,
+    datos: turnosCache[servicio.id] || null,
   }));
   const [error, setError] = useState(null);
   const datosTurnos = respuesta.servicioId === servicio.id ? respuesta.datos : null;
@@ -21,7 +64,6 @@ export function HeatmapTurnos({ servicio, isDark }) {
     setError(null);
     setRespuesta({ servicioId: servicio.id, datos: null });
 
-    // Si ya existe en el diccionario, no hace petición HTTP
     if (turnosCache[servicio.id]) {
       setRespuesta({ servicioId: servicio.id, datos: turnosCache[servicio.id] });
       return;
@@ -30,10 +72,10 @@ export function HeatmapTurnos({ servicio, isDark }) {
     async function cargarTurnos() {
       try {
         const data = await getTurnos(servicio.id);
-        turnosCache[servicio.id] = data; // Guardado en el diccionario
+        turnosCache[servicio.id] = data;
         if (!cancelado) setRespuesta({ servicioId: servicio.id, datos: data });
       } catch {
-        if (!cancelado) setError('No se pudo cargar la matriz de este servicio.');
+        if (!cancelado) setError('No se pudo cargar la matriz de turnos para este servicio.');
       }
     }
     cargarTurnos();
@@ -44,105 +86,173 @@ export function HeatmapTurnos({ servicio, isDark }) {
 
   const franjas = datosTurnos?.franjas || FRANJAS_DEFAULT;
   const dias = datosTurnos?.dias || DIAS_DEFAULT;
-
-  // Sin datos no se inventa una distribución ni se conserva la de otro servicio.
   const matriz = datosTurnos?.matriz || [];
 
-  const getCellColor = (nivel) => {
-    if (nivel === 'rojo') {
-      return isDark
-        ? 'bg-[#C5304C]/35 text-[#FFA8B6] border-[#C5304C]/80 shadow-2xs font-extrabold'
-        : 'bg-[#FEECEF] text-[#781827] border-[#F1A5B4] font-extrabold';
+  const filasOrdenadas = useMemo(() => {
+    if (!matriz.length) return [];
+    return franjas
+      .map((franja, idx) => {
+        const rank = ORDEN_TURNOS.findIndex((prefijo) =>
+          String(franja).toLowerCase().startsWith(prefijo.toLowerCase()),
+        );
+        return {
+          franja,
+          celdas: matriz[idx] || [],
+          orden: rank === -1 ? ORDEN_TURNOS.length + idx : rank,
+        };
+      })
+      .sort((a, b) => a.orden - b.orden);
+  }, [franjas, matriz]);
+
+  const picoTurno = useMemo(() => {
+    let mejor = null;
+    for (const fila of filasOrdenadas) {
+      for (let dIdx = 0; dIdx < fila.celdas.length; dIdx += 1) {
+        const celda = fila.celdas[dIdx];
+        const estimado = Number(celda?.estimado) || 0;
+        const ratio = Number(celda?.ratio) || 0;
+        if (
+          !mejor ||
+          estimado > mejor.estimado ||
+          (estimado === mejor.estimado && ratio > mejor.ratio)
+        ) {
+          mejor = {
+            dia: celda?.dia || dias[dIdx] || '',
+            franja: fila.franja,
+            estimado,
+            ratio,
+          };
+        }
+      }
     }
-    if (nivel === 'amarillo') {
-      return isDark
-        ? 'bg-[#D98A00]/30 text-[#FFD875] border-[#D98A00]/80 font-bold'
-        : 'bg-[#FEF7D6] text-[#663E00] border-[#E0BA42] font-bold';
-    }
-    if (nivel === 'verde') {
-      return isDark
-        ? 'bg-[#0E3E5B] text-[#D8EFF7] border-[#1B8CC9]'
-        : 'bg-[#EBF5EE] text-[#14472C] border-[#71B5CC] font-semibold';
-    }
-    // Valle
-    return isDark
-      ? 'bg-[#071B2A] text-[#B9E2F0] border-[#19506B]'
-      : 'bg-[#F7FAFC] text-[#332E47] border-[#D1DEE7] font-medium';
-  };
+    return mejor;
+  }, [filasOrdenadas, dias]);
+
+  const peakCallout = picoTurno ? (
+    <div className="inline-flex items-center gap-2 rounded-lg bg-[var(--mf-surface-2)] px-3 py-1.5 text-xs text-[var(--mf-ink-2)]">
+      <Flame className="h-3.5 w-3.5 text-[var(--mf-crit)] shrink-0" aria-hidden="true" />
+      <span>Pico semanal:</span>
+      <strong className="font-semibold text-[var(--mf-ink)]">
+        {picoTurno.dia} · {picoTurno.franja}
+      </strong>
+      <span className="font-mono-num font-semibold text-[var(--mf-crit)]">
+        ({picoTurno.estimado} pac.)
+      </span>
+    </div>
+  ) : null;
 
   return (
-    <section className="rounded-3xl p-6 border border-[#D1DEE7] dark:border-[#19506B] bg-white dark:bg-[#0E3E5B] transition-colors flex flex-col justify-between">
-      <div>
-        <header className="flex flex-wrap items-center justify-between gap-4 mb-4">
-          <div className="flex items-start gap-2">
-            <h2 className="text-base font-bold font-heading flex items-center gap-2 text-[#102A43] dark:text-[#D8EFF7]">
-              <Flame className="h-5 w-5 text-[#14516B] dark:text-[#B9E2F0]" />
-              Afluencia por Turno
-            </h2>
-            <p className="text-xs font-semibold mt-0.5 text-[#102A43] dark:text-[#D8EFF7]">
-              Distribución de pacientes según día y guardia horaria
-            </p>
-            <CircleHelp className="mt-1 h-4 w-4 shrink-0 text-[#14516B] dark:text-[#B9E2F0]" title="Razón respecto al promedio de cada franja, no percentiles" />
-          </div>
-          <div className="flex items-center gap-3 text-xs font-bold">
-            <span className="flex items-center gap-1.5 text-[#14472C] dark:text-[#D8EFF7]">
-              <span className="h-2.5 w-2.5 rounded-sm bg-[#A9D6B5] dark:bg-[#0E3E5B] border border-[#14516B]" /> Baja/Normal: &lt; 0.85× promedio/franja
-            </span>
-            <span className="flex items-center gap-1.5 text-[#663E00] dark:text-[#FFD875]">
-              <span className="h-2.5 w-2.5 rounded-sm bg-[#F0C86A] dark:bg-[#D98A00]" /> Media/Alerta: 0.85×–1.25×
-            </span>
-            <span className="flex items-center gap-1.5 text-[#781827] dark:text-[#FFA8B6]">
-              <span className="h-2.5 w-2.5 rounded-sm bg-[#D96B78]" /> Alta/Pico: &gt; 1.25×
-            </span>
-          </div>
-        </header>
+    <SectionPanel
+      id="heatmap-turnos"
+      title={`Afluencia por turno en ${servicio.nombre}`}
+      subtitle="Promedio histórico de llegadas por guardia de 6 horas y día de la semana frente a la media por franja."
+      actions={peakCallout}
+    >
+      {!datosTurnos && !error && (
+        <div role="status" aria-busy="true" className="space-y-3">
+          <span className="sr-only">Cargando matriz del servicio…</span>
+          <div className="mf-skeleton h-8 w-full" />
+          <div className="mf-skeleton h-14 w-full" />
+          <div className="mf-skeleton h-14 w-full" />
+          <div className="mf-skeleton h-14 w-full" />
+          <div className="mf-skeleton h-14 w-full" />
+        </div>
+      )}
 
-        {!datosTurnos && <p role="status">{error || 'Cargando matriz del servicio…'}</p>}
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs font-mono-num text-center border-collapse">
-            <thead>
-              <tr>
-                <th className="p-2.5 text-left font-sans font-extrabold text-[#102A43] dark:text-[#D8EFF7]">
-                  Guardia
-                </th>
-                {dias.map((dia) => (
+      {error && (
+        <div
+          role="alert"
+          className="rounded-lg border border-[var(--mf-warn-border)] bg-[var(--mf-warn-soft)] p-4 text-sm text-[var(--mf-warn)]"
+        >
+          {error}
+        </div>
+      )}
+
+      {datosTurnos && (
+        <>
+          <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-[var(--mf-ink-2)]">
+            {LEYENDA_PASOS.map((paso) => (
+              <span key={paso.key} className="inline-flex items-center gap-2 font-medium">
+                <span
+                  aria-hidden="true"
+                  className={`inline-block h-3.5 w-3.5 rounded border ${getCellStyles(paso.key, isDark)}`}
+                />
+                <span>{paso.etiqueta}</span>
+              </span>
+            ))}
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] border-separate border-spacing-1.5 text-center text-xs">
+              <thead>
+                <tr>
                   <th
-                    key={dia}
-                    className="p-2 font-heading font-extrabold text-[#102A43] dark:text-[#D8EFF7]"
+                    scope="col"
+                    className="px-2.5 py-2 text-left text-xs font-semibold text-[var(--mf-ink-2)]"
                   >
-                    {dia}
+                    Guardia horaria
                   </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {matriz.map((fila, fIdx) => (
-                <tr key={franjas[fIdx] || fIdx}>
-                  <td className="p-2 text-left font-sans font-bold text-[#102A43] dark:text-[#D8EFF7]">
-                    {franjas[fIdx]}
-                  </td>
-                  {fila.map((celda, dIdx) => (
-                    <td key={dIdx} className="p-1">
-                      <div
-                        className={`py-2 px-1 rounded-xl border transition-all ${getCellColor(
-                          celda.nivel
-                        )}`}
-                      >
-                        {celda.estimado}
-                        <span className="block text-[10px] font-semibold text-[#102A43] dark:text-[#D8EFF7]">pac.</span>
-                      </div>
-                    </td>
+                  {dias.map((dia) => (
+                    <th
+                      key={dia}
+                      scope="col"
+                      className="px-2 py-2 text-center text-xs font-semibold text-[var(--mf-ink)]"
+                    >
+                      {dia}
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              </thead>
+              <tbody>
+                {filasOrdenadas.map((fila) => (
+                  <tr key={fila.franja}>
+                    <th
+                      scope="row"
+                      className="whitespace-nowrap px-2.5 py-2 text-left text-xs font-semibold text-[var(--mf-ink)]"
+                    >
+                      {fila.franja}
+                    </th>
+                    {fila.celdas.map((celda, dIdx) => {
+                      const intensity = getIntensityKey(celda);
+                      const cellClasses = getCellStyles(intensity, isDark);
+                      const ratioVal = Number(celda?.ratio);
+                      const ratioLabel = Number.isFinite(ratioVal)
+                        ? `${ratioVal.toFixed(2)}× promedio`
+                        : '';
+                      return (
+                        <td key={`${fila.franja}-${dias[dIdx] || dIdx}`} className="p-0">
+                          <div
+                            className={`rounded-lg border px-2 py-2.5 transition-colors ${cellClasses}`}
+                            title={`${celda?.dia || dias[dIdx]} · ${fila.franja}: ${celda?.estimado ?? 0} pacientes (${ratioLabel})`}
+                          >
+                            <span className="block font-mono-num text-sm leading-tight">
+                              {celda?.estimado ?? 0}
+                            </span>
+                            <span className="mt-0.5 block text-xs leading-tight opacity-90">
+                              pac.
+                            </span>
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-      <footer className="mt-4 pt-3 border-t border-[#D1DEE7] dark:border-[#19506B] text-[11px] text-[#102A43] dark:text-[#D8EFF7] leading-relaxed font-sans font-medium">
-        💡 <strong>Cómo leer esta tabla:</strong> Las celdas rojas marcan las horas con mayor congestión donde se recomienda reforzar la atención médica inicial.
-      </footer>
-    </section>
+          <footer className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--mf-border)] pt-3 text-xs text-[var(--mf-ink-2)]">
+            <p className="max-w-[68ch]">
+              Referencia por razón frente al promedio por franja del servicio. Las celdas en rojo indican congestión superior a 1.25× donde conviene reforzar admisión y triage.
+            </p>
+            {picoTurno && (
+              <span className="font-mono-num font-medium text-[var(--mf-ink)] shrink-0">
+                Máximo: {picoTurno.dia} · {picoTurno.ratio.toFixed(2)}×
+              </span>
+            )}
+          </footer>
+        </>
+      )}
+    </SectionPanel>
   );
 }

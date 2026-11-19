@@ -1,20 +1,13 @@
 import { useEffect, useState } from 'react';
-import { getParametros } from '../lib/api';
 import {
-  Activity,
   AlertCircle,
-  BarChart3,
-  Calendar,
   CheckCircle2,
-  Database,
-  HelpCircle,
-  Layers,
   Lock,
   ShieldAlert,
-  ShieldCheck,
-  Sparkles,
-  TrendingUp,
 } from 'lucide-react';
+import { getParametros } from '../lib/api';
+import { FlowBandBar } from './FlowBandBar';
+import { SectionPanel } from './SectionPanel';
 
 export function Metodologia() {
   const [parametros, setParametros] = useState(null);
@@ -24,172 +17,172 @@ export function Metodologia() {
   }, []);
 
   return (
-    <article className="rounded-3xl p-6 sm:p-8 border border-[#D1DEE7] dark:border-[#19506B] bg-white dark:bg-[#0E3E5B] space-y-8 text-sm text-[#102A43] dark:text-[#D8EFF7] shadow-xs transition-colors">
-      {/* Cabecera Principal */}
-      <header className="border-b border-[#D1DEE7] dark:border-[#19506B] pb-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#DCEFF7] dark:bg-[#071B2A] text-[#14516B] dark:text-[#B9E2F0]">
-            <HelpCircle className="h-6 w-6" />
-          </div>
-          <div>
-            <h2 className="text-xl font-extrabold font-heading text-[#102A43] dark:text-[#D8EFF7]">
-              Guía Operativa y Metodología Asistencial
-            </h2>
-            <p className="text-xs font-semibold mt-1 text-[#102A43] dark:text-[#D8EFF7]">
-              Protocolo para coordinadores médicos, jefes de guardia y equipo directivo del Hospital Universidad del Norte (HUN)
-            </p>
-          </div>
-        </div>
-      </header>
-
-      {/* 1. Módulos Operativos del Monitor */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Layers className="h-5 w-5 text-[#14516B] dark:text-[#B9E2F0]" />
-          <h3 className="text-sm font-extrabold uppercase tracking-wider text-[#102A43] dark:text-[#D8EFF7]">
-            1. Funcionalidades del Monitor de Demanda
-          </h3>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-5 rounded-2xl border border-[#D1DEE7] dark:border-[#19506B] bg-[#F7FAFC] dark:bg-[#071B2A] space-y-2.5">
-            <h4 className="font-extrabold flex items-center gap-2 text-xs uppercase tracking-wider font-heading text-[#14516B] dark:text-[#B9E2F0]">
-              <TrendingUp className="h-4 w-4" />
-              Proyección Temporal (3 a 14 Días)
-            </h4>
-            <p className="text-xs leading-relaxed text-[#102A43] dark:text-[#D8EFF7] font-medium">
-              Calcula la llegada diaria de pacientes mediante el modelo canónico. Cuenta con dos bandas punteadas de tolerancia: el límite inferior <strong>p10</strong> (mínimo habitual) y el límite superior <strong>p90</strong> (peor escenario probable de afluencia).
-            </p>
-          </div>
-
-          <div className="p-5 rounded-2xl border border-[#D1DEE7] dark:border-[#19506B] bg-[#F7FAFC] dark:bg-[#071B2A] space-y-2.5">
-            <h4 className="font-extrabold flex items-center gap-2 text-xs uppercase tracking-wider font-heading text-[#14516B] dark:text-[#B9E2F0]">
-              <Sparkles className="h-4 w-4" />
-              Descomposición de Factores
-            </h4>
-            <p className="text-xs leading-relaxed text-[#102A43] dark:text-[#D8EFF7] font-medium">
-              El modelo utiliza rezagos de 1–8 semanas, nivel local exponencial y variables de calendario
-              (festivos, puentes, Carnaval y Semana Santa), con estratificación por servicio.
-              Los aportes se consultan para cada fecha; no son porcentajes fijos.
-              La capa de optimización combina Erlang C para dotación por franja, Ley de Little
-              para camas y simulación horaria de altas tempranas, con supuestos configurables.
-            </p>
-          </div>
-
-          <div className="p-5 rounded-2xl border border-[#D1DEE7] dark:border-[#19506B] bg-[#F7FAFC] dark:bg-[#071B2A] space-y-2.5">
-            <h4 className="font-extrabold flex items-center gap-2 text-xs uppercase tracking-wider font-heading text-[#14516B] dark:text-[#B9E2F0]">
-              <BarChart3 className="h-4 w-4" />
-              Ocupación Relativa Hospitalaria
-            </h4>
-            <p className="text-xs leading-relaxed text-[#102A43] dark:text-[#D8EFF7] font-medium">
-              Compara la presión operacional de las 3 áreas del hospital respecto a su histórico. Permite alternar de servicio con un solo clic para inspeccionar su respectivo comportamiento.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* 2. Matriz de Decisión y Semáforos */}
-      <section className="space-y-4 pt-2 border-t border-[#D1DEE7] dark:border-[#19506B]">
-        <div className="flex items-center gap-2">
-          <ShieldAlert className="h-5 w-5 text-[#14516B] dark:text-[#B9E2F0]" />
-          <h3 className="text-sm font-extrabold uppercase tracking-wider text-[#102A43] dark:text-[#D8EFF7]">
-            2. Criterios de Saturación y Protocolo Operativo
-          </h3>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 rounded-2xl border border-[#71B5CC] bg-[#E8F6FA] dark:bg-[#071B2A] dark:border-[#176D98] space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black uppercase text-[#0C4A62] dark:text-[#9FE4F5] flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4" /> Estado Verde
-              </span>
-              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white dark:bg-[#0E3E5B] text-[#0C4A62] dark:text-[#9FE4F5]">
-                &lt; p75
-              </span>
-            </div>
-            <strong className="block text-xs text-[#0C4A62] dark:text-[#9FE4F5] font-extrabold">NORMALIDAD OPERATIVA</strong>
-            <p className="text-[11px] leading-relaxed text-[#102A43] dark:text-[#D8EFF7] font-medium">
-              La afluencia esperada se sitúa dentro de la media histórica del hospital. No se requieren traslados ni refuerzo adicional.
-            </p>
-          </div>
-
-          <div className="p-4 rounded-2xl border border-[#DFC264] bg-[#FEF9E2] dark:bg-[#071B2A] dark:border-[#D98A00]/60 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black uppercase text-[#704200] dark:text-[#FFDF80] flex items-center gap-1.5">
-                <AlertCircle className="h-4 w-4" /> Estado Amarillo
-              </span>
-              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white dark:bg-[#0E3E5B] text-[#704200] dark:text-[#FFDF80]">
-                p75 – p90
-              </span>
-            </div>
-            <strong className="block text-xs text-[#704200] dark:text-[#FFDF80] font-extrabold">ALTA DEMANDA ASISTENCIAL</strong>
-            <p className="text-[11px] leading-relaxed text-[#102A43] dark:text-[#D8EFF7] font-medium">
-              Alerta preventiva. Se recomienda vigilar las salas de espera, agilizar altas médicas programadas y mantener en guardia el personal de apoyo.
-            </p>
-          </div>
-
-          <div className="p-4 rounded-2xl border border-[#EBAAB5] bg-[#FDF0F2] dark:bg-[#071B2A] dark:border-[#C5304C]/60 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black uppercase text-[#8A1828] dark:text-[#FFA8B6] flex items-center gap-1.5">
-                <ShieldAlert className="h-4 w-4" /> Estado Rojo
-              </span>
-              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-white dark:bg-[#0E3E5B] text-[#8A1828] dark:text-[#FFA8B6]">
-                &gt; p90
-              </span>
-            </div>
-            <strong className="block text-xs text-[#8A1828] dark:text-[#FFA8B6] font-extrabold">SATURACIÓN CRÍTICA</strong>
-            <p className="text-[11px] leading-relaxed text-[#102A43] dark:text-[#D8EFF7] font-medium">
-              Supera el percentil 90 histórico. Requiere reasignación inmediata de turnos médicos y priorización de transferencias a hospitalización.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. Tabla de Referencia Operativa OMOP */}
-      <section className="space-y-4 pt-2 border-t border-[#D1DEE7] dark:border-[#19506B]">
-        <div className="flex items-center gap-2">
-          <Database className="h-5 w-5 text-[#14516B] dark:text-[#B9E2F0]" />
-          <h3 className="text-sm font-extrabold uppercase tracking-wider text-[#102A43] dark:text-[#D8EFF7]">
-            3. Umbrales Históricos y Servicios Canónicos (2023–2026)
-          </h3>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse font-mono-num">
-            <thead>
-              <tr className="border-b border-[#D1DEE7] dark:border-[#19506B] text-[#14516B] dark:text-[#B9E2F0] font-heading font-extrabold">
-                <th className="py-2.5 px-3">Servicio Asistencial</th>
-                <th className="py-2.5 px-3">Código OMOP</th>
-                <th className="py-2.5 px-3">Media Diaria</th>
-                <th className="py-2.5 px-3">Umbral Alerta (p75)</th>
-                <th className="py-2.5 px-3">Umbral Saturación (p90)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#D1DEE7]/60 dark:divide-[#19506B]/60">
-              {parametros ? Object.entries(parametros.servicios || {}).map(([id, item]) => <tr key={id}>
-                <td className="py-2.5 px-3 font-bold font-sans text-[#102A43] dark:text-[#D8EFF7]">{item.nombre || id}</td>
-                <td className="py-2.5 px-3">{item.codigo || '—'}</td>
-                <td className="py-2.5 px-3 font-extrabold">{item.media_diaria} pac/día</td>
-                <td className="py-2.5 px-3 font-bold text-[#704200] dark:text-[#FFDF80]">{item.umbral_p75} pac.</td>
-                <td className="py-2.5 px-3 font-bold text-[#8A1828] dark:text-[#FFA8B6]">{item.umbral_p90} pac.</td>
-              </tr>) : <tr><td colSpan="5" className="py-5 px-3 text-center text-[#46657A]">Cargando parámetros…</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* 4. Privacidad y Estándar Clínico OMOP */}
-      <footer className="pt-4 border-t border-[#D1DEE7] dark:border-[#19506B] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs font-medium text-[#102A43] dark:text-[#D8EFF7]">
-        <div className="flex items-center gap-2">
-          <Lock className="h-4 w-4 text-[#14516B] dark:text-[#B9E2F0] shrink-0" />
-          <span>
-            <strong>Privacidad y Anonimización:</strong> Cumple con el estándar internacional OMOP Common Data Model. La plataforma opera exclusivamente sobre datos agregados sin almacenar identificadores ni registros clínicos individuales de pacientes.
-          </span>
-        </div>
-        <span className="shrink-0 text-[11px] font-bold px-2 py-1 rounded-lg bg-[#DCEFF7] dark:bg-[#071B2A] text-[#14516B] dark:text-[#B9E2F0]">
-          HUN Data Challenge 2026
+    <SectionPanel
+      id="metodologia-mediflow"
+      title="Guía operativa y metodología asistencial"
+      subtitle="Protocolo de MediFlow para coordinadores médicos, jefes de guardia y equipo directivo del Hospital Universidad del Norte (HUN)."
+      actions={
+        <span className="inline-flex items-center rounded-full border border-[var(--mf-border)] bg-[var(--mf-surface-2)] px-3 py-1 text-xs font-medium text-[var(--mf-ink-2)]">
+          OMOP CDM v5.4
         </span>
-      </footer>
-    </article>
+      }
+    >
+      <div className="space-y-8 text-sm text-[var(--mf-ink)]">
+        {/* Funcionalidades del monitor */}
+        <section className="space-y-4">
+          <h3 className="text-[0.9375rem] font-semibold text-[var(--mf-ink)]">
+            Funcionalidades del monitor de demanda
+          </h3>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="mf-subsurface p-4 space-y-2">
+              <h4 className="text-sm font-semibold text-[var(--mf-ink)]">
+                Proyección temporal (3 a 14 días)
+              </h4>
+              <p className="text-xs leading-relaxed text-[var(--mf-ink-2)] max-w-[68ch]">
+                Calcula la llegada diaria de pacientes mediante el modelo canónico. Incorpora bandas de incertidumbre entre el límite inferior <strong className="font-mono-num text-[var(--mf-ink)]">p10</strong> (mínimo habitual) y el límite superior <strong className="font-mono-num text-[var(--mf-ink)]">p90</strong> (escenario alto probable de afluencia).
+              </p>
+            </div>
+
+            <div className="mf-subsurface p-4 space-y-2">
+              <h4 className="text-sm font-semibold text-[var(--mf-ink)]">
+                Descomposición de factores
+              </h4>
+              <p className="text-xs leading-relaxed text-[var(--mf-ink-2)] max-w-[68ch]">
+                El modelo utiliza rezagos de 1–8 semanas, nivel local exponencial y variables de calendario (festivos, puentes, Carnaval y Semana Santa), estratificado por servicio. Los aportes se consultan para cada fecha; la capa de optimización combina Erlang C para dotación, Ley de Little para camas y simulación horaria de altas tempranas.
+              </p>
+            </div>
+
+            <div className="mf-subsurface p-4 space-y-2">
+              <h4 className="text-sm font-semibold text-[var(--mf-ink)]">
+                Ocupación relativa hospitalaria
+              </h4>
+              <p className="text-xs leading-relaxed text-[var(--mf-ink-2)] max-w-[68ch]">
+                Compara la presión operacional de las 3 áreas asistenciales del hospital frente a sus percentiles históricos, permitiendo alternar de servicio en la barra superior de contexto para inspeccionar su comportamiento.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Criterios de saturación y protocolo operativo */}
+        <section className="space-y-4 border-t border-[var(--mf-border)] pt-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 className="text-[0.9375rem] font-semibold text-[var(--mf-ink)]">
+                Criterios de saturación y protocolo operativo
+              </h3>
+              <p className="mt-1 text-xs text-[var(--mf-ink-2)] max-w-[68ch]">
+                Escala unificada MediFlow basada en los percentiles históricos p75 y p90 de cada servicio asistencial.
+              </p>
+            </div>
+            <div className="w-full sm:w-64">
+              <FlowBandBar
+                value={82}
+                p75={75}
+                p90={90}
+                compact
+                label="Ejemplo de banda de presión p75 y p90"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="mf-subsurface p-4 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold mf-badge-ok">
+                  <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>Normalidad operativa</span>
+                </span>
+                <span className="font-mono-num text-xs font-semibold text-[var(--mf-ink-2)]">&lt; p75</span>
+              </div>
+              <p className="text-xs leading-relaxed text-[var(--mf-ink-2)] max-w-[68ch]">
+                La afluencia esperada se sitúa dentro del rango habitual del hospital. No se requieren traslados ni refuerzo adicional.
+              </p>
+            </div>
+
+            <div className="mf-subsurface p-4 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold mf-badge-warn">
+                  <AlertCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>Alta demanda</span>
+                </span>
+                <span className="font-mono-num text-xs font-semibold text-[var(--mf-ink-2)]">p75 – p90</span>
+              </div>
+              <p className="text-xs leading-relaxed text-[var(--mf-ink-2)] max-w-[68ch]">
+                Alerta preventiva. Vigilar salas de espera, agilizar altas médicas programadas y confirmar disponibilidad del equipo de apoyo antes del pico.
+              </p>
+            </div>
+
+            <div className="mf-subsurface p-4 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold mf-badge-crit">
+                  <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>Saturación crítica</span>
+                </span>
+                <span className="font-mono-num text-xs font-semibold text-[var(--mf-ink-2)]">≥ p90</span>
+              </div>
+              <p className="text-xs leading-relaxed text-[var(--mf-ink-2)] max-w-[68ch]">
+                Supera el percentil 90 histórico. Requiere reasignación inmediata de turnos clínicos y priorización de transferencias hacia hospitalización.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Tabla de referencia operativa OMOP */}
+        <section className="space-y-4 border-t border-[var(--mf-border)] pt-6">
+          <h3 className="text-[0.9375rem] font-semibold text-[var(--mf-ink)]">
+            Umbrales históricos y servicios canónicos (2023–2026)
+          </h3>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse font-mono-num">
+              <thead>
+                <tr className="border-y border-[var(--mf-border)] bg-[var(--mf-surface-2)] font-sans text-[var(--mf-ink-2)]">
+                  <th className="py-2.5 px-3 font-semibold">Servicio asistencial</th>
+                  <th className="py-2.5 px-3 font-semibold">Código OMOP</th>
+                  <th className="py-2.5 px-3 font-semibold">Media diaria</th>
+                  <th className="py-2.5 px-3 font-semibold">Umbral alerta (p75)</th>
+                  <th className="py-2.5 px-3 font-semibold">Umbral saturación (p90)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--mf-border)]">
+                {parametros ? (
+                  Object.entries(parametros.servicios || {}).map(([id, item]) => (
+                    <tr key={id}>
+                      <td className="py-3 px-3 font-sans font-semibold text-[var(--mf-ink)]">
+                        {item.nombre || id}
+                      </td>
+                      <td className="py-3 px-3 text-[var(--mf-ink-2)]">{item.codigo || '—'}</td>
+                      <td className="py-3 px-3 font-semibold text-[var(--mf-ink)]">{item.media_diaria} pac/día</td>
+                      <td className="py-3 px-3 font-semibold text-[var(--mf-warn)]">{item.umbral_p75} pac.</td>
+                      <td className="py-3 px-3 font-semibold text-[var(--mf-crit)]">{item.umbral_p90} pac.</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5" className="py-5 px-3 text-center font-sans text-[var(--mf-ink-2)]">
+                      Cargando parámetros del motor…
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Privacidad y gobernanza OMOP */}
+        <footer className="border-t border-[var(--mf-border)] pt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between text-xs text-[var(--mf-ink-2)]">
+          <div className="flex items-start gap-2.5 max-w-[68ch]">
+            <Lock className="h-4 w-4 text-[var(--mf-accent)] shrink-0 mt-0.5" aria-hidden="true" />
+            <p className="leading-relaxed">
+              <strong className="font-semibold text-[var(--mf-ink)]">Privacidad y anonimización:</strong> MediFlow cumple con el estándar internacional OMOP Common Data Model v5.4. La plataforma opera exclusivamente sobre datos agregados sin almacenar identificadores ni registros clínicos individuales de pacientes.
+            </p>
+          </div>
+          <span className="shrink-0 self-start sm:self-center rounded-full border border-[var(--mf-border)] bg-[var(--mf-surface-2)] px-3 py-1 text-xs font-semibold text-[var(--mf-ink)]">
+            MediFlow · HUN Data Challenge 2026
+          </span>
+        </footer>
+      </div>
+    </SectionPanel>
   );
 }

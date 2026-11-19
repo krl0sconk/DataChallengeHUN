@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
-import { BarChart as BarChartIcon, Calendar, CircleHelp, LineChart as LineChartIcon, Palmtree, PartyPopper, Sparkles, TrendingUp, WifiOff } from 'lucide-react';
-import { getEfectosEventos } from '../lib/api';
+import {
+  BarChart as BarChartIcon,
+  Calendar,
+  LineChart as LineChartIcon,
+  Palmtree,
+  PartyPopper,
+  Sparkles,
+  WifiOff,
+} from 'lucide-react';
 import {
   Area,
   AreaChart,
@@ -8,13 +15,15 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  ReferenceLine,
   ReferenceArea,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
+import { getEfectosEventos } from '../lib/api';
+import { SectionPanel } from './SectionPanel';
 
 export function DemandChart({
   serie7d = [],
@@ -44,6 +53,24 @@ export function DemandChart({
     return () => { activo = false; };
   }, [servicio.id]);
 
+  const theme = isDark
+    ? {
+        accent: '#149A93',
+        series2: '#5BA4D6',
+        grid: '#1B3545',
+        axis: '#8EB0C2',
+        warn: '#FCD34D',
+        crit: '#FCA5A5',
+      }
+    : {
+        accent: '#0B7A75',
+        series2: '#1D5F8A',
+        grid: '#DFE8EE',
+        axis: '#526D7D',
+        warn: '#9A4A06',
+        crit: '#A81C1C',
+      };
+
   const datosFiltrados = (serie7d || []).slice(0, horizonte);
   const datosGrafica = datosFiltrados.map((d) => ({
     ...d,
@@ -52,38 +79,68 @@ export function DemandChart({
   const p75 = datosFiltrados.find((d) => d.p75 != null)?.p75 ?? servicio.p75;
   const p90 = datosFiltrados.find((d) => d.p90 != null)?.p90 ?? servicio.p90;
 
-  // Ajuste inteligente del eje Y: evita aplastar la curva cuando la demanda está muy por debajo de p90
-  const maxDato = datosFiltrados.length > 0 ? Math.max(...datosFiltrados.map((d) => d.max ?? d.prediccion)) : (p90 || 540);
-  const techoVisible = Math.max(Math.ceil(maxDato * 1.25), Math.min(p75 || maxDato, Math.ceil(maxDato * 1.5)));
+  // Ajuste del eje Y: evita aplastar la curva cuando la demanda está por debajo de p90
+  const maxDato = datosFiltrados.length > 0
+    ? Math.max(...datosFiltrados.map((d) => d.max ?? d.prediccion))
+    : (p90 || 540);
+  const techoVisible = Math.max(
+    Math.ceil(maxDato * 1.25),
+    Math.min(p75 || maxDato, Math.ceil(maxDato * 1.5)),
+  );
   const yMax = p75 > 0 && maxDato >= p75 * 0.8
     ? Math.max(Math.ceil(maxDato * 1.1), (p90 || maxDato) + 20)
     : techoVisible;
   const yDomain = [0, yMax];
 
-  // Detección limpia de eventos: solo flags booleanos explícitos o factores con aporte real (|aporte| >= 1.0)
+  // Detección de eventos especiales en la ventana
   const eventosActivos = datosFiltrados.reduce((acc, d) => {
     const factoresDia = d.factores || [];
-    const esCarnaval = d.es_carnaval === true || factoresDia.some((f) => f.nombre.toLowerCase().includes('carnaval') && Math.abs(f.aporte) >= 1.0);
-    const esFestivo = d.es_festivo === true || factoresDia.some((f) => f.nombre.toLowerCase().includes('festivo') && Math.abs(f.aporte) >= 1.0);
-    const esVacaciones = d.es_vacaciones === true || factoresDia.some((f) => f.nombre.toLowerCase().includes('vacacion') && Math.abs(f.aporte) >= 1.0);
+    const esCarnaval = d.es_carnaval === true
+      || factoresDia.some((f) => f.nombre.toLowerCase().includes('carnaval') && Math.abs(f.aporte) >= 1.0);
+    const esFestivo = d.es_festivo === true
+      || factoresDia.some((f) => f.nombre.toLowerCase().includes('festivo') && Math.abs(f.aporte) >= 1.0);
+    const esVacaciones = d.es_vacaciones === true
+      || factoresDia.some((f) => f.nombre.toLowerCase().includes('vacacion') && Math.abs(f.aporte) >= 1.0);
 
     if (esCarnaval) {
-      acc.push({ dia: d.dia, tipo: 'carnaval', etiqueta: 'Carnaval', fill: '#8B5CF6', fillOpacity: 0.10, Icon: PartyPopper, iconClass: 'text-purple-500' });
+      acc.push({
+        dia: d.dia,
+        tipo: 'carnaval',
+        etiqueta: 'Carnaval',
+        fill: theme.series2,
+        fillOpacity: 0.14,
+        Icon: PartyPopper,
+        badgeClass: 'bg-[var(--mf-accent-soft)] text-[var(--mf-accent-ink)] border border-[var(--mf-border)]',
+      });
     } else if (esFestivo) {
-      acc.push({ dia: d.dia, tipo: 'festivo', etiqueta: 'Festivo', fill: '#F59E0B', fillOpacity: 0.10, Icon: Sparkles, iconClass: 'text-amber-500' });
+      acc.push({
+        dia: d.dia,
+        tipo: 'festivo',
+        etiqueta: 'Festivo',
+        fill: theme.warn,
+        fillOpacity: 0.12,
+        Icon: Sparkles,
+        badgeClass: 'mf-badge-warn',
+      });
     } else if (esVacaciones) {
-      acc.push({ dia: d.dia, tipo: 'vacaciones', etiqueta: 'Vacaciones', fill: '#10B981', fillOpacity: 0.08, Icon: Palmtree, iconClass: 'text-emerald-500' });
+      acc.push({
+        dia: d.dia,
+        tipo: 'vacaciones',
+        etiqueta: 'Vacaciones',
+        fill: theme.accent,
+        fillOpacity: 0.10,
+        Icon: Palmtree,
+        badgeClass: 'mf-badge-ok',
+      });
     }
     return acc;
   }, []);
 
-  // Frase dinámica calculada con los datos reales del endpoint /api/efectos-eventos
+  // Frase dinámica con datos reales de /api/efectos-eventos
   const eventoFestivo = efectosEventos.find((e) => /festiv/i.test(e.evento || e.nombre || ''));
   const pctFestivo = eventoFestivo && eventoFestivo.media_normal > 0
     ? Math.round(((eventoFestivo.media_evento - eventoFestivo.media_normal) / eventoFestivo.media_normal) * 100)
     : null;
-
-  const gradStop = isDark ? '#1B8CC9' : '#2C7A9B';
 
   const tooltipContent = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
@@ -92,231 +149,242 @@ export function DemandChart({
     const minVal = dato.min ?? dato.prediccion;
     const maxVal = dato.max ?? dato.prediccion;
     return (
-      <div className="rounded-lg border border-slate-200 bg-white/95 p-3.5 text-xs shadow-lg backdrop-blur-xs dark:border-slate-800 dark:bg-slate-900/95">
-        <p className="mb-2 font-semibold text-slate-900 dark:text-white">{label}</p>
+      <div className="rounded-lg border border-[var(--mf-border)] bg-[var(--mf-surface)] p-3 text-xs text-[var(--mf-ink)]">
+        <p className="mb-2 font-semibold text-[var(--mf-ink)]">{label}</p>
         <div className="space-y-1.5">
           <div className="flex min-w-[210px] items-center justify-between gap-4">
-            <span className="text-slate-600 dark:text-slate-300">Proyección:</span>
-            <strong className="font-mono tabular-nums text-slate-900 dark:text-white">{dato.prediccion} pac.</strong>
+            <span className="text-[var(--mf-ink-2)]">Proyección p50:</span>
+            <strong className="font-mono-num text-[var(--mf-ink)]">{dato.prediccion} pac.</strong>
           </div>
           <div className="flex min-w-[210px] items-center justify-between gap-4">
-            <span className="text-slate-600 dark:text-slate-300">Rango esperado (p10–p90):</span>
-            <strong className="font-mono tabular-nums text-slate-900 dark:text-white">{minVal} – {maxVal} pac.</strong>
+            <span className="text-[var(--mf-ink-2)]">Rango p10–p90:</span>
+            <strong className="font-mono-num text-[var(--mf-ink)]">{minVal} – {maxVal} pac.</strong>
           </div>
         </div>
       </div>
     );
   };
 
+  const controls = (
+    <div className="flex flex-wrap items-center gap-2">
+      <label className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--mf-border-strong)] bg-[var(--mf-surface)] px-2.5 py-1.5 text-xs text-[var(--mf-ink-2)]">
+        <Calendar className="h-3.5 w-3.5 text-[var(--mf-accent)]" aria-hidden="true" />
+        <span className="sr-only">Fecha base de simulación</span>
+        <input
+          type="date"
+          value={fechaSimulacion}
+          min={minFecha}
+          max={maxFecha}
+          onChange={(e) => onCambiarFecha(e.target.value)}
+          className="bg-transparent font-mono-num text-xs font-semibold text-[var(--mf-ink)] focus:outline-none cursor-pointer"
+        />
+      </label>
+
+      <div
+        role="group"
+        aria-label="Horizonte de días"
+        className="mf-subsurface inline-flex items-center gap-0.5 p-1"
+      >
+        {[3, 5, 7, 10, 14].map((dias) => {
+          const activo = horizonte === dias;
+          return (
+            <button
+              key={dias}
+              type="button"
+              onClick={() => setHorizonte(dias)}
+              aria-pressed={activo}
+              className={`rounded-md px-2.5 py-1 font-mono-num text-xs font-semibold transition-colors cursor-pointer ${
+                activo
+                  ? 'bg-[var(--mf-surface)] text-[var(--mf-ink)] border border-[var(--mf-border)]'
+                  : 'text-[var(--mf-ink-2)] hover:text-[var(--mf-ink)] border border-transparent'
+              }`}
+            >
+              {dias}d
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        role="group"
+        aria-label="Modo de visualización"
+        className="mf-subsurface inline-flex items-center gap-0.5 p-1"
+      >
+        <button
+          type="button"
+          onClick={() => setVista('curva')}
+          aria-pressed={vista === 'curva'}
+          className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer ${
+            vista === 'curva'
+              ? 'bg-[var(--mf-surface)] text-[var(--mf-ink)] border border-[var(--mf-border)]'
+              : 'text-[var(--mf-ink-2)] hover:text-[var(--mf-ink)] border border-transparent'
+          }`}
+        >
+          <LineChartIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>Curva</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setVista('factores')}
+          aria-pressed={vista === 'factores'}
+          className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer ${
+            vista === 'factores'
+              ? 'bg-[var(--mf-surface)] text-[var(--mf-ink)] border border-[var(--mf-border)]'
+              : 'text-[var(--mf-ink-2)] hover:text-[var(--mf-ink)] border border-transparent'
+          }`}
+        >
+          <BarChartIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>Factores</span>
+        </button>
+      </div>
+    </div>
+  );
+
   return (
-    <section className="demand-chart rounded-xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur-sm transition-all dark:border-slate-800/80 dark:bg-slate-900/80 lg:p-8">
-      <header className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div className="flex items-start gap-2">
-          <div>
-            <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Corto plazo · 7–14 días</p>
-            <h2 className="text-base font-semibold tracking-tight flex items-center gap-2 text-slate-900 dark:text-white">
-              <TrendingUp className="h-5 w-5 text-sky-600 dark:text-sky-400" />
-              Pronóstico y Descomposición de Demanda
-            </h2>
-          </div>
-          <CircleHelp className="mt-5 h-4 w-4 shrink-0 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors" title="Proyección diaria, umbrales p75 y p90" />
-        </div>
-
-        {/* Selector de Fecha + Alternador de Vista + Selector de Horizonte */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center rounded-md border border-[#D1DEE7] bg-[#F7FAFC] p-0.5 dark:border-[#19506B] dark:bg-[#071B2A]">
-          {/* Selector de Fecha */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1">
-            <Calendar className="h-3.5 w-3.5 text-[#14516B] dark:text-[#B9E2F0]" />
-            <input
-              type="date"
-              value={fechaSimulacion}
-              min={minFecha}
-              max={maxFecha}
-              onChange={(e) => onCambiarFecha(e.target.value)}
-              className="text-xs font-mono font-bold bg-transparent text-[#102A43] dark:text-[#D8EFF7] focus:outline-none cursor-pointer"
-            />
-          </div>
-
-          {/* Selector de Horizonte */}
-          <div className="flex items-center border-l border-[#D1DEE7] pl-1 dark:border-[#19506B]">
-            {[3, 5, 7, 10, 14].map((dias) => (
-              <button
-                key={dias}
-                onClick={() => setHorizonte(dias)}
-                className={`px-2 py-1 text-xs font-mono font-bold rounded-lg transition-colors cursor-pointer ${
-                  horizonte === dias
-                    ? 'bg-[#102A43] dark:bg-[#176D98] text-[#F7FAFC]'
-                    : 'text-[#102A43] dark:text-[#D8EFF7] hover:bg-[#DCEFF7] dark:hover:bg-[#0E3E5B]'
-                }`}
-              >
-                {dias}d
-              </button>
-            ))}
-          </div>
-          </div>
-
-          {/* Toggle Vista: Curva vs Factores */}
-          <div className="flex items-center rounded-md border border-[#D1DEE7] bg-[#F7FAFC] p-0.5 dark:border-[#19506B] dark:bg-[#071B2A]">
-            <button
-              onClick={() => setVista('curva')}
-              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-extrabold rounded-lg transition-colors cursor-pointer ${
-                vista === 'curva'
-                  ? 'bg-[#102A43] dark:bg-[#176D98] text-[#F7FAFC]'
-                  : 'text-[#102A43] dark:text-[#D8EFF7] hover:bg-[#DCEFF7] dark:hover:bg-[#0E3E5B]'
-              }`}
-            >
-              <LineChartIcon className="h-3.5 w-3.5" />
-              <span>Curva</span>
-            </button>
-            <button
-              onClick={() => setVista('factores')}
-              className={`flex items-center gap-1 px-2.5 py-1 text-xs font-extrabold rounded-lg transition-colors cursor-pointer ${
-                vista === 'factores'
-                  ? 'bg-[#102A43] dark:bg-[#176D98] text-[#F7FAFC]'
-                  : 'text-[#102A43] dark:text-[#D8EFF7] hover:bg-[#DCEFF7] dark:hover:bg-[#0E3E5B]'
-              }`}
-            >
-              <BarChartIcon className="h-3.5 w-3.5" />
-              <span>Factores</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {!isApiConnected ? (
-        <div className="h-64 w-full flex flex-col items-center justify-center p-6 text-center space-y-3 bg-[#F7FAFC] dark:bg-[#071B2A] rounded-2xl border border-dashed border-[#DFC264] dark:border-[#7A5A00]">
-          <WifiOff className="h-8 w-8 text-[#B26B00] dark:text-[#FFDF80]" />
-          <div>
-            <p className="text-sm font-bold text-[#704200] dark:text-[#FFDF80]">
-              Curva de Demanda No Disponible
-            </p>
-            <p className="text-xs text-[#704200]/80 dark:text-[#FFDF80]/80 mt-1">
-              Esperando conexión con el servicio analítico de proyecciones hospitalarias.
-            </p>
-          </div>
+    <SectionPanel
+      id="demand-chart"
+      title="Pronóstico y descomposición de demanda"
+      subtitle={`Corto plazo (${horizonte} días) desde ${fechaSimulacion} · ${servicio.nombre}`}
+      actions={controls}
+    >
+      {!isApiConnected && !isLoading ? (
+        <div className="mf-subsurface flex h-64 w-full flex-col items-center justify-center gap-2 p-6 text-center">
+          <WifiOff className="h-7 w-7 text-[var(--mf-warn)]" aria-hidden="true" />
+          <p className="text-sm font-semibold text-[var(--mf-ink)]">
+            Curva de demanda no disponible
+          </p>
+          <p className="max-w-md text-xs text-[var(--mf-ink-2)]">
+            Esperando conexión con el servicio analítico de proyecciones hospitalarias.
+          </p>
         </div>
       ) : (
-        <>
-          {/* Leyenda Técnica */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 pb-3 border-b border-slate-200/80 dark:border-slate-800">
-            <span className="flex items-center gap-1.5">
-              <span className="h-0.5 w-4 rounded-full bg-sky-600 dark:bg-sky-400" />
-              Proyección esperada
+        <div className="space-y-4">
+          {/* Leyenda técnica */}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-[var(--mf-border)] pb-3 text-xs text-[var(--mf-ink-2)]">
+            <span className="inline-flex items-center gap-2">
+              <span className="h-0.5 w-4 rounded-full bg-[var(--mf-accent)]" />
+              Proyección esperada (p50)
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-4 rounded-xs bg-sky-400/20 border border-sky-400/30" />
+            <span className="inline-flex items-center gap-2">
+              <span className="h-2.5 w-4 rounded-xs bg-[var(--mf-chart-band)] border border-[var(--mf-ok-border)]" />
               Banda de pronóstico (p10–p90)
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-[1px] w-4 bg-amber-500" />
+            <span className="inline-flex items-center gap-2 font-mono-num">
+              <span className="h-0.5 w-4 bg-[var(--mf-warn)]" />
               Umbral histórico de alerta ({p75})
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-[1px] w-4 bg-rose-600" />
+            <span className="inline-flex items-center gap-2 font-mono-num">
+              <span className="h-0.5 w-4 bg-[var(--mf-crit)]" />
               Umbral histórico de saturación ({p90})
             </span>
           </div>
 
-          {/* Vista 1: Curva de Demanda */}
           {vista === 'curva' && (
-            <div className={`space-y-4 transition-opacity ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}>
-              {isLoading && (
-                <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700 dark:border-sky-900/60 dark:bg-sky-950/60 dark:text-sky-300">
-                  <span className="h-2 w-2 animate-ping rounded-full bg-sky-500" />
-                  Calculando proyección del servicio…
+            <div className="space-y-4">
+              {isLoading ? (
+                <div className="space-y-3 py-4" aria-busy="true">
+                  <div className="mf-skeleton h-4 w-48" />
+                  <div className="mf-skeleton h-56 w-full" />
+                </div>
+              ) : (
+                <div className="h-64 w-full font-mono-num text-xs">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={datosGrafica} margin={{ top: 14, right: 16, left: -12, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorDemanda" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={theme.accent} stopOpacity={0.22} />
+                          <stop offset="95%" stopColor={theme.accent} stopOpacity={0.0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid vertical={false} stroke={theme.grid} />
+                      {eventosActivos.map((ev) => (
+                        <ReferenceArea
+                          key={`banda-${ev.tipo}-${ev.dia}`}
+                          x1={ev.dia}
+                          x2={ev.dia}
+                          y1={yDomain[0]}
+                          y2={yDomain[1]}
+                          fill={ev.fill}
+                          fillOpacity={ev.fillOpacity}
+                          stroke="none"
+                        />
+                      ))}
+                      <XAxis
+                        dataKey="dia"
+                        stroke={theme.axis}
+                        tick={{ fill: theme.axis, fontSize: 12 }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        stroke={theme.axis}
+                        tick={{ fill: theme.axis, fontSize: 12 }}
+                        tickLine={false}
+                        axisLine={false}
+                        domain={yDomain}
+                      />
+                      <Tooltip content={tooltipContent} />
+                      <ReferenceLine
+                        y={p75}
+                        stroke={theme.warn}
+                        strokeWidth={1.5}
+                        strokeDasharray="4 4"
+                        label={{
+                          value: `Umbral histórico de alerta · ${p75}`,
+                          fill: theme.warn,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          position: 'insideTopLeft',
+                        }}
+                      />
+                      <ReferenceLine
+                        y={p90}
+                        stroke={theme.crit}
+                        strokeWidth={1.5}
+                        strokeDasharray="4 4"
+                        label={{
+                          value: `Umbral histórico de saturación · ${p90}`,
+                          fill: theme.crit,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          position: 'insideTopLeft',
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="banda"
+                        stroke="none"
+                        fill={theme.series2}
+                        fillOpacity={0.14}
+                        name="Banda de pronóstico (p10–p90)"
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="prediccion"
+                        stroke={theme.accent}
+                        strokeWidth={2.5}
+                        fillOpacity={1}
+                        fill="url(#colorDemanda)"
+                        name="prediccion"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
               )}
 
-              <div className="h-64 w-full font-sans tabular-nums text-xs mt-3">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={datosGrafica} margin={{ top: 14, right: 16, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorDemanda" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={isDark ? '#38bdf8' : '#0284c7'} stopOpacity={0.22} />
-                        <stop offset="95%" stopColor={isDark ? '#38bdf8' : '#0284c7'} stopOpacity={0.0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid vertical={false} stroke={isDark ? '#1e293b' : '#e2e8f0'} />
-                    {eventosActivos.map((ev) => (
-                      <ReferenceArea
-                        key={`banda-${ev.tipo}-${ev.dia}`}
-                        x1={ev.dia}
-                        x2={ev.dia}
-                        y1={yDomain[0]}
-                        y2={yDomain[1]}
-                        fill={ev.fill}
-                        fillOpacity={ev.fillOpacity}
-                        stroke="none"
-                      />
-                    ))}
-                    <XAxis dataKey="dia" stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={11} tickLine={false} axisLine={false} />
-                    <YAxis
-                      stroke={isDark ? '#94a3b8' : '#64748b'}
-                      fontSize={11}
-                      tickLine={false}
-                      axisLine={false}
-                      domain={yDomain}
-                    />
-                    <Tooltip content={tooltipContent} />
-                    <ReferenceLine
-                      y={p75}
-                      stroke="#f59e0b"
-                      strokeWidth={1}
-                      label={{
-                        value: `Umbral histórico de alerta · ${p75}`,
-                        fill: '#f59e0b',
-                        fontSize: 10,
-                        fontWeight: 600,
-                        position: 'insideTopRight',
-                      }}
-                    />
-                    <ReferenceLine
-                      y={p90}
-                      stroke="#e11d48"
-                      strokeWidth={1}
-                      label={{
-                        value: `Umbral histórico de saturación · ${p90}`,
-                        fill: '#e11d48',
-                        fontSize: 10,
-                        fontWeight: 600,
-                        position: 'insideTopRight',
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="banda"
-                      stroke="none"
-                      fill="#38bdf8"
-                      fillOpacity={0.16}
-                      name="Banda de pronóstico (p10–p90)"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="prediccion"
-                      stroke={isDark ? '#38bdf8' : '#0284c7'}
-                      strokeWidth={2.5}
-                      fillOpacity={1}
-                      fill="url(#colorDemanda)"
-                      name="prediccion"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Chips de eventos especiales en la ventana */}
+              {/* Badges de eventos especiales en la ventana */}
               {eventosActivos.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2 pt-2">
+                <div className="flex flex-wrap items-center gap-2 pt-1">
                   {eventosActivos.map((ev) => {
                     const Icon = ev.Icon;
                     return (
                       <span
                         key={`chip-${ev.tipo}-${ev.dia}`}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50/90 px-2.5 py-1 text-xs font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-800/70 dark:text-slate-200"
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${ev.badgeClass}`}
                       >
-                        <Icon className={`h-3.5 w-3.5 ${ev.iconClass}`} />
+                        <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                         <span>{ev.etiqueta}</span>
-                        <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">· {ev.dia}</span>
+                        <span className="font-mono-num">· {ev.dia}</span>
                       </span>
                     );
                   })}
@@ -325,43 +393,48 @@ export function DemandChart({
 
               {/* Frase calculada con datos reales del endpoint /api/efectos-eventos */}
               {pctFestivo !== null && (
-                <div className="flex items-center gap-2 rounded-lg border border-slate-200/80 bg-slate-50/80 px-3.5 py-2.5 text-xs font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-200">
-                  <Sparkles className="h-4 w-4 shrink-0 text-amber-500" />
+                <div className="mf-subsurface flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-[var(--mf-ink-2)]">
+                  <Sparkles className="h-4 w-4 shrink-0 text-[var(--mf-warn)]" aria-hidden="true" />
                   <span>
-                    En festivos, <strong>{servicio.nombre.toLowerCase()}</strong>{' '}
+                    En festivos, <strong className="font-semibold text-[var(--mf-ink)]">{servicio.nombre.toLowerCase()}</strong>{' '}
                     {pctFestivo >= 0 ? 'sube' : 'baja'} en promedio{' '}
-                    <strong className="font-mono">{Math.abs(pctFestivo)} %</strong> frente a un día normal.
+                    <strong className="font-mono-num font-semibold text-[var(--mf-ink)]">{Math.abs(pctFestivo)}%</strong> frente a un día normal.
                   </span>
                 </div>
               )}
             </div>
           )}
 
-          {/* Vista 2: Desglose de Factores del Modelo */}
           {vista === 'factores' && (
-            <div className="h-64 w-full font-mono-num text-xs mt-3 flex flex-col justify-center">
+            <div className="flex h-64 w-full flex-col justify-center font-mono-num text-xs">
               {factores.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart layout="vertical" data={factores} margin={{ top: 10, right: 35, left: 30, bottom: 5 }}>
+                  <BarChart layout="vertical" data={factores} margin={{ top: 10, right: 32, left: 20, bottom: 5 }}>
+                    <CartesianGrid horizontal={false} stroke={theme.grid} />
                     <XAxis
                       type="number"
-                      stroke={isDark ? '#D8EFF7' : '#102A43'}
-                      fontSize={11}
+                      stroke={theme.axis}
+                      tick={{ fill: theme.axis, fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
                       tickFormatter={(val) => `${val > 0 ? '+' : ''}${val}`}
                     />
                     <YAxis
                       dataKey="nombre"
                       type="category"
-                      stroke={isDark ? '#D8EFF7' : '#102A43'}
-                      fontSize={11}
-                      width={180}
+                      stroke={theme.axis}
+                      tick={{ fill: theme.axis, fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      width={175}
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: isDark ? '#071B2A' : '#FFFFFF',
-                        borderColor: isDark ? '#176D98' : '#71B5CC',
-                        borderRadius: '12px',
-                        color: isDark ? '#D8EFF7' : '#102A43',
+                        backgroundColor: 'var(--mf-surface)',
+                        borderColor: 'var(--mf-border)',
+                        borderRadius: '8px',
+                        color: 'var(--mf-ink)',
+                        fontSize: '12px',
                         fontFamily: 'var(--font-mono)',
                       }}
                       formatter={(val) => [`${val > 0 ? '+' : ''}${val} pacientes`, 'Aporte al modelo']}
@@ -370,25 +443,21 @@ export function DemandChart({
                       {factores.map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
-                          fill={
-                            entry.aporte > 0
-                              ? isDark ? '#C5304C' : '#BD5579'
-                              : isDark ? '#1B8CC9' : '#14516B'
-                          }
+                          fill={entry.aporte > 0 ? theme.crit : theme.accent}
                         />
                       ))}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="p-8 text-center text-xs font-semibold text-[#102A43] dark:text-[#D8EFF7]">
+                <div className="mf-subsurface p-6 text-center text-xs font-medium text-[var(--mf-ink-2)]">
                   Esta fecha opera en su valor basal histórico. No hay ajustes estacionales de lunes, fin de semana o quincena.
                 </div>
               )}
             </div>
           )}
-        </>
+        </div>
       )}
-    </section>
+    </SectionPanel>
   );
 }

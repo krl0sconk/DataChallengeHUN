@@ -1,32 +1,32 @@
-# Producto · Centro de decisiones HUN
+# Producto · MediFlow
 
 ## Propósito
 
-Ayudar al personal del Hospital Universidad del Norte a interpretar la demanda asistencial y decidir dónde
-vigilar, mover capacidad o revisar un cuello de botella.
+**MediFlow** es el centro de control operativo y pronóstico asistencial desarrollado para el **Hospital Universidad del Norte (HUN)**. Ayuda al personal clínico, coordinadores de turno y dirección operativa a anticipar la demanda por servicio, detectar cuellos de botella por etapa o franja horaria y decidir ajustes de dotación con respaldo cuantitativo antes de que ocurra la saturación.
+
+## Identidad
+
+- **Nombre del producto:** MediFlow
+- **Institución clínica:** Hospital Universidad del Norte (HUN) · Data Challenge 2026
+- **Estándar de datos:** OMOP CDM v5.4 (agregados operacionales, cero PHI/PII)
 
 ## Usuarios
 
-El usuario prioritario es el personal médico y asistencial. También usan la herramienta coordinadores operativos
-y dirección administrativa. La interfaz debe poder leerse rápidamente durante un turno, sin exigir conocimientos
-de modelado estadístico.
+- **Jefes de guardia y personal asistencial:** necesitan leer el nivel de presión del turno en menos de 10 segundos, sin jerga estadística.
+- **Coordinadores operativos y de enfermería:** comparan servicios, ubican franjas críticas y prueban escenarios de dotación Erlang C.
+- **Dirección hospitalaria y analítica clínica:** auditan precisión histórica (WAPE, MAE, cobertura de intervalos p10–p90) y horizonte de mediano plazo.
 
 ## Decisiones principales
 
-- ¿Cómo viene hoy la demanda por servicio?
-- ¿Qué cambia si se simula otra fecha o escenario?
-- ¿Dónde se concentra la presión por hora, etapa y servicio?
-- ¿Qué tan confiable es el pronóstico?
-
-## Personalidad
-
-Institucional, precisa y cercana. Debe transmitir que los datos sirven para cuidar mejor la operación, no para
-reemplazar el criterio clínico. La interfaz evita lenguaje técnico innecesario y muestra primero la consecuencia
-operativa; el detalle metodológico queda disponible bajo demanda.
+1. **Resumen del turno (`hoy`):** ¿Cómo viene la demanda hoy y los próximos 3–14 días? ¿Qué servicio está bajo mayor presión frente a p75/p90?
+2. **Cuellos de botella (`atascos`):** ¿En qué franjas horarias y etapas asistenciales se concentra la demora?
+3. **Simulador y dotación (`simulador`):** ¿Qué impacto tienen eventos como festivos o Carnaval y cuántos recursos adicionales requiere un turno para cumplir la meta de espera?
+4. **Precisión del modelo (`precision`):** ¿Qué tan fiel ha sido el pronóstico frente a la demanda real observada?
+5. **Guía operativa (`metodologia`):** ¿Qué significa cada umbral, parámetro y regla de gobernanza?
 
 ## Límites
 
-- No mostrar pacientes individuales ni PHI/PII.
-- Mantener los servicios y métricas OMOP existentes.
-- Conservar modo claro/oscuro, responsive y conexión con la API FastAPI.
-- El histórico y los umbrales son apoyo para decidir, no una orden clínica.
+- Nunca mostrar pacientes individuales ni PHI/PII.
+- Conservar todos los servicios OMOP (`urgencias`, `rehabilitacion`, `tratamiento_urgencia`), umbrales `p75`/`p90` y endpoints FastAPI existentes.
+- Mantener soporte completo de modo claro (turno día) y modo oscuro (turno noche), navegación por teclado y diseño responsivo.
+- El pronóstico y la simulación apoyan el criterio clínico y operativo; no reemplazan decisiones médicas.
