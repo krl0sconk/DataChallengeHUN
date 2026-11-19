@@ -13,7 +13,7 @@ export function NavTabs({
   fechaSimulacion,
 }) {
   return (
-    <div className="sticky top-0 z-30 border-b border-[var(--mf-border)] bg-[var(--mf-surface)] transition-colors">
+    <div className="sticky top-[3.75rem] lg:top-0 z-30 border-b border-[var(--mf-border)] bg-[var(--mf-surface)] transition-colors">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 sm:px-6 lg:px-8">
         <nav aria-label="Servicios asistenciales" className="flex items-center gap-1 overflow-x-auto">
           {servicios.map((s) => {
