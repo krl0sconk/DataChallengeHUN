@@ -138,6 +138,34 @@ Coordinar disponibilidad de cama y revisar marcas temporales OMOP.
 
 Horizonte: Seguimiento mensual.
 
+## Decisión de principio a fin con pronóstico acoplado (Etapa 1)
+
+Comparación paramétrica: la dotación habitual y la alternativa son supuestos del usuario o derivados del régimen histórico base, no plantilla real observada en OMOP. La demanda diaria (p10/p50/p90) se reparte entre las 4 franjas de 6 h según pesos históricos del día de semana (suma = 1.0) y se convierte a tasa horaria (λ = Demanda × peso / 6). Cuando ρ ≥ 1 la espera se reporta como None (cola inestable). Cualquier valor en llegadas_reales_observadas es solo contraste retrospectivo y no alimenta el pronóstico.
+
+- jornada_demostrada: 2026-07-06 (Lun)
+- servicio: urgencias
+- tipo_comparacion: parametrica
+- pronostico_diario_p10_p50_p90: 418 / 488 / 600
+- llegadas_reales_observadas_contraste: 526
+- franja_critica: Mañana (06-12h)
+
+| Franja | Peso | λ prevista p10/p50/p90 (/h) | c req p10/p50/p90 | Brecha inc. | Dot. habitual → alt. | Espera hab. p50 / p90 (min) | Espera alt. p50 / p90 (min) |
+|---|---:|---|---:|---:|---:|---|---|
+| Mañana (06-12h) | 38.8% | 27.00 / 31.52 / 38.76 | 11 / 12 / 15 | 4 | 12 → 15 | 7.58 / inestable (ρ≥1) | 0.63 / 4.61 |
+| Tarde (12-18h) | 33.9% | 23.62 / 27.58 / 33.91 | 10 / 11 / 13 | 3 | 12 → 13 | 2.12 / 22.42 | 0.94 / 6.28 |
+| Noche (18-24h) | 20.4% | 14.21 / 16.59 / 20.39 | 6 / 7 / 9 | 3 | 12 → 9 | 0.04 / 0.20 | 0.77 / 3.09 |
+| Madrugada (00-06h) | 6.9% | 4.83 / 5.64 / 6.94 | 3 / 3 / 4 | 1 | 12 → 4 | 0.00 / 0.00 | 1.38 / 3.08 |
+
+**Decisión recomendada del turno:** Franja crítica Mañana (06-12h) (38.8 llegadas/h en p90; demanda diaria p50=488, rango p10–p90=418–600). Comparación paramétrica: 12 equipos habituales (cola inestable (ρ ≥ 1)) frente a 15 en alternativa (4.6 min); sensibilidad por incertidumbre de 4 equipos. Coordinar traslados tempranos y adelantar altas elegibles en Hospitalización.
+
+### Hoja de ruta de decisión anticipada (Urgencias → Hospitalización)
+
+| Etapa | Qué construir | Qué demostrar | Estado en MediFlow |
+|---|---|---|---|
+| 1. Pronóstico que alimenta decisiones | Reutilizar el LightGBM existente. Repartir la demanda diaria prevista por franjas con perfiles históricos y pasar escenarios de demanda típica y alta al dimensionamiento. | Cuándo cambia el requerimiento de equipos y qué tan sensible es a la incertidumbre del pronóstico. | Implementado (`dimensionar_jornada_con_pronostico`, `POST /api/optimizacion/simular`, UI y chat) |
+| 2. Simulador del recorrido | Incorporar capacidad habilitada, dotación, tiempos de atención y marcas de decisión y traslado. Reconstruir el censo con stock inicial y comparar escenarios con restricciones reales. | Qué alternativa reduce la espera de traslado o las horas de presión, a qué costo y bajo qué supuestos. | Diseño paramétrico; requiere 3 marcas HIS (`hora_decision_hospitalizar`, `hora_asignacion_cama`, `hora_traslado_efectivo`) |
+| 3. Piloto prospectivo | Ejecutar MediFlow en paralelo con la operación habitual. Registrar alertas, recomendaciones y resultados observados antes de probar una intervención supervisada. | Si las alertas llegan con suficiente anticipación, si el equipo puede actuar y si el beneficio estimado se sostiene en la práctica. | Propuesto para validación operativa en sombra en el HUN |
+
 ## Alcance
 
 Resultados históricos agregados, no promesas de impacto. El simulador mantiene tasas fijas y usa interpolación explícita para porcentajes de altas no precalculados. Las series horarias etapas_entradas_por_hora y etapas_salidas_por_hora ya excluyen estancias superiores al percentil p99.9 por etapa (14/15_etapas_*.sql). Validar con datos clínicos y capacidad real antes de decidir dotaciones.
