@@ -15,7 +15,7 @@ Documentación integral del proyecto: decisiones de arquitectura, auditoría de 
 - [inventario_base.md](inventario_base.md): Conteo de registros, tamaños en disco y cobertura temporal por tabla OMOP.
 - [hallazgos.md](hallazgos.md): Patrones operacionales, cuellos de botella en observación, picos horarios y demografía de pacientes.
 - [cierre_datos.md](cierre_datos.md): Acta de cierre de la fase de extracción con huellas de integridad de datos.
-- [diccionario_datos.md](diccionario_datos.md): Estructura de tablas OMOP en PostgreSQL HUN y catálogo de las 23 consultas SQL.
+- [diccionario_datos.md](diccionario_datos.md): Estructura de tablas OMOP en PostgreSQL HUN y catálogo de las 24 consultas SQL (`00` a `23`). `14`, `15` y `16` aplican el mismo filtro `p99.9` por etapa a las entradas, salidas y duraciones; `23` documenta el umbral (`horas_p999`) sin recortar la distribución de duraciones válidas.
 - [diccionario_datos/Diccionario_datos.md](diccionario_datos/Diccionario_datos.md): Diccionario oficial extendido de conceptos clínicos OMOP.
 - [guia_sesion_bd.md](guia_sesion_bd.md): Protocolo de conexión segura por VPN y comandos CLI de extracción reproducible.
 

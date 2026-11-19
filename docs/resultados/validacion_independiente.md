@@ -1,5 +1,9 @@
 # Validación Independiente del Modelo de Demanda
 
+> **Nota de trazabilidad — auditoría histórica.** Este documento registra la validación independiente de la arquitectura anti-fuga (`DEC-003`, `DEC-004` y `DEC-008`) en el **corte Sprint 2 / inicio Sprint 3 (2026-11-03)**, con **103/103 pruebas aprobadas en ese corte**. Las cifras y el veredicto corresponden a esa auditoría, no a una validación de la corrida posterior.
+>
+> Para la entrega, consultar la [corrida vigente del modelo de demanda](modelo_demanda.md): **15.6 % WAPE** para Poisson estratificado y **10.5 % WAPE** para `lgbm_final`. La [suite vigente](../../tests/) contiene 176 pruebas; el criterio de aceptación es **176/176 aprobadas** al ejecutar `.venv/bin/pytest -q`.
+
 - **Auditor:** Daniel Rincón (Líder Web y Validación)
 - **Objeto de revisión:** Modelo operativo de demanda (1–7 días) y modelo de largo plazo (120 días)
 - **Fuentes auditadas:** `docs/resultados/modelo_demanda.md`, `docs/resultados/largo_plazo.md`, `src/hun/models/demanda.py`, `src/hun/models/largo_plazo.py`, `src/hun/models/explicacion.py`

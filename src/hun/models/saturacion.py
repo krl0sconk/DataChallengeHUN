@@ -403,6 +403,36 @@ def reporte_markdown(
                 f"{horas_amarillo_prom} | {horas_rojo_prom} | {pct_rojo} |"
             )
 
+    if duraciones_df is not None and not duraciones_df.empty and "horas_p999" in duraciones_df.columns:
+        lineas.extend(
+            [
+                "",
+                "## Nota metodológica: depuración de estancias extremas (`p99.9`)",
+                "",
+                "Las consultas SQL `14_etapas_entradas_por_hora.sql`, "
+                "`15_etapas_salidas_por_hora.sql`, `16_duracion_etapas_diaria.sql` "
+                "y `23_duracion_etapas_percentiles.sql` aplican o documentan el percentil `p99.9` "
+                "por tipo de etapa (`horas_p999` en `duracion_etapas_percentiles.parquet`) como "
+                "tope superior para el extracto horario y la duración media:",
+                "",
+            ]
+        )
+        for _, row in duraciones_df.iterrows():
+            cid = int(row["visit_detail_concept_id"])
+            nombre = nombres.get(cid, nombres.get(float(cid), str(cid)))
+            p999 = float(row["horas_p999"])
+            lineas.append(f"- **{nombre} (`{cid}`):** `p99.9 = {p999:,.1f} h`")
+        lineas.extend(
+            [
+                "",
+                "Los máximos crudos de la sección 2 provienen de la auditoría completa sin recorte "
+                "de `duracion_etapas_percentiles.parquet`. En cambio, la reconstrucción del censo, "
+                "los umbrales y las métricas diarias de las secciones 3 y 4 se calculan sobre "
+                "`etapas_entradas_por_hora` y `etapas_salidas_por_hora` ya filtradas por `p99.9`, "
+                "evitando estancias fantasma y colas administrativas extremas.",
+            ]
+        )
+
     lineas.append("")
     return "\n".join(lineas)
 

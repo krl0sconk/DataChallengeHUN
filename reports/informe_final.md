@@ -1,6 +1,6 @@
 # Informe Final — Data Challenge HUN 2026 (Equipo MediFlow)
 
-**Hospital Universidad del Norte · Corte documental: 18 de noviembre de 2026**
+**Hospital Universidad del Norte · Corte documental: 19 de noviembre de 2026**
 
 MediFlow convierte agregados hospitalarios OMOP en una solución para comprender el flujo, anticipar demanda y evaluar decisiones operacionales. Este documento consolida metodología, resultados, conclusiones y recomendaciones como informe final de la Sección 13. Tras el resumen ejecutivo, las secciones 2–8 corresponden, una a una, a los siete criterios de evaluación de la Sección 14; sus pesos suman 100 %.
 
@@ -17,7 +17,7 @@ La solución tiene tres capas: **entender** (auditoría, etapas y cuellos de bot
 | WAPE diario: 18.0% → 15.6% → 10.5% | Línea base → Poisson estratificado → `lgbm_final`; mejora relativa final 41.6% frente a la base | [Demanda](../docs/resultados/modelo_demanda.md) |
 | Urgencias: WAPE 8.4%, exactitud 91.6%; Rehabilitación: WAPE 11.0%, exactitud 89.0% | Buen desempeño global en servicios de alto volumen, no garantía por cada día | [Demanda](../docs/resultados/modelo_demanda.md) |
 | Censo mediano: Hospitalización 283.0; Treatment urgency 201.0 | Presión de pacientes concurrentes (extracto depurado `p99.9`), no número de camas habilitadas | [Saturación](../docs/resultados/saturacion.md) |
-| Little: 284.01 pacientes | Contraste del nivel global del censo (0.36% frente a mediana 283.0), no certificación de cada estancia | [Optimización](../docs/resultados/optimizacion.md) |
+| Little: 277.52 pacientes con filtro común `p99.9`; censo medio horario: 277.47 | Comprobación de consistencia interna en 1,294 días; el bundle v2.0 conserva el cálculo híbrido de 284.01 | Verificación PostgreSQL, sección 3 |
 | Altas adelantadas 35%: horas rojas 9.32% → 6.26% | Reducción relativa 32.8% en simulación histórica; el pico permanece en 359 | [Optimización](../docs/resultados/optimizacion.md) |
 | Urgencias → Hospitalización: 47.670 pasos, p90 mensual ponderado 24.45 h | Señal para auditar transiciones y marcas temporales; no prueba causal de boarding | [Optimización](../docs/resultados/optimizacion.md) |
 
@@ -51,7 +51,7 @@ La exploración muestra afluencia matutina en Urgencias y actividad predominante
 
 Estas figuras son material exploratorio; las cifras finales proceden de las tablas de resultados enlazadas, no de estimaciones visuales.
 
-El censo horario se reconstruye como entradas acumuladas menos salidas acumuladas por etapa. Se aplica calentamiento de 24 días, superior al p99 de duración, que reduce pero no elimina necesariamente efectos de estancias iniciadas antes de la ventana.
+El censo horario se reconstruye sumando al stock inicial las entradas acumuladas y restando las salidas acumuladas. Los percentiles se calculan después de 24 días de calentamiento; ese descarte no corrige un stock inicial omitido. En Hospitalización se verificó que el stock al inicio del extracto era cero (sección 3).
 
 | Etapa | Censo mediano | p75 | p90 |
 |---|---:|---:|---:|
@@ -61,7 +61,7 @@ El censo horario se reconstruye como entradas acumuladas menos salidas acumulada
 
 Fuente: [saturación](../docs/resultados/saturacion.md) (extracto horario con filtro `p99.9`). Verde corresponde a censo < p75; amarillo a p75 ≤ censo ≤ p90; rojo a censo > p90. Son umbrales históricos, no límites clínicos de seguridad.
 
-La Ley de Little contrasta el censo de Hospitalización: **83.84 ingresos/día × 81.30 h / 24 ≈ 284.01 pacientes**, usando valores sin redondear de 83.8439 y 81.2971. Es consistente con la mediana observada de 283.0 (brecha de 0.36%), aunque promedio teórico y mediana no son el mismo estimador.
+En Hospitalización, la Ley de Little contrasta **medias**, no medianas: con el mismo filtro `p99.9` para ingresos y estancias, da **277.52 pacientes** frente a un censo medio horario de **277.47** en 1,294 días. Tras el calentamiento, la media horaria es **278.61** y la mediana es **283.0**. La sección 3 separa el efecto de los bordes de la ventana del cambio de población en el bundle v2.0.
 
 ### Transición prioritaria
 
@@ -78,7 +78,7 @@ La [auditoría OMOP](../docs/calidad_datos.md) comprueba completitud, duplicados
 | Regla | Aplicación y razón |
 |---|---|
 | Deduplicar visitas | Agrupar por `(person_id, visit_concept_id, visit_start_datetime)` antes de contar llegadas; 13.38% de copias sobrantes en `visit_occurrence` |
-| Validar etapas | Excluir huérfanas y etapas sin fin o con fin anterior al inicio para análisis de tiempos y censo |
+| Validar etapas | Excluir etapas sin marcas válidas o con fin anterior al inicio. Para el censo y la duración alineados se conservan etapas sin visita padre; exigir padre define una cohorte distinta |
 | Reclasificar edad imposible | Marcar como `invalida` edades < 0 o > 110 años; no asignarlas al grupo pediátrico |
 | Trabajar con agregados | Exportar conteos horarios, duraciones y transiciones, no filas individuales |
 
@@ -88,13 +88,53 @@ La auditoría registra 0.43% de duplicados sobrantes en `visit_detail`; no debe 
 
 La auditoría completa de `duracion_etapas_percentiles.parquet` (`23_duracion_etapas_percentiles.sql`) documenta los máximos crudos sin recorte (**28,070.3 h** en Treatment urgency, **20,730.3 h** en Emergency Room Visit y **11,213.6 h** en Inpatient Visit) junto con los umbrales `p99.9` por etapa (**1,176.3 h** en Inpatient Visit, **283.7 h** en Treatment urgency, **17.5 h** en Emergency Room Visit y **0.0 h** en Ambulatory Rehabilitation Visit).
 
-Las consultas `14_etapas_entradas_por_hora.sql`, `15_etapas_salidas_por_hora.sql` y `23_duracion_etapas_percentiles.sql` ya fueron ejecutadas contra PostgreSQL aplicando este filtro `p99.9`, y se regeneraron `docs/resultados/saturacion.md`, `docs/resultados/optimizacion.md` y `models/modelos_web_bundle.joblib`. Al remover las estancias fantasma y colas administrativas extremas, Hospitalización pasó de `288 / 306 / 319` (máximo `378`) a **`283 / 297 / 309`** (máximo **`359`**), Treatment urgency pasó de `219 / 260 / 300` a **`201 / 239 / 272`**, y Urgencias quedó en **`0 / 1 / 3`**. La concordancia Little (`284.01`) frente a la mediana observada (`283.0`) se estrechó a 0.36%, sin reemplazar la validación frente a capacidad física instalada. La [nota metodológica de saturación](../docs/resultados/saturacion.md) documenta este recorte.
+SQL23 calcula los percentiles sobre duraciones válidas sin recorte; SQL14 y SQL15 aplican esos umbrales a entradas y salidas. Se reextrajeron con `--refrescar` los agregados `duracion_etapas_percentiles.parquet`, `etapas_entradas_por_hora.parquet` y `etapas_salidas_por_hora.parquet`. Al excluir las estancias por encima del umbral, los percentiles horarios p50 / p75 / p90 de Hospitalización pasaron de `288 / 306 / 319` (máximo `378`) a **`283 / 297 / 309`** (máximo **`359`**); los de Treatment urgency pasaron de `219 / 260 / 300` a **`201 / 239 / 272`**, y Urgencias quedó en **`0 / 1 / 3`**. El recorte es estadístico, no una determinación de error clínico. Véase la [nota metodológica de saturación](../docs/resultados/saturacion.md).
+
+### Verificación de stock inicial, alineación de poblaciones y contraste de Ley de Little en Hospitalización (`9201`)
+
+Las consultas de verificación A y B se ejecutaron directamente en PostgreSQL del HUN. Para `9201` hay **108,601 etapas válidas** en el universo global: ninguna sin fin ni con fin anterior al inicio. El `p99.9` de duración es **1176.257222 h** (1,176.3 h redondeadas). Las **107** etapas que superan ese umbral tienen visita padre; las **91** huérfanas duran menos de 720 h. Así, el filtro común conserva **108,494** etapas y, si además se exige padre, quedan **108,403**.
+
+**A. Balance por corte horario.** El stock a `2023-01-01 00:00:00` fue **$N_0 = 0$** en los cuatro modos comprobados: `bruta`, `sql14_15_16_p999`, `padre_y_p999` y `sql16_antiguo_padre`. La tabla usa la regla común `p99.9` (108,494 etapas, incluidas las huérfanas). Para cada corte $t$, $E$ y $S$ acumulan entradas y salidas **anteriores** a $t$; el conteo directo usa `inicio < t AND fin >= t`.
+
+| Corte horario $t$ | Entradas $E$ | Salidas $S$ | Reconstruido $N_0 + E - S$ | Conteo directo | Diferencia |
+|---|---:|---:|---:|---:|---:|
+| `2023-01-01 00:00` (stock inicial) | 0 | 0 | 0 | 0 | 0 |
+| `2023-01-01 04:00` | 3 | 0 | 3 | 3 | 0 |
+| `2023-01-01 15:00` | 15 | 1 | 14 | 14 | 0 |
+| `2023-01-02 00:00` | 37 | 2 | 35 | 35 | 0 |
+| `2023-01-03 00:00` | 120 | 27 | 93 | 93 | 0 |
+| `2023-01-25 04:00` (tras calentamiento) | 2,232 | 1,959 | 273 | 273 | 0 |
+| `2024-06-15 12:00` | 44,576 | 44,282 | 294 | 294 | 0 |
+| `2025-12-01 18:00` | 91,583 | 91,304 | 279 | 279 | 0 |
+| `2026-07-17 07:00` (cierre del bloque de última entrada) | 108,494 | 108,178 | 316 | 316 | 0 |
+| `2026-07-18 00:00` (cierre del día 1,294) | 108,494 | 108,216 | 278 | 278 | 0 |
+| `2026-07-18 05:00` | 108,494 | 108,216 | 278 | 278 | 0 |
+| `2026-07-18 06:00` (cierre del bloque de última salida) | 108,494 | 108,494 | 0 | 0 | 0 |
+
+La diferencia también fue **0 en los 12 cortes** de la cohorte bruta (108,601 etapas). Sus censos, en el mismo orden, fueron 0, 3, 14, 35, 93, 273, 297, 291, 331, 293, 293 y 0. Esto verifica el balance de las etapas registradas, no el número de camas habilitadas.
+
+**B. Ley de Little y poblaciones.** La tasa $\lambda$ usa los 1,294 días de ingresos; $W$ es la **media** de las duraciones completas. El censo medio continuo es el área de las estancias **dentro de la ventana** dividida por sus horas; el horario es el promedio de los conteos por hora. La mediana describe la distribución horaria, no es el término de comparación de Little.
+
+| Regla | Etapas para $E,S$ / para $W$ | $\lambda$ (/día) | $W$ (h) | $\lambda W$ reportado (pacientes) | Censo medio continuo (1,294 d) | Censo medio horario (1,294 d / tras 24 d) | Censo mediano horario (tras 24 d) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `sql14_15_16_p999` (incluye huérfanas) | 108,494 / 108,494 | 83.843895 | 79.438491 | **277.5177** | **277.4669** | **277.4706 / 278.6137** | **283.0** |
+| `padre_y_p999` | 108,403 / 108,403 | 83.773570 | 79.428945 | **277.2514** | No reportado | 277.2045 / 278.5986 | No reportado |
+| Híbrido bundle v2.0 (flujos `p99.9`; duración sin recorte, con padre) | 108,494 / 108,510 | 83.843895 | 81.297108 | **284.0111** | — | — | — |
+| Bruta sin recorte (`bruta`, incluye huérfanas) | 108,601 / 108,601 | 83.926584 | 81.305079 | **284.3191** | No reportado | 284.2688 / 285.5421 | 288.0 |
+
+El híbrido no tiene un censo propio: sus entradas y salidas son las de la primera fila, pero su duración corresponde a otra población. Se conservan los productos reportados en la verificación; al recalcular $\lambda W/24$ con las tasas por día y las medias en horas de las dos primeras filas se obtienen **277.5180** y **277.2519**, respectivamente. La diferencia es inferior a 0.001 pacientes y no cambia el contraste a dos decimales.
+
+- **Cierre del día 1,294 (`2026-07-18 00:00`; 31,056 h).** Con el filtro común, las estancias completas suman **8,618,599.6 paciente-horas** ($W = 3.309937$ días). Quedan **278 etapas activas** que aportan **1,588.98 paciente-horas** después del cierre y egresan en el bloque `[05:00, 06:00)`. Al restar esa cola temporal quedan **8,617,010.6 paciente-horas** dentro de la ventana: media continua **277.4669**, frente a **277.4706** por conteos horarios (suma: **8,617,128**).
+- **Hasta la última salida (`2026-07-18 06:00`; 31,062 h).** Con ambos stocks en cero, el área coincide con la suma de duraciones completas: $8,618,599.6 / 31,062 \approx 277.4644$ pacientes de media continua; la media horaria es **277.4618**. El cierre simultáneo de registros no demuestra que el hospital quedara vacío.
+- **Tras 24 días de calentamiento (`2023-01-25 03:00` a `2026-07-18 06:00`; 30,483 h).** Entran **106,262** etapas nuevas ($W = 79.693756$ h). Las **273** ya activas al inicio aportan otras **24,765.65 paciente-horas** dentro de esta ventana. El área total es **8,493,184 paciente-horas**: media continua **278.6203**, media horaria **278.6137**, mediana **283.0**, p75 **297.0**, p90 **309.0** y máximo **359.0**.
+
+**Repositorio frente al artefacto publicado.** [SQL16](../src/hun/data/sql/16_duracion_etapas_diaria.sql) ya usa `umbrales_p999` y `LEFT JOIN visit_occurrence`: aplica el mismo umbral que SQL14/15 y conserva las etapas sin padre. Ese cambio no modifica retroactivamente `models/modelos_web_bundle.joblib`: el v2.0 sigue dando **284.01** con poblaciones distintas. El valor alineado de PostgreSQL es **277.52**, una comprobación de consistencia interna, no una validación clínica independiente.
 
 ### Integración externa sin atribuciones espurias
 
 El pipeline integra calendario colombiano, Carnaval/Semana Santa, clima de Open-Meteo, vacaciones, quincenas y epidemiología SIVIGILA. Su disponibilidad no implica aceptación automática.
 
-El [protocolo](../docs/resultados/factores_externos.md) exige ablación en los mismos pliegues, control de estacionalidad, placebo desplazado temporalmente y estabilidad. El modelo final acepta **`festivos_y_puentes`** y **`carnaval_y_semana_santa`**; descarta `vacaciones_escolares` y `quincena_y_primas`. No se atribuye al clima o a epidemiología una mejora no demostrada en esta selección.
+El [protocolo](../docs/resultados/factores_externos.md) exige ablación en los mismos pliegues, control de estacionalidad, placebo desplazado temporalmente y estabilidad. El modelo final acepta `festivos_y_puentes` y `carnaval_y_semana_santa`. Además de `vacaciones_escolares` y `quincena_y_primas`, el pipeline evaluó `clima` y `epidemiologia`: estos dos grupos se descartaron en la corrida inicial por no superar el protocolo de ablación y placebo. Ninguno de los cuatro grupos descartados recibe crédito por la mejora del modelo final.
 
 ### Política anti-fuga
 
@@ -190,13 +230,13 @@ El simulador operacional (`OptimizationPanel.jsx` y `POST /api/optimizacion/simu
 
 - **Origen de las tasas por franja:** El modelo cuantílico (`p10`, `p50`, `p90`) genera el pronóstico diario del servicio seleccionado. Cada total diario (`p50` como demanda central y `p90` como escenario de demanda alta) se reparte entre las cuatro franjas de seis horas usando el perfil horario del día de semana calculado **únicamente con observaciones completas anteriores a la fecha evaluada** (incluyendo ceros de días completos en grilla horaria regular). Las proporciones suman exactamente `1`, los volúmenes por franja reconcilian con el total diario y se dividen por `6` horas (`λ = volumen_franja / 6`) antes de resolver Erlang C.
 - **Alcance estadístico e interpretativo:** Repartir el `p90` diario mediante el perfil histórico construye un **escenario horario de demanda alta**; no estima el `p90` marginal independiente de cada franja. Los equipos equivalentes resultantes representan un requerimiento teórico bajo los supuestos elegidos (`1/μ` y meta de espera), nunca una comparación contra dotación real salvo que el operador ingrese una referencia explícita. Asimismo, los umbrales históricos del servicio (`p75` y `p90` de demanda observada) se mantienen separados de los cuantiles del pronóstico, y el WAPE de **10,5 %** del experimento LightGBM Poisson (`lgbm_final`) se mantiene separado de las métricas del LightGBM cuantílico que sirve la web.
-- **Evaluación fuera de muestra vs. retrospectiva y estado del bundle:** Cuando el bundle incluye predicciones archivadas del backtest walk-forward con `origen` y perfiles construidos antes del origen del pliegue, la vista se etiqueta como **fuera de muestra**; de lo contrario, si faltan dichos perfiles u orígenes, se etiqueta como **retrospectiva** (prueba funcional) o degrada limpiamente a **«Pronóstico por franja no disponible»** conservando el modo histórico. El bundle real vigente (`models/modelos_web_bundle.joblib`, v2.0) no contiene `perfiles_horarios` por corte y `data/raw/` no está disponible localmente; por ello, **la ruta completa del modo pronóstico se verificó únicamente con datos sintéticos explícitos** (`construir_paquete_sintetico_prueba()` en archivo temporal), mientras que sobre el bundle v2.0 real se comprobó la degradación segura y la continuidad del modo histórico.
+- **Evaluación fuera de muestra vs. retrospectiva y estado del bundle:** Cuando el bundle incluye predicciones archivadas del backtest walk-forward con `origen` y perfiles construidos antes del origen del pliegue, la vista se etiqueta como **fuera de muestra**; de lo contrario, si faltan dichos perfiles u orígenes, se etiqueta como **retrospectiva** (prueba funcional) o degrada limpiamente a **«Pronóstico por franja no disponible»** conservando el modo histórico. El motor v2.1 admite perfiles históricos por corte, pero el archivo publicado `models/modelos_web_bundle.joblib` corresponde al formato v2.0 y no los contiene. En las pruebas del modo de producción, **la ruta completa del modo pronóstico se verificó únicamente con datos sintéticos explícitos** (`construir_paquete_sintetico_prueba()` en archivo temporal), mientras que sobre el bundle v2.0 real se comprobó la degradación segura y la continuidad del modo histórico.
 - **Cómo reproducir una jornada de ejemplo:** Con un paquete v2.1 (generado desde datos autorizados con `python -m hun.models.empaquetar` o con el constructor sintético de prueba) y `HUN_MODO_PRODUCCION=1`, consultar `POST /api/optimizacion/simular` con `{"servicio": "rehabilitacion", "modo_demanda": "pronostico", "fecha": "<YYYY-MM-DD>", "tiempo_servicio_min": 30, "meta_espera_min": 15}` (o alternar el selector en la pestaña *Eventos y escenarios de optimización*).
 - **Qué puede concluir el jurado:** El acoplamiento permite traducir un pronóstico diario en requerimientos teóricos por turno sin fuga temporal ni dotaciones inventadas, explicando en todo momento sus supuestos, su fuente (`fuera_de_muestra` vs. `retrospectivo`) y el motivo cuando el historial o artefacto no respalda el cálculo.
 
 ### 5.2 Ley de Little: reducir permanencia de forma segura
 
-**L = λ · W**, con λ en ingresos/día y W en días. Para Hospitalización se usan ingresos cerrados consistentes con el censo depurado (`p99.9`) y estancia media ponderada por etapas: λ = **83.8439/día**, W = **81.2971 h**, L = **284.0111 pacientes**. La mediana de estancia **45.9611 h** no se usa como sustituto de la media en la identidad.
+**L = λ · W**, con λ en ingresos/día y W en días. La tabla de escenarios reproduce el bundle v2.0: combina **83.843895 ingresos/día** filtrados por `p99.9` con **81.297108 h** de estancia media sin recorte y con visita padre. Su referencia es, por tanto, el valor híbrido de **284.0111 pacientes**. No debe confundirse con la verificación de la sección 3: con población común `p99.9`, Little da **277.52** frente a una media horaria de **277.47** en 1,294 días.
 
 | Reducción de estancia | Nueva media (h) | Camas medias liberadas teóricas | Reducción del censo Little |
 |---|---:|---:|---:|
@@ -227,18 +267,20 @@ Se propone ejecutar REC-01 y REC-02 en planificación de turnos, REC-03 en un pi
 
 ### 5.5 Demostración de decisión de principio a fin con pronóstico acoplado (Etapa 1)
 
-Para responder **«Con la demanda prevista y los recursos disponibles, ¿qué acción conviene tomar hoy?»**, MediFlow acopla el pronóstico diario por cuantiles (`lgbm_final`, usando únicamente información previa al inicio de la jornada) con los perfiles horarios del día de la semana (`turnos`) y el motor Erlang C (`dimensionar_jornada_con_pronostico`).
+Para responder **«Con la demanda prevista y los recursos disponibles, ¿qué acción conviene tomar hoy?»**, MediFlow acopla el pronóstico diario por cuantiles de llegadas con los perfiles horarios del día de la semana (`turnos`) y el motor Erlang C (`dimensionar_jornada_con_pronostico`).
 
-Sobre la jornada histórica demostrativa **lunes 2026-07-06** en **Urgencias** (pronóstico al inicio del día: **p50 = 488**, intervalo **p10–p90 = 418–600** llegadas; llegadas reales observadas al cierre = **526**, usadas únicamente como contraste retrospectivo), una comparación paramétrica frente a una dotación habitual de **12 equipos equivalentes** ($1/\mu = 20\text{ min}$, meta $< 15\text{ min}$) muestra:
+Sobre la jornada histórica demostrativa **lunes 2026-07-06** en **Urgencias** (escenarios diarios: **p50 = 488**, intervalo **p10–p90 = 418–600** llegadas; llegadas reales observadas al cierre = **526**, usadas únicamente como contraste retrospectivo), una comparación paramétrica frente a una dotación de referencia, no observada en OMOP, de **12 equipos equivalentes** ($1/\mu = 20\text{ min}$, meta $< 15\text{ min}$) muestra:
 
-| Franja | Peso lunes | λ prevista p10 / p50 / p90 (/h) | Equipos req. p10 / p50 / p90 | Brecha inc. | Dotación habitual → alternativa | Espera hab. p50 / p90 (min) | Espera alt. p50 / p90 (min) |
+| Franja | Peso | λ prevista p10/p50/p90 (/h) | c req p10/p50/p90 | Brecha inc. | Dot. habitual → alt. | Espera hab. p50 / p90 (min) | Espera alt. p50 / p90 (min) |
 |---|---:|---|---:|---:|---:|---|---|
-| Mañana (06–12 h) | 39.0% | 27.19 / 31.74 / 39.02 | 11 / 13 / 15 | 4 | 12 → 15 | 8.22 / **inestable (ρ ≥ 1)** | 0.67 / 4.99 |
-| Tarde (12–18 h) | 35.1% | 24.44 / 28.54 / 35.08 | 10 / 11 / 14 | 4 | 12 → 14 | 2.83 / 58.99 | 0.57 / 3.66 |
-| Noche (18–24 h) | 19.1% | 13.33 / 15.56 / 19.14 | 6 / 7 / 8 | 2 | 12 → 8 | 0.02 / 0.12 | 1.40 / 5.58 |
-| Madrugada (00–06 h) | 6.8% | 4.71 / 5.49 / 6.75 | 3 / 3 / 4 | 1 | 12 → 4 | 0.00 / 0.00 | 1.25 / 2.76 |
+| Mañana (06-12h) | 38.8% | 27.00 / 31.52 / 38.76 | 11 / 12 / 15 | 4 | 12 → 15 | 7.58 / inestable (ρ≥1) | 0.63 / 4.61 |
+| Tarde (12-18h) | 33.9% | 23.62 / 27.58 / 33.91 | 10 / 11 / 13 | 3 | 12 → 13 | 2.12 / 22.42 | 0.94 / 6.28 |
+| Noche (18-24h) | 20.4% | 14.21 / 16.59 / 20.39 | 6 / 7 / 9 | 3 | 12 → 9 | 0.04 / 0.20 | 0.77 / 3.09 |
+| Madrugada (00-06h) | 6.9% | 4.83 / 5.64 / 6.94 | 3 / 3 / 4 | 1 | 12 → 4 | 0.00 / 0.00 | 1.38 / 3.08 |
 
-En la franja crítica **Mañana (06–12 h)**, mantener 12 equipos equivale a una espera aceptable si ocurre la mediana (**8.22 min**), pero si la jornada se desplaza hacia la cota alta del pronóstico (**39.02 llegadas/h**, como efectivamente ocurrió con 526 llegadas reales en el día), la ocupación supera el 100 % (**108.4 %**, $\rho \ge 1$) y la cola se vuelve inestable. La alternativa paramétrica de **15 equipos equivalentes** (+3) sostiene la espera media en **4.99 min** (nivel de servicio **88.8 %**) incluso bajo el escenario `p90`, y se complementa adelantando altas elegibles en Hospitalización para evitar bloqueo de camas.
+Fuente: [escenarios por franja](../docs/resultados/optimizacion.md#decisión-de-principio-a-fin-con-pronóstico-acoplado-etapa-1). En la mañana, **12 equipos** cumplen la meta con demanda `p50` (**7.58 min**). Al repartir las **526 llegadas reales del día** con el mismo perfil que las 600 de `p90`, la tasa matutina es $526 \times 38.76 / 600 \approx 33.98$ llegadas/h. Con 12 equipos, la cola sigue siendo **estable** (ρ ≈ 0.94 < 1), pero la espera media modelada es **≈23.4 min**: incumple la meta de **menos de 15 min**. Como contraste de sensibilidad, a **34.10 llegadas/h** la espera sube a **≈25.2 min**. Lo observado fue el total diario, no la tasa matutina ni la espera.
+
+El escenario `p90` es distinto: **600 llegadas/día → 38.76 llegadas/h** en la mañana. Con 12 equipos la ocupación requerida supera el 100 % (ρ = 1.077 ≥ 1) y no hay espera media estacionaria finita. Con **15 equipos** la espera media es **4.61 min** incluso en `p90`.
 
 ## 6. Integración de la solución, visualización y aplicación web (15 %)
 
@@ -264,7 +306,7 @@ Se despliega `models/modelos_web_bundle.joblib` con **`HUN_MODO_PRODUCCION=1`** 
 
 **`ALLOWED_ORIGINS`** configura CORS con los orígenes web permitidos separados por comas. Los valores locales por defecto sirven para desarrollo; en producción se debe declarar el origen real. Configurar CORS no equivale a autenticación ni demuestra que ya exista un despliegue público.
 
-Power BI complementa la aplicación para exploración y comunicación de agregados; no se ha modificado en este trabajo ni se sustituye el enlace de dashboard requerido por el reto. El enlace público y los accesos de demo deben verificarse antes de la entrega.
+El [dashboard público oficial de MediFlow en Power BI](https://app.powerbi.com/view?r=eyJrIjoiYjU3YTBhMWItNTM5Mi00NDk4LTlkNmEtMmFmMzA2MzJjZjQ4IiwidCI6ImJhYjBiNjc5LWJkNWYtNGZlOC1iNTE2LWM2YjhiMzE3Yzc4MiIsImMiOjR9) permite explorar los agregados que sustentan las recomendaciones. El [proyecto Power BI (PBIP)](../dashboards/powerbi/HUN_CuellosBotella/) contiene siete páginas: **Inicio**, **Resumen ejecutivo**, **Saturación por área**, **Esperas y flujo**, **Demanda**, **Hallazgos y recomendaciones** y **Metodología y glosario**. El tablero describe la operación histórica; la aplicación web permite simular decisiones bajo supuestos explícitos.
 
 ## 7. Ingeniería de software, reproducibilidad, privacidad y documentación (5 %)
 
@@ -272,7 +314,7 @@ Power BI complementa la aplicación para exploración y comunicación de agregad
 
 `src/hun/data/` concentra extracción y auditoría; `features/`, variables y rezagos; `models/`, validación, demanda, saturación, intervalos, largo plazo, empaquetado y optimización. `app/api/` adapta las salidas a HTTP y `app/src/` contiene la interfaz. Los notebooks exploran y comunican; no duplican la lógica compartida.
 
-La suite actual cuenta con **170 pruebas automatizadas con `pytest`**. Los hooks `pre-commit` y `ruff` controlan calidad, formato y protección de archivos; los notebooks se mantienen sin salidas que revelen información clínica. La entrega documental no cambia lógica ni dependencias.
+La suite actual cuenta con **176 pruebas automatizadas con `pytest`**. Los hooks `pre-commit` y `ruff` controlan calidad, formato y protección de archivos; los notebooks se mantienen sin salidas que revelen información clínica. La entrega documental no cambia lógica ni dependencias.
 
 La privacidad se protege con conexión de solo lectura, agregación en origen y exclusión de datos crudos, credenciales y archivos hospitalarios de Git. No se publican PHI/PII ni identificadores individuales en este informe o la aplicación. La anonimización OMOP no sustituye la revisión de riesgo de reidentificación por celdas pequeñas antes de publicar agregados o Power BI.
 
@@ -310,7 +352,7 @@ El dominio `mediflow.example.org` es ilustrativo: debe reemplazarse por el orige
 |---|---|
 | [Demanda](../docs/resultados/modelo_demanda.md) y [factores externos](../docs/resultados/factores_externos.md) | Corrida del 2026-11-18; fuente vigente para selección y WAPE puntual |
 | [Saturación](../docs/resultados/saturacion.md) | Corrida del 2026-11-18 sobre el extracto depurado con tope `p99.9` en SQL `14/15/23` |
-| [Optimización](../docs/resultados/optimizacion.md) | Fuente de todas las tablas Erlang C, Little, altas y recomendaciones |
+| [Optimización](../docs/resultados/optimizacion.md) | Fuente de los escenarios Erlang C, Little híbrido v2.0, altas y recomendaciones; la reconciliación de poblaciones procede de PostgreSQL (sección 3) |
 | [Intervalos/SHAP](../docs/resultados/intervalos_shap.md) y [largo plazo](../docs/resultados/largo_plazo.md) | Reportes separados del 2026-11-03; no se atribuyen a una nueva corrida puntual |
 | [Calidad](../docs/calidad_datos.md), [decisiones](../docs/decisiones.md) y [contrato](../docs/contrato_modelo_web.md) | Fundamento del pipeline; las entradas históricas no sustituyen los endpoints y métricas vigentes aquí descritos |
 
@@ -318,7 +360,7 @@ El dominio `mediflow.example.org` es ilustrativo: debe reemplazarse por el orige
 
 ### Conclusiones accionables
 
-MediFlow conecta pronóstico, incertidumbre y escenarios operativos sin inventar dotaciones. El modelo seleccionado reduce el WAPE diario de **18.0% a 10.5%** y permite planificar servicios de alto volumen. El contraste Little (**284.01**) respalda el censo hospitalario depurado con mediana **283.0** (brecha de 0.36%), corrigiendo interpretaciones exploratorias menores.
+MediFlow conecta pronóstico, incertidumbre y escenarios operativos sin inventar dotaciones. El modelo seleccionado reduce el WAPE diario de **18.0% a 10.5%** y permite planificar servicios de alto volumen. Con el filtro común `p99.9`, Little da **277.52** frente al censo medio horario de **277.47** en 1,294 días. Para planificar con los umbrales posteriores al calentamiento, la mediana es **283.0**; no mide capacidad instalada.
 
 El piloto más directamente cuantificado es adelantar altas elegibles: el escenario **35%** reduce horas rojas de **9.32% a 6.26%** (−32.8% relativo), pero no el pico (**359**). Esta separación entre intensidad máxima y tiempo en presión orienta una evaluación más honesta del beneficio.
 

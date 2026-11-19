@@ -34,4 +34,5 @@ Cada integrante marca su columna:
 
 ## 3. Confirmación
 
-Cuando los tres terminen, registrar la fecha aquí: TODO.
+Pendiente de ejecución al finalizar la sustentación oficial (30 de noviembre de 2026).
+Cuando los tres terminen, registrar la fecha aquí.

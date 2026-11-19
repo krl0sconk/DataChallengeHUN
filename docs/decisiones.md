@@ -26,10 +26,10 @@ Si una decisión reemplaza a otra, no borres la anterior: márcala como **Reempl
 - **Sprint:** 3
 - **Responsable:** Krlos
 - **Estado:** Aceptada (implementada en `app/api/chat.py` y `docs/guia_chatbot.md`)
-- **Decisión:** Implementar el endpoint `POST /api/chat` conectado a Claude Haiku (`claude-haiku-5-5`, clave `ANTHROPIC_API_KEY` exclusivamente en `.env`), inyectando como prompt de sistema la guía y glosario (`docs/guia_chatbot.md`) junto con el estado actual de la pantalla enviado por la web (`servicio`, `fecha`, `prediccion`, `intervalo`, `alerta`, `factores`). El asistente dispone de cinco herramientas de solo lectura sobre la propia API (`predecir`, `predecir_rango`, `simular_escenario`, `efecto_promedio_evento`, `indicadores_cuellos_botella`), límite de 150 palabras, timeout de 12 s, rate-limit por minuto y un modo de respaldo determinista que responde con las cifras reales del modelo si la IA no está disponible.
+- **Decisión:** Implementar el endpoint `POST /api/chat` conectado a Claude Haiku (`claude-haiku-5-5`, clave `ANTHROPIC_API_KEY` exclusivamente en `.env`), inyectando como prompt de sistema la guía y glosario (`docs/guia_chatbot.md`) junto con el estado actual de la pantalla enviado por la web (`servicio`, `fecha`, `prediccion`, `intervalo`, `alerta`, `factores`). El asistente dispone de seis herramientas de solo lectura de la API: `predecir`, `predecir_rango`, `simular_escenario`, `efecto_promedio_evento`, `indicadores_cuellos_botella` y `recomendaciones_optimizacion`. Mantiene un límite de 150 palabras, timeout de 12 s, rate-limit por minuto y un modo de respaldo determinista si la IA no está disponible.
 - **Motivo:** Ayudar a jefes de servicio y coordinadores (usuarios no técnicos) a entender qué significan la predicción, el intervalo p10–p90, el semáforo y los aportes de factores sin exponer datos de pacientes ni depender de que el proveedor externo de IA responda para que la aplicación siga funcionando.
 - **Alternativas consideradas:** (1) Chatbot con acceso SQL directo a la base: descartado por privacidad y porque en producción no hay base ni carpeta `data/`. (2) Chatbot sin herramientas (solo texto libre): descartado por riesgo de alucinación de cifras.
-- **Consecuencias:** Toda cifra citada por el asistente sale del paquete del modelo o del estado de pantalla. Si falta `ANTHROPIC_API_KEY` o falla la red, `/api/chat` responde en modo `respaldo` usando las mismas herramientas reales.
+- **Consecuencias:** Toda cifra citada por el asistente sale de las herramientas o del estado de pantalla. Con `HUN_MODO_PRODUCCION=1`, las herramientas consultan el paquete canónico `models/modelos_web_bundle.joblib` a través de la API, sin acceder directamente a `data/` ni a la base hospitalaria. Si falta `ANTHROPIC_API_KEY` o falla la red, `/api/chat` responde en modo `respaldo` usando las mismas herramientas.
 
 ---
 
@@ -52,10 +52,10 @@ Si una decisión reemplaza a otra, no borres la anterior: márcala como **Reempl
 - **Sprint:** 2
 - **Responsable:** Krlos & Daniel
 - **Estado:** Aceptada (implementada en `app/api/__init__.py`)
-- **Decisión:** Implementar un backend en **FastAPI** (`app/api/`) que sirve directamente el contrato de `src/hun/models/predict.py`, respaldado por el artefacto `data/processed/modelos_web_bundle.joblib` (LightGBM cuantil p10/p50/p90 + TreeExplainer SHAP + censo por etapas).
+- **Decisión:** Implementar un backend en **FastAPI** (`app/api/`) que sirve directamente el contrato de `src/hun/models/predict.py`, respaldado por el paquete canónico `models/modelos_web_bundle.joblib` (LightGBM cuantil p10/p50/p90 + TreeExplainer SHAP + censo por etapas).
 - **Motivo:** Sustituir los valores estáticos/simulados en la interfaz de React por inferencias reales basadas en los datos agregados y modelos entrenados, garantizando tiempos de respuesta sub-segundo (<20ms), validación automática de esquemas con Pydantic, CORS habilitado para el frontend de Vite (`http://localhost:5173`) y documentación interactiva automática en `/docs`.
 - **Alternativas consideradas:** Servidor Flask (más verboso y sin validación Pydantic nativa); Inferencia puramente en el cliente JS/ONNX (descartada por complejidad de cálculo SHAP y empaquetado de modelos LightGBM).
-- **Consecuencias:** La aplicación web consume los endpoints `/api/predecir`, `/api/historico/llegadas`, `/api/historico/turnos` y `/api/ocupacion`. Si el archivo del bundle no está presente en un entorno de desarrollo ligero, el backend conmuta transparentemente al fallback calibrado.
+- **Consecuencias:** La aplicación web consume los endpoints `/api/predecir`, `/api/historico/llegadas`, `/api/historico/turnos` y `/api/ocupacion`. La API respalda también las seis herramientas de solo lectura del chatbot (DEC-009), incluida la consulta de optimización. Con `HUN_MODO_PRODUCCION=1`, la API solo carga el bundle (ruta canónica o `HUN_BUNDLE_PATH` si está configurada) y devuelve un error explícito si falta, sin leer `data/raw/` ni `data/processed/`. El respaldo calibrado queda disponible solo fuera del modo estricto.
 
 ---
 
@@ -85,9 +85,7 @@ Si una decisión reemplaza a otra, no borres la anterior: márcala como **Reempl
   no puede conectarse a la base por la VPN, así que de todas formas trabaja con agregados importados.
 - **Alternativas consideradas:** Dash (Python): más control y se versiona completo, pero exigiría
   confirmar con la organización que se acepta en lugar de Power BI, y duplica lo que ya hará la web.
-- **Consecuencias:** El `.pbix` tiene datos importados y no se sube (lo bloquea el `.gitignore`); en
-  `dashboards/powerbi/` solo van la plantilla `.pbit`, documentación y capturas, y el enlace publicado
-  va en el README. Antes de publicar, revisar que ninguna visual muestre celdas con muy pocos pacientes.
+- **Consecuencias:** Se adoptó el formato **PBIP**: [`HUN_CuellosBotella.pbip`](../dashboards/powerbi/HUN_CuellosBotella/HUN_CuellosBotella.pbip) versiona un modelo estrella de **12 tablas, 18 relaciones y 43 medidas DAX**, y un informe de **7 páginas**, sin datos crudos ni caché de datos. El `.pbix` con datos importados no se sube. El [tablero público en Power BI](https://app.powerbi.com/view?r=eyJrIjoiYjU3YTBhMWItNTM5Mi00NDk4LTlkNmEtMmFmMzA2MzJjZjQ4IiwidCI6ImJhYjBiNjc5LWJkNWYtNGZlOC1iNTE2LWM2YjhiMzE3Yzc4MiIsImMiOjR9) está publicado y enlazado en el README. Antes de cada publicación, revisar que ninguna visual muestre celdas con muy pocos pacientes.
 
 ### DEC-004 · Protocolo de aceptación de factores externos
 

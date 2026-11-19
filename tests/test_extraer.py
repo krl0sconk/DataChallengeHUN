@@ -102,6 +102,10 @@ def test_consultas_etapas_recortan_extremos_sobre_p999():
     sql_pct = extraer.leer_sql("23_duracion_etapas_percentiles.sql").lower()
     assert "0.999" in sql_pct and "horas_p999" in sql_pct
 
-    for archivo in ("14_etapas_entradas_por_hora.sql", "15_etapas_salidas_por_hora.sql"):
+    for archivo in (
+        "14_etapas_entradas_por_hora.sql",
+        "15_etapas_salidas_por_hora.sql",
+        "16_duracion_etapas_diaria.sql",
+    ):
         sql = extraer.leer_sql(archivo).lower()
         assert "0.999" in sql, f"{archivo} debe recortar duraciones extremas sobre p99.9"

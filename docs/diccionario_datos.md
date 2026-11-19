@@ -60,8 +60,8 @@ Todas las columnas `*_concept_id` se traducen uniendo con `concept.concept_id` �
 
 ## Extracciones versionadas
 
-Las consultas están en `src/hun/data/sql/` y se corren con `python -m hun.data.extraer`. Todas devuelven
-agregados; ninguna trae filas de pacientes.
+Las 24 consultas (`00` a `23`) están en `src/hun/data/sql/` y se corren con `python -m hun.data.extraer`.
+Todas devuelven agregados; ninguna trae filas de pacientes.
 
 | Archivo | Extracción | Para qué |
 |---|---|---|
@@ -74,10 +74,10 @@ agregados; ninguna trae filas de pacientes.
 | `05_salidas_por_hora.sql` | `salidas_por_hora` | Salidas por hora (censo / saturación) |
 | `07`–`12` `auditoria_*.sql` | grupo `auditoria` | Calidad de datos: nulos, duplicados, etapas, edades y series diarias para la prueba de fechas (`docs/calidad_datos.md`) |
 | `13_llegadas_diarias_perfil.sql` | `llegadas_diarias_perfil` | Llegadas por día, servicio, sexo y grupo de edad |
-| `14_etapas_entradas_por_hora.sql` | `etapas_entradas_por_hora` | Entradas a cada etapa por hora (censo por etapa) |
-| `15_etapas_salidas_por_hora.sql` | `etapas_salidas_por_hora` | Salidas de cada etapa por hora (censo por etapa) |
-| `16_duracion_etapas_diaria.sql` | `duracion_etapas_diaria` | Duración de las etapas por día (media, p50, p90) |
+| `14_etapas_entradas_por_hora.sql` | `etapas_entradas_por_hora` | Entradas horarias al censo por etapa; excluye duraciones superiores a `p99.9` por tipo de etapa (`horas_p999`). |
+| `15_etapas_salidas_por_hora.sql` | `etapas_salidas_por_hora` | Salidas horarias del censo por etapa con el mismo filtro `p99.9` (`horas_p999`) que `14` y `16`. |
+| `16_duracion_etapas_diaria.sql` | `duracion_etapas_diaria` | Duración por día de inicio, etapa y tipo de visita (media, p50, p90) con el filtro `p99.9` (`horas_p999`) de `14` y `15`. |
 | `17_duracion_etapas_por_franja.sql` | `duracion_etapas_por_franja` | Duración de las etapas por día de la semana y hora de inicio |
 | `18_transiciones_etapas.sql` | `transiciones_etapas` | Esperas entre una etapa y la siguiente, por mes |
 | `19`–`22` `conceptos_*.sql` | grupo `conceptos` | Nombres de los conceptos usados (visitas, etapas, sexo, top de diagnósticos, procedimientos y mediciones). `python -m hun.data.conceptos` los une en `data/processed/conceptos.parquet` |
-| `23_duracion_etapas_percentiles.sql` | `duracion_etapas_percentiles` | Percentiles (p50, p90, p99) y duración máxima por tipo de etapa para calibrar el período de calentamiento (warm-up) del censo |
+| `23_duracion_etapas_percentiles.sql` | `duracion_etapas_percentiles` | Sin recorte de extremos: calcula p50, p90, p99, p99.9 y máximo sobre duraciones válidas por etapa. `horas_p999` documenta el tope que `14`–`16` calculan y aplican; `horas_p99` orienta el calentamiento del censo. |

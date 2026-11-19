@@ -38,7 +38,7 @@ Solo agregados. Cada hallazgo dice de qué gráfica sale. Sirven de base empíri
 
 - **Separación entre mediana y p90 del censo (`04_censo_etapas.png`):**
    - **Urgencia - tratamiento (3045729):** El [censo consolidado](resultados/saturacion.md) (con tope `p99.9` de 283.7 h) tiene mediana **201.0**, p75 **239.0** y p90 **272.0** pacientes concurrentes (máximo histórico 518.0). Reemplaza las estimaciones preliminares de la exploración; no identifica por sí solo las causas clínicas de permanencia.
-   - **Hospitalización (9201):** Con el filtro `p99.9` (1,176.3 h), registra mediana **283.0**, p75 **297.0** y p90 **309.0** pacientes concurrentes (máximo histórico 359.0). La Ley de Little aporta un contraste independiente: **83.84 ingresos/día × 81.30 h / 24 ≈ 284.01 pacientes**, calculado con tasas sin redondear (brecha de 0.36% frente a la mediana observada). La coincidencia respalda el nivel global, sin equivaler a capacidad instalada.
+   - **Hospitalización (9201):** Con el filtro común `p99.9` (1,176.3 h), la Ley de Little es una **comprobación de consistencia interna**: **277.52 pacientes** frente al censo medio horario de **277.47** en 1,294 días. El valor híbrido del bundle v2.0 (**284.01**) mezcla ingresos filtrados con estancias sin recorte y con visita padre. Tras 24 días de calentamiento, la media horaria es **278.61**, la mediana **283.0**, el p75 **297.0**, el p90 **309.0** y el máximo **359.0**. Son pacientes concurrentes, no camas habilitadas.
   - **Urgencias (9203):** Mantiene una rotación rápida (estancia p50 de ~6 minutos; censo depurado mediano **0.0**, p75 **1.0**, p90 **3.0** tras el tope `p99.9` de 17.5 h), pero registra sobrecarga puntual entre las 10:00 y las 14:00 horas.
 
 ## Contraste con la visita al hospital

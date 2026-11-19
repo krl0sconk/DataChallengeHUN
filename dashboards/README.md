@@ -32,5 +32,5 @@ Tablero **Cuellos de botella en el flujo de pacientes** en Power BI (responsable
 
 ### Enlace al tablero publicado
 
-- **Tablero en Power BI:** https://app.powerbi.com/groups/me/reports/734c85c5-4163-4960-aa8f-41976b417839?ctid=bab0b679-bd5f-4fe8-b516-c6b8b317c782&pbi_source=linkShare
-- Para abrirlo hay que iniciar sesión con una cuenta de Power BI a la que se le haya dado acceso.
+- **Tablero público en Power BI (acceso directo sin inicio de sesión):** [Dashboard Interactivo — Cuellos de botella en el flujo de pacientes (Power BI)](https://app.powerbi.com/view?r=eyJrIjoiYjU3YTBhMWItNTM5Mi00NDk4LTlkNmEtMmFmMzA2MzJjZjQ4IiwidCI6ImJhYjBiNjc5LWJkNWYtNGZlOC1iNTE2LWM2YjhiMzE3Yzc4MiIsImMiOjR9)
+- **Enlace interno de espacio de trabajo (requiere cuenta autorizada):** https://app.powerbi.com/groups/me/reports/734c85c5-4163-4960-aa8f-41976b417839?ctid=bab0b679-bd5f-4fe8-b516-c6b8b317c782&pbi_source=linkShare

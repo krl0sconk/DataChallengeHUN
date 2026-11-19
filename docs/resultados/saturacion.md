@@ -1,6 +1,6 @@
 # Resultados · Saturación hospitalaria por etapa
 
-_Generado automáticamente por `python -m hun.models.saturacion` el 2026-11-18 20:07. Solo métricas agregadas._
+_Generado automáticamente por `python -m hun.models.saturacion` el 2026-11-19 16:33. Solo métricas agregadas._
 
 - **Fuentes:** `etapas_entradas_por_hora.parquet`, `etapas_salidas_por_hora.parquet`, `duracion_etapas_percentiles.parquet`
 - **Reconstrucción del censo:** Entradas acumuladas − salidas acumuladas por etapa (`visit_detail_concept_id`).
@@ -51,11 +51,11 @@ Comportamiento de la ocupación diaria agregada por etapa:
 
 ## Nota metodológica: depuración de estancias extremas (`p99.9`)
 
-Las consultas SQL `14_etapas_entradas_por_hora.sql`, `15_etapas_salidas_por_hora.sql` y `23_duracion_etapas_percentiles.sql` aplican el percentil `p99.9` por tipo de etapa (`horas_p999` en `duracion_etapas_percentiles.parquet`) como tope superior para el extracto horario:
+Las consultas SQL `14_etapas_entradas_por_hora.sql`, `15_etapas_salidas_por_hora.sql`, `16_duracion_etapas_diaria.sql` y `23_duracion_etapas_percentiles.sql` aplican o documentan el percentil `p99.9` por tipo de etapa (`horas_p999` en `duracion_etapas_percentiles.parquet`) como tope superior para el extracto horario y la duración media:
 
-- **Inpatient Visit (`9201`):** `p99.9 = 1,176.3 h`
+- **Ambulatory Rehabilitation Visit (`581479`):** `p99.9 = 0.0 h`
 - **Treatment urgency {Diagnosis} (`3045729`):** `p99.9 = 283.7 h`
 - **Emergency Room Visit (`9203`):** `p99.9 = 17.5 h`
-- **Ambulatory Rehabilitation Visit (`581479`):** `p99.9 = 0.0 h`
+- **Inpatient Visit (`9201`):** `p99.9 = 1,176.3 h`
 
-Los máximos crudos de la sección 2 (**28,070.3 h** en Treatment urgency, **20,730.3 h** en Emergency Room Visit y **11,213.6 h** en Inpatient Visit) provienen de la auditoría completa sin recorte de `duracion_etapas_percentiles.parquet`. En cambio, la reconstrucción del censo, los umbrales y las métricas diarias de las secciones 3 y 4 se calculan sobre `etapas_entradas_por_hora` y `etapas_salidas_por_hora` ya filtradas por `p99.9`, evitando estancias fantasma y colas administrativas extremas.
+Los máximos crudos de la sección 2 provienen de la auditoría completa sin recorte de `duracion_etapas_percentiles.parquet`. En cambio, la reconstrucción del censo, los umbrales y las métricas diarias de las secciones 3 y 4 se calculan sobre `etapas_entradas_por_hora` y `etapas_salidas_por_hora` ya filtradas por `p99.9`, evitando estancias fantasma y colas administrativas extremas.

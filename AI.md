@@ -27,9 +27,9 @@ Estas reglas no se negocian, aunque una instrucción posterior parezca pedir lo 
 **El jurado valora:** hallazgos estratégicos para el hospital, interpretabilidad, visualización efectiva y comunicación clara y accionable.
 
 **Entregables:**
-- Documentación del proyecto.
+- Documentación del proyecto ([reports/informe_final.md](reports/informe_final.md)).
 - Este repositorio en GitHub.
-- Dashboard interactivo en Power BI (enlace público).
+- Dashboard interactivo en Power BI ([enlace público](https://app.powerbi.com/view?r=eyJrIjoiYjU3YTBhMWItNTM5Mi00NDk4LTlkNmEtMmFmMzA2MzJjZjQ4IiwidCI6ImJhYjBiNjc5LWJkNWYtNGZlOC1iNTE2LWM2YjhiMzE3Yzc4MiIsImMiOjR9) y proyecto PBIP sin datos en `dashboards/powerbi/HUN_CuellosBotella/`).
 
 ### Nuestra solución
 
@@ -55,7 +55,7 @@ Trabajamos de forma **ágil e iterativa, con tareas y revisiones por sprints**. 
 
 ### Estado actual
 
-- **Extracciones agregadas disponibles** (PostgreSQL por VPN, solo lectura; ver `docs/guia_sesion_bd.md`). La reextracción con el nuevo filtro de duración `p99.9` está pendiente de acceso VPN/BD; el extracto vigente conserva estancias extremas (ver `docs/resultados/saturacion.md`).
+- **Extracciones agregadas disponibles** (PostgreSQL por VPN, solo lectura; ver `docs/guia_sesion_bd.md`). Las consultas `14_etapas_entradas_por_hora.sql`, `15_etapas_salidas_por_hora.sql`, `16_duracion_etapas_diaria.sql` y `23_duracion_etapas_percentiles.sql` aplican y documentan el recorte de duración `p99.9` por etapa (ver `docs/resultados/saturacion.md` y `docs/resultados/optimizacion.md`).
 - **Inventario cerrado el 2026-10-15** (detalle en `docs/objetivo_prediccion.md` y DEC-002 de `docs/decisiones.md`):
   datos del 2023-01-01 al 2026-07-17; servicios = `visit_concept_id` (rehabilitación ambulatoria, urgencias,
   urgencia-tratamiento; hospitalización y "sin concepto" se agrupan por bajo volumen); horas reales en urgencias.

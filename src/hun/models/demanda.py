@@ -49,7 +49,7 @@ from hun.models.validacion import Pliegue, metricas, pliegues_walk_forward, resu
 log = logging.getLogger("demanda")
 
 # Grupos de factores externos aceptados por el protocolo empírico
-GRUPOS_ACEPTADOS: tuple[str, ...] = ("festivos_y_puentes",)
+GRUPOS_ACEPTADOS: tuple[str, ...] = ("festivos_y_puentes", "carnaval_y_semana_santa")
 
 # Escalones de la escalera de modelos, en orden
 ESCALONES: tuple[str, ...] = (

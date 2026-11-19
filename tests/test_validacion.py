@@ -45,6 +45,10 @@ def test_ausencia_fuga_rezagos_horizonte_7d():
 
 def test_grupos_externos_validados_protocolo():
     """Verifica que el modelo final solo retenga grupos externos que superaron el protocolo."""
-    assert demanda.GRUPOS_ACEPTADOS == ("festivos_y_puentes",), (
-        "El modelo final debe admitir únicamente 'festivos_y_puentes' tras superar la prueba placebo."
+    assert demanda.GRUPOS_ACEPTADOS == (
+        "festivos_y_puentes",
+        "carnaval_y_semana_santa",
+    ), (
+        "El modelo final debe admitir únicamente los grupos que superaron el protocolo "
+        "('festivos_y_puentes' y 'carnaval_y_semana_santa')."
     )
