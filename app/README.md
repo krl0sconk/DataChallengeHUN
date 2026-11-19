@@ -38,7 +38,7 @@ npm run dev
 *Frontend disponible en:* `http://localhost:5173`
 
 > [!NOTE]
-> Si el backend FastAPI no está corriendo, la aplicación web pasa de forma automática y transparente a modo fallback local garantizando 100% de operatividad y fidelidad al modelo canónico.
+> Si FastAPI no responde, la interfaz informa el error y reintenta la conexión. No genera predicciones locales de respaldo. En producción, una falla de inferencia del bundle debe informar indisponibilidad, sin sustituir el modelo por cifras paramétricas.
 
 ---
 
@@ -77,3 +77,9 @@ app/
    - Visualización de hallazgos sobre el inventario OMOP CDM verificado y celdas de código reproducibles.
 5. **Metodología y Reglas de Privacidad OMOP**:
    - Garantía de que no se exponen ni consultan datos individuales de pacientes.
+
+## Modos de optimización y evidencia
+
+El selector de fuente distingue el escenario histórico retrospectivo del pronóstico con perfil anterior al corte. Este último requiere `perfiles_horarios` en el bundle; el v2.0 actual no los contiene y muestra indisponibilidad explícita. El escenario histórico puede usar información posterior a la fecha elegida: es una prueba funcional, no una evaluación fuera de muestra. La dotación alternativa manual corresponde al modo histórico; el modo por corte utiliza la dotación habitual como referencia.
+
+Los resultados del modelo servido se consultan en `/api/modelo`. El WAPE del experimento Poisson del informe no es el WAPE de la variante cuantílica de la web. La publicación del PBIP y la regeneración del bundle hospitalario requieren un cierre separado.

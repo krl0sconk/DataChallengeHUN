@@ -110,6 +110,6 @@ Ya aplicadas (no dependen de los porcentajes; son fechas que no pueden ser ciert
 
 Decididas con los resultados de la auditoría:
 
-- **Etapas de más de 30 días:** Representan una fracción residual (< 0,01 % en urgencias y 0,35 % a 1,56 % en hospitalización). No se descartan de la base agregada de censo para reflejar fielmente la ocupación de camas de larga estancia, pero se aíslan mediante percentiles robustos (p50, p90) en el análisis de duración y tiempos de ciclo. En saturación, el percentil 99 ($p_{99} \approx 23$ días) fija el periodo de calentamiento en 24 días.
+- **Etapas de más de 30 días:** Representan una fracción residual (< 0,01 % en urgencias y 0,35 % a 1,56 % en hospitalización). La política inicial conservaba estas etapas. El SQL vigente de entradas, salidas y duraciones aplica un tope p99.9 por etapa; ese recorte estadístico puede excluir estancias reales y exige revisión clínica. No debe confundirse con descartar todas las estancias superiores a 30 días. En saturación, el percentil 99 ($p_{99} \approx 23$ días) fija el periodo de calentamiento en 24 días.
 - **Duplicados en `visit_occurrence` (13,38 %):** Se tratan en el pipeline agrupando por `(person_id, visit_concept_id, visit_start_datetime)` antes de realizar agregaciones de volumen y llegadas diarias, previniendo sobreconteo por refacturación o registros administrativos redundantes.
 - **Nulos:** 0,00 % en todas las tablas clave (no se requiere imputación de fechas ni identificadores).

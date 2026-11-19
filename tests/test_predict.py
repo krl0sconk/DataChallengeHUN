@@ -26,6 +26,35 @@ from hun.models.predict import (
 )
 
 
+def test_produccion_no_sustituye_inferencia_fallida_por_estimacion(monkeypatch):
+    from hun.models import predict as pred
+
+    monkeypatch.setenv("HUN_MODO_PRODUCCION", "1")
+    monkeypatch.setattr(pred, "_obtener_bundle_modelo", lambda: {"modelos_q": {}})
+    monkeypatch.setattr(
+        pred, "_construir_fila_fecha", lambda *_: (_ for _ in ()).throw(ValueError("corrupto"))
+    )
+    monkeypatch.setattr(
+        pred,
+        "_obtener_externos_cache",
+        lambda: (_ for _ in ()).throw(AssertionError("No debe intentar respaldo")),
+    )
+    with pytest.raises(FileNotFoundError, match="no se permite"):
+        pred.predecir(date(2026, 7, 6), "urgencias")
+
+
+def test_cache_externa_prohibida_en_produccion(monkeypatch):
+    from hun.models import predict as pred
+
+    monkeypatch.setenv("HUN_MODO_PRODUCCION", "1")
+    monkeypatch.setattr(
+        pd,
+        "read_parquet",
+        lambda *_: (_ for _ in ()).throw(AssertionError("No debe leer Parquet")),
+    )
+    assert pred._obtener_externos_cache() is None
+
+
 @pytest.fixture
 def fecha_prueba() -> date:
     return date(2026, 10, 26)

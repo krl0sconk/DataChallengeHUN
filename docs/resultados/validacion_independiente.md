@@ -2,7 +2,7 @@
 
 > **Nota de trazabilidad — auditoría histórica.** Este documento registra la validación independiente de la arquitectura anti-fuga (`DEC-003`, `DEC-004` y `DEC-008`) en el **corte Sprint 2 / inicio Sprint 3 (2026-11-03)**, con **103/103 pruebas aprobadas en ese corte**. Las cifras y el veredicto corresponden a esa auditoría, no a una validación de la corrida posterior.
 >
-> Para la entrega, consultar la [corrida vigente del modelo de demanda](modelo_demanda.md): **15.6 % WAPE** para Poisson estratificado y **10.5 % WAPE** para `lgbm_final`. La [suite vigente](../../tests/) contiene 176 pruebas; el criterio de aceptación es **176/176 aprobadas** al ejecutar `.venv/bin/pytest -q`.
+> Para la entrega, consultar la [corrida vigente del modelo de demanda](modelo_demanda.md): **15.6 % WAPE** para Poisson estratificado y **10.5 % WAPE** para `lgbm_final`. La [suite vigente](../../tests/) contiene 180 pruebas; el criterio de aceptación es **180/180 aprobadas** al ejecutar `.venv/bin/pytest -q`.
 
 - **Auditor:** Daniel Rincón (Líder Web y Validación)
 - **Objeto de revisión:** Modelo operativo de demanda (1–7 días) y modelo de largo plazo (120 días)
@@ -55,7 +55,7 @@ En **Rehabilitación (fines de semana)** y **Tratamiento Urgencias**, la exactit
 
 ## 5. Veredicto Final
 
-**APROBADO PARA PRODUCCIÓN ASISTENCIAL.**
+**Veredicto histórico del equipo, sin autorización clínica: requiere validación institucional antes de uso asistencial.**
 
 El pipeline predictivo cumple con `DEC-003`, `DEC-004` y `DEC-008`:
 1. Supera el umbral del **80 % de exactitud** en los servicios de alto volumen (Urgencias 91.2 % y Rehabilitación 87.7 % en corto plazo; 84.3 % global a 120 días).

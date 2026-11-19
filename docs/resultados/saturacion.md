@@ -10,7 +10,7 @@ _Generado automáticamente por `python -m hun.models.saturacion` el 2026-11-19 1
 
 Al reconstruir el censo horario como entradas acumuladas menos salidas acumuladas a partir del primer instante observado ($t_0$), las estancias que iniciaron antes de $t_0$ no cuentan con un registro de entrada dentro de la ventana de análisis. Al momento en que dichos pacientes egresan, se contabilizan únicamente como salidas, lo que genera una subestimación del censo o incluso valores negativos durante los primeros días de la serie.
 
-Tras superar el percentil 99 de duración ($p_{99}$) de las etapas, más del 99 % de los pacientes hospitalizados al inicio de la ventana ya han egresado, y la totalidad de los pacientes activos ingresaron dentro del periodo observado. En consecuencia, el sesgo inicial desaparece por completo y el censo reconstruido converge a la ocupación real del hospital.
+El calentamiento basado en p99 descarta un tramo inicial, pero no restaura un stock inicial omitido en la suma acumulada. El p99 de las estancias no describe necesariamente las duraciones residuales de la cohorte prevalente. Se debe aportar el stock inicial o demostrar que era cero; el descarte no demuestra convergencia a la ocupación real. La reconciliación de stock cero del informe es evidencia documentada y no fue reejecutada en este cierre.
 
 ## 2. Duración de etapas y calentamiento determinado
 

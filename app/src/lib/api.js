@@ -35,6 +35,10 @@ export function getOptimizacion() {
   return getCachedJson(apiUrl('/api/optimizacion'));
 }
 
+export function getEstadoModelo() {
+  return getCachedJson(apiUrl('/api/modelo'));
+}
+
 export function simularOptimizacion(payload) {
   return postJson('/api/optimizacion/simular', payload);
 }
