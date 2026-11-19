@@ -42,6 +42,100 @@ def optimizacion_chat(monkeypatch):
 def test_herramienta_optimizacion(optimizacion_chat):
     assert len(chat_mod.HERRAMIENTAS_ESQUEMA) == 6
     assert chat_mod.ejecutar_herramienta("recomendaciones_optimizacion", {}) == optimizacion_chat
+    props = chat_mod.HERRAMIENTAS_ESQUEMA[0]["input_schema"]["properties"]
+    assert {"fecha", "servicio", "dotacion_habitual"}.issubset(props.keys())
+
+
+def test_herramienta_optimizacion_con_fecha_acopla_decision(monkeypatch, optimizacion_chat):
+    from hun.models import predict
+
+    decision = {
+        "fecha": "2026-07-06",
+        "servicio": "urgencias",
+        "tipo_comparacion": "parametrica",
+        "franja_critica": "Mañana (06-12h)",
+        "decision_recomendada": "Reforzar de 12 a 14 equipos en Mañana (06-12h).",
+    }
+
+    def simular_mock(
+        servicio: str,
+        tiempo_servicio_min: float = 20.0,
+        meta_espera_min: float = 15.0,
+        reduccion_estancia_horas: float = 4.0,
+        pct_altas_tempranas: float = 30,
+        fecha=None,
+        dotacion_habitual=None,
+        dotacion_alternativa=None,
+    ):
+        return {
+            "servicio": servicio,
+            "decision_jornada": decision,
+        }
+
+    monkeypatch.setattr(predict, "simular_optimizacion", simular_mock, raising=False)
+    res = chat_mod.ejecutar_herramienta(
+        "recomendaciones_optimizacion",
+        {"fecha": "2026-07-06", "servicio": "urgencias", "dotacion_habitual": 12},
+    )
+    assert res["decision_jornada"] == decision
+
+
+def test_chat_respaldo_optimizacion_con_contexto_pantalla(monkeypatch, optimizacion_chat):
+    from hun.models import predict
+
+    chat_mod.limpiar_rate_limit()
+
+    def sin_ia(*args, **kwargs):
+        raise RuntimeError("Sin conexión")
+
+    def simular_mock(
+        servicio: str,
+        tiempo_servicio_min: float = 20.0,
+        meta_espera_min: float = 15.0,
+        reduccion_estancia_horas: float = 4.0,
+        pct_altas_tempranas: float = 30,
+        fecha=None,
+        dotacion_habitual=None,
+        dotacion_alternativa=None,
+    ):
+        return {
+            "servicio": servicio,
+            "decision_jornada": {
+                "fecha": "2026-07-06",
+                "servicio": servicio,
+                "tipo_comparacion": "parametrica",
+                "pronostico_diario": {"p10": 370, "p50": 465, "p90": 560, "alerta": "amarillo"},
+                "franja_critica": "Mañana (06-12h)",
+                "decision_recomendada": (
+                    "Reforzar de 12 a 14 equipos equivalentes en Mañana (06-12h)."
+                ),
+            },
+        }
+
+    monkeypatch.setattr(chat_mod, "_llamar_claude_con_herramientas", sin_ia)
+    monkeypatch.setattr(predict, "simular_optimizacion", simular_mock, raising=False)
+
+    response = client.post(
+        "/api/chat",
+        json={
+            "mensaje": "¿Qué dotación recomiendas hoy para el turno?",
+            "estado_pantalla": {
+                "servicio": "urgencias",
+                "fecha": "2026-07-06",
+                "prediccion": 465,
+                "intervalo": [370, 560],
+                "alerta": "amarillo",
+            },
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["modo"] == "respaldo"
+    assert data["herramientas_usadas"] == ["recomendaciones_optimizacion"]
+    assert "2026-07-06" in data["respuesta"]
+    assert "465" in data["respuesta"]
+    assert "paramétrica" in data["respuesta"].lower()
+    assert len(data["respuesta"].split()) <= 150
 
 
 @pytest.mark.parametrize(

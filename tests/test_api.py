@@ -5,6 +5,7 @@ Verifica códigos de estado HTTP, esquemas JSON, contrato canónico
 """
 
 import importlib
+from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
@@ -74,6 +75,103 @@ def test_simular_optimizacion_endpoint(monkeypatch, payload):
     ]
 
 
+def test_simular_optimizacion_con_fecha_y_dotacion_parametrica(monkeypatch):
+    from hun.models import predict
+
+    llamadas = []
+    decision_mock = {
+        "fecha": "2026-07-06",
+        "servicio": "urgencias",
+        "tipo_comparacion": "parametrica",
+        "franja_critica": "Mañana (06-12h)",
+        "franjas": [],
+    }
+
+    def simular_nueva(
+        servicio: str,
+        tiempo_servicio_min: float = 20.0,
+        meta_espera_min: float = 15.0,
+        reduccion_estancia_horas: float = 4.0,
+        pct_altas_tempranas: float = 30,
+        fecha=None,
+        dotacion_habitual=None,
+        dotacion_alternativa=None,
+    ):
+        llamadas.append(
+            {
+                "servicio": servicio,
+                "tiempo_servicio_min": tiempo_servicio_min,
+                "meta_espera_min": meta_espera_min,
+                "reduccion_estancia_horas": reduccion_estancia_horas,
+                "pct_altas_tempranas": pct_altas_tempranas,
+                "fecha": fecha,
+                "dotacion_habitual": dotacion_habitual,
+                "dotacion_alternativa": dotacion_alternativa,
+            }
+        )
+        return {
+            "servicio": servicio,
+            "erlang_c_franjas": [],
+            "camas_liberadas_estancia": 10.0,
+            "escenario_altas_tempranas": {},
+            "decision_jornada": decision_mock,
+        }
+
+    monkeypatch.setattr(predict, "simular_optimizacion", simular_nueva, raising=False)
+    response = client.post(
+        "/api/optimizacion/simular",
+        json={
+            "servicio": "urgencias",
+            "fecha": "2026-07-06",
+            "dotacion_habitual": 12,
+            "dotacion_alternativa": 14,
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["decision_jornada"] == decision_mock
+    assert llamadas == [
+        {
+            "servicio": "urgencias",
+            "tiempo_servicio_min": 20.0,
+            "meta_espera_min": 15.0,
+            "reduccion_estancia_horas": 4.0,
+            "pct_altas_tempranas": 30,
+            "fecha": date(2026, 7, 6),
+            "dotacion_habitual": 12,
+            "dotacion_alternativa": 14,
+        }
+    ]
+
+
+def test_simular_optimizacion_resiliente_firma_legada(monkeypatch):
+    from hun.models import predict
+
+    llamadas = []
+
+    def simular_legada(
+        servicio: str,
+        tiempo_servicio_min: float = 20.0,
+        meta_espera_min: float = 15.0,
+        reduccion_estancia_horas: float = 4.0,
+        pct_altas_tempranas: float = 30,
+    ):
+        llamadas.append(servicio)
+        return {
+            "servicio": servicio,
+            "erlang_c_franjas": [],
+            "camas_liberadas_estancia": 10.0,
+            "escenario_altas_tempranas": {},
+        }
+
+    monkeypatch.setattr(predict, "simular_optimizacion", simular_legada, raising=False)
+    resp = client.post(
+        "/api/optimizacion/simular",
+        json={"servicio": "urgencias", "fecha": "2026-07-06", "dotacion_habitual": 12},
+    )
+    assert resp.status_code == 200
+    assert llamadas == ["urgencias"]
+
+
 @pytest.mark.parametrize(
     ("campo", "valor"),
     [
@@ -87,6 +185,11 @@ def test_simular_optimizacion_endpoint(monkeypatch, payload):
         ("pct_altas_tempranas", 81),
         ("pct_altas_tempranas", 30.5),
         ("servicio", None),
+        ("dotacion_habitual", 0),
+        ("dotacion_habitual", 201),
+        ("dotacion_alternativa", 0),
+        ("dotacion_alternativa", 201),
+        ("fecha", "no-es-fecha"),
     ],
 )
 def test_simular_optimizacion_valida_sin_ejecutar(monkeypatch, campo, valor):
