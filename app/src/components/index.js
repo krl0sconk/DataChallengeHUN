@@ -1,5 +1,8 @@
 export { Header } from './Header';
 export { NavTabs } from './NavTabs';
+export { MediFlowLogo } from './MediFlowLogo';
+export { FlowBandBar } from './FlowBandBar';
+export { SectionPanel } from './SectionPanel';
 export { StatCardGrid } from './StatCardGrid';
 export { DemandChart } from './DemandChart';
 export { Chatbot } from './Chatbot';

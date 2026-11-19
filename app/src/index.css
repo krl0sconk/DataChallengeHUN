@@ -5,156 +5,161 @@
 @layer base {
   :root {
     color-scheme: light;
-    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    --font-heading: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
+    --font-sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    --font-heading: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
 
-    /* Identidad HUN: azul institucional + negro del logotipo */
-    --hun-blue: #1B8CC9;
-    --hun-blue-dark: #14516B;
-    --hun-blue-light: #E7F4FA;
-    --hun-ink: #1B1B19;
-    --hun-white: #ffffff;
+    /* MediFlow — Turno día (Porcelana clínica + petróleo + teal quirúrgico) */
+    --mf-bg: #F3F6F8;
+    --mf-rail: #0B2532;
+    --mf-rail-border: #173B4D;
+    --mf-rail-hover: #123647;
+    --mf-rail-active: #16465C;
+    --mf-rail-ink: #E8F2F6;
+    --mf-rail-muted: #98B8C8;
 
-    /* Paleta de producto - Claro */
-    --color-slate-violet: #102A43;
-    --color-teal: #2C7A9B;
-    --color-sage: #8CC5D9;
-    --color-pistachio: #E7F4FA;
-    --color-surface: #F7FAFC;
-    --color-card: #FFFFFF;
-    --color-subtle: #E8F0F5;
+    --mf-surface: #FFFFFF;
+    --mf-surface-2: #EBF1F4;
+    --mf-border: #D4DFE6;
+    --mf-border-strong: #B5C7D3;
 
-    /* Paleta de producto - Oscuro; el azul HUN se aclara para conservar contraste */
-    --dark-bg: #071B2A;       /* Fondo oscuro base ceniza */
-    --dark-card: #0E3E5B;     /* Superficie tarjetas y barras */
-    --dark-accent: #1B8CC9;   /* Acento cálido tierra / moca suave */
-    --dark-text: #B9E2F0;     /* Texto claro menta hielo WCAG AAA */
-    --dark-border: #0B3045;   /* Bordes definidos con contraste */
-  }
+    --mf-ink: #0D222E;
+    --mf-ink-2: #385262;
+    --mf-ink-3: #526D7D;
 
-  /* Tokens de marca disponibles para componentes Tailwind/CSS */
-  :root {
-    --color-brand: var(--hun-blue);
-    --color-brand-dark: var(--hun-blue-dark);
-    --color-brand-soft: var(--hun-blue-light);
-    --color-brand-ink: var(--hun-ink);
-  }
+    --mf-accent: #0B7A75;
+    --mf-accent-hover: #08605C;
+    --mf-accent-soft: #E3F4F2;
+    --mf-accent-ink: #074D4A;
+    --mf-series-2: #1D5F8A;
 
-  body {
-    margin: 0;
-    font-family: var(--font-sans);
-    background-color: #F7FAFC;
-    color: #102A43;
-    transition: background-color 0.2s ease, color 0.2s ease;
-    -webkit-font-smoothing: antialiased;
-    font-size: 16px;
-    font-variant-numeric: tabular-nums;
-  }
+    /* Estados clínicos semánticos */
+    --mf-ok: #0F766E;
+    --mf-ok-soft: #E6F5F3;
+    --mf-ok-border: #99D5CE;
 
-  .dark body {
-    background-color: #071B2A;
-    color: #B9E2F0;
+    --mf-warn: #9A4A06;
+    --mf-warn-soft: #FEF5E6;
+    --mf-warn-border: #ECC98B;
+
+    --mf-crit: #A81C1C;
+    --mf-crit-soft: #FDECEC;
+    --mf-crit-border: #EDA8A8;
+
+    /* Gráficos */
+    --mf-chart-grid: #DFE8EE;
+    --mf-chart-axis: #526D7D;
+    --mf-chart-band: rgba(11, 122, 117, 0.14);
+
+    /* Curva de transición operativa (150–200ms) */
+    --mf-ease: cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .dark {
     color-scheme: dark;
+
+    /* MediFlow — Turno noche (Pizarra marítima profunda, cero neón) */
+    --mf-bg: #08151D;
+    --mf-rail: #051016;
+    --mf-rail-border: #132C3A;
+    --mf-rail-hover: #0E2430;
+    --mf-rail-active: #133242;
+    --mf-rail-ink: #E8F2F6;
+    --mf-rail-muted: #8EB0C2;
+
+    --mf-surface: #0F222E;
+    --mf-surface-2: #152D3B;
+    --mf-border: #1F3C4D;
+    --mf-border-strong: #2F556B;
+
+    --mf-ink: #E8F2F6;
+    --mf-ink-2: #A6C2D0;
+    --mf-ink-3: #83A5B7;
+
+    --mf-accent: #149A93;
+    --mf-accent-hover: #1BB2AA;
+    --mf-accent-soft: #0D3438;
+    --mf-accent-ink: #7BE3DA;
+    --mf-series-2: #5BA4D6;
+
+    --mf-ok: #5EEAD4;
+    --mf-ok-soft: #0D3133;
+    --mf-ok-border: #1D6362;
+
+    --mf-warn: #FCD34D;
+    --mf-warn-soft: #33250E;
+    --mf-warn-border: #7C5819;
+
+    --mf-crit: #FCA5A5;
+    --mf-crit-soft: #38161B;
+    --mf-crit-border: #8C2D36;
+
+    --mf-chart-grid: #1B3545;
+    --mf-chart-axis: #8EB0C2;
+    --mf-chart-band: rgba(20, 154, 147, 0.22);
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  html {
+    font-family: var(--font-sans);
+    background-color: var(--mf-bg);
+    color: var(--mf-ink);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--mf-bg);
+    color: var(--mf-ink);
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    caret-color: var(--mf-accent);
+    transition: background-color 180ms var(--mf-ease), color 180ms var(--mf-ease);
+  }
+
+  h1, h2, h3, h4 {
     font-family: var(--font-heading);
-    color: inherit;
+    color: var(--mf-ink);
+    text-wrap: balance;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  a {
+    text-underline-offset: 3px;
+  }
+
+  ::selection {
+    background-color: var(--mf-accent-soft);
+    color: var(--mf-accent-ink);
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--mf-accent);
+    outline-offset: 2px;
+  }
+
+  button, a, input, select, textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button, input, select, textarea {
+    font: inherit;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
   }
 }
 
-/* Editorial + brutalismo controlado: la estructura la hacen la tinta y las líneas. */
-.rounded-3xl {
-  border-radius: 0.75rem;
-}
-
-.rounded-2xl {
-  border-radius: 0.5rem;
-}
-
-.shadow-xs, .shadow-2xs {
-  box-shadow: 3px 3px 0 rgba(16, 42, 67, 0.12);
-}
-
-.hun-main > section {
-  border-width: 1px;
-  border-color: #B7C8D5;
-}
-
-.hun-main .editorial-insights {
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.hun-main > .space-y-6 {
-  gap: 1.75rem;
-}
-
-.hun-main > .space-y-6 > section {
-  border-color: transparent;
-}
-
-.hun-main > section:first-child {
-  padding-block: 0.25rem 1rem;
-  border: 0;
-}
-
-.hun-hero > div:last-child {
-  padding-top: 0.35rem;
-  white-space: nowrap;
-}
-
-.hun-hero {
-  min-height: 0 !important;
-  padding: 1.25rem 1.5rem 1.5rem !important;
-}
-
-.hun-hero h1 {
-  line-height: 1.05;
-}
-
-.hun-hero p {
-  margin-bottom: 0;
-}
-
-.hun-main .rounded-3xl {
-  padding: clamp(1rem, 1.2vw, 1.5rem);
-}
-
-.hun-main .demand-chart {
-  padding: clamp(1.5rem, 2vw, 2rem) !important;
-}
-
-.hun-main .rounded-2xl {
-  padding: clamp(0.75rem, 0.9vw, 1rem);
-}
-
-.hun-main .rounded-3xl h2 {
-  line-height: 1.2;
-}
-
-h1, h2, h3 {
-  letter-spacing: -0.025em;
-}
-
-/* Los datos operativos permanecen sans; la serif queda para titulares y nombres de sección. */
-.font-mono-num, input, button, nav, label, table {
-  font-family: var(--font-sans);
-}
-
-.font-mono-num {
-  font-family: var(--font-mono) !important;
-}
-
-.hun-main h1, .hun-main h2 {
-  font-family: var(--font-heading);
-}
-
+/* Superficies y utilidades MediFlow */
 .font-heading {
   font-family: var(--font-heading);
 }
@@ -164,84 +169,127 @@ h1, h2, h3 {
   font-variant-numeric: tabular-nums;
 }
 
-/* Firma visual HUN: una franja institucional firme y controles integrados, no una plantilla SaaS. */
-.hun-topbar {
-  box-shadow: 0 10px 28px rgba(7, 27, 42, 0.18);
+.mf-panel {
+  background-color: var(--mf-surface);
+  border: 1px solid var(--mf-border);
+  border-radius: 0.75rem;
+  transition: border-color 180ms var(--mf-ease), background-color 180ms var(--mf-ease);
 }
 
-  .hun-logo {
-  opacity: 0.92;
+.mf-subsurface {
+  background-color: var(--mf-surface-2);
+  border-radius: 0.5rem;
 }
 
-.hun-topbar h1 {
-  color: #FFFFFF !important;
-  letter-spacing: -0.025em;
-}
-
-.hun-topbar p {
-  color: #D8EFF7 !important;
-}
-
-.hun-topbar nav {
-  border-color: #19506B !important;
-  background: #0B3045 !important;
-}
-
-.hun-topbar nav button {
-  color: #D8EFF7;
-}
-
-.hun-topbar nav button:hover {
-  background: #14516B !important;
-}
-
-.hun-topbar nav button[class*="bg-[#102A43"] {
-  background: #1B8CC9 !important;
-  color: #FFFFFF !important;
-}
-
-.hun-main {
-  position: relative;
-}
-
-.hun-main::before {
-  content: '';
-  position: absolute;
-  inset: 0 1.5rem auto;
-  height: 1px;
-  background: #8CC5D9;
-  opacity: 0.65;
-}
-
-::selection {
-  background: #B9E2F0;
-  color: #102A43;
-}
-
-*:focus-visible {
-  outline: 3px solid #1B8CC9;
-  outline-offset: 3px;
-}
-
-button, a, input, select {
-  -webkit-tap-highlight-color: transparent;
-}
-
-button, input, select {
-  font: inherit;
-}
-
-button {
+.mf-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   min-height: 2.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  background-color: var(--mf-accent);
+  color: #FFFFFF;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 160ms var(--mf-ease), transform 120ms var(--mf-ease);
 }
 
-input, select {
-  min-height: 2.75rem;
+.mf-btn-primary:hover:not(:disabled) {
+  background-color: var(--mf-accent-hover);
 }
 
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.62;
+.mf-btn-primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.mf-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--mf-border-strong);
+  background-color: var(--mf-surface);
+  color: var(--mf-ink);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 160ms var(--mf-ease), border-color 160ms var(--mf-ease);
+}
+
+.mf-btn-secondary:hover:not(:disabled) {
+  background-color: var(--mf-surface-2);
+  border-color: var(--mf-accent);
+}
+
+.mf-input {
+  min-height: 2.5rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--mf-border-strong);
+  background-color: var(--mf-surface);
+  color: var(--mf-ink);
+  font-size: 0.875rem;
+  transition: border-color 150ms var(--mf-ease), background-color 150ms var(--mf-ease);
+}
+
+.mf-input:hover:not(:disabled) {
+  border-color: var(--mf-accent);
+}
+
+.mf-badge-ok {
+  background-color: var(--mf-ok-soft);
+  color: var(--mf-ok);
+  border: 1px solid var(--mf-ok-border);
+}
+
+.mf-badge-warn {
+  background-color: var(--mf-warn-soft);
+  color: var(--mf-warn);
+  border: 1px solid var(--mf-warn-border);
+}
+
+.mf-badge-crit {
+  background-color: var(--mf-crit-soft);
+  color: var(--mf-crit);
+  border: 1px solid var(--mf-crit-border);
+}
+
+.mf-skeleton {
+  background-color: var(--mf-surface-2);
+  border-radius: 0.5rem;
+  animation: mf-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes mf-shimmer {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.95; }
+}
+
+/* Scrollbar sutil tematizado */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--mf-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--mf-border-strong);
+  border: 2px solid var(--mf-bg);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--mf-ink-3);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -249,174 +297,6 @@ button:disabled {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }
-
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: #E8F0F5;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #8CC5D9;
-  border: 2px solid #E8F0F5;
-  border-radius: 999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #14516B;
-}
-
-.dark ::-webkit-scrollbar-track {
-  background: #071B2A;
-}
-
-.dark ::-webkit-scrollbar-thumb {
-  background: #19506B;
-  border-color: #071B2A;
-}
-
-/* Escala de lectura accesible para el personal operativo */
-@layer utilities {
-  .text-xs {
-    font-size: clamp(0.8125rem, 0.78rem + 0.18vw, 0.875rem);
-    line-height: 1.35rem;
-  }
-
-  .text-\[11px\] {
-    font-size: clamp(0.75rem, 0.72rem + 0.14vw, 0.8rem);
-    line-height: 1.2rem;
-  }
-
-  .text-\[10px\] {
-    font-size: clamp(0.7rem, 0.68rem + 0.12vw, 0.75rem);
-    line-height: 1.1rem;
-  }
-}
-
-/* Em telas estreitas, a tipografia permanece legível sem empurrar o layout para fora da tela. */
-@media (max-width: 640px) {
-  .hun-topbar {
-    padding-inline: 1rem;
-  }
-
-  .hun-topbar > div {
-    align-items: stretch;
-  }
-
-  .hun-topbar > div > div:first-child {
-    width: 100%;
-  }
-
-  .hun-logo-frame {
-    height: 3.75rem;
-    width: 9.25rem;
-  }
-
-  .hun-brand-title {
-    display: flex;
-    align-items: center;
-  }
-
-  .hun-brand-title h1 {
-    display: none;
-  }
-
-  .hun-challenge-badge {
-    display: inline-flex;
-    margin-top: 0;
-    max-width: 100%;
-  }
-
-  .hun-brand-copy > p {
-    max-width: 20rem;
-    font-size: 0.75rem;
-    line-height: 1.1rem;
-  }
-
-  .hun-header-actions {
-    width: 100%;
-    flex-wrap: wrap;
-    justify-content: space-between;
-  }
-
-  .hun-question-nav {
-    order: 3;
-    width: 100%;
-    flex-direction: row;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 0.15rem;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-
-  .hun-question-nav::-webkit-scrollbar {
-    display: none;
-  }
-
-  .hun-question-nav button {
-    width: auto;
-    min-width: max-content;
-    flex: 0 0 auto;
-    justify-content: center;
-    padding-inline: 0.7rem;
-    font-size: 0.78rem;
-    white-space: nowrap;
-  }
-
-  .hun-hero > div:last-child {
-    white-space: normal;
-  }
-
-  .hun-hero {
-    padding: 1rem !important;
-  }
-
-  .hun-main .rounded-3xl {
-    padding: 1rem;
-  }
-
-  .hun-main .rounded-2xl {
-    padding: 0.75rem;
-  }
-
-  header nav {
-    max-width: 100%;
-    overflow-x: auto;
-    justify-content: flex-start;
-    scrollbar-width: thin;
-  }
-
-  header nav button {
-    padding-inline: 0.65rem;
-    flex: 0 0 auto;
-    white-space: nowrap;
-  }
-}
-
-@media (min-width: 641px) and (max-width: 900px) {
-  .hun-brand-title {
-    display: flex;
-    align-items: center;
-  }
-
-  .hun-brand-title h1 {
-    display: none;
-  }
-
-  .hun-challenge-badge {
-    white-space: nowrap;
-  }
-
-  .hun-logo-frame {
-    height: 4.25rem;
-    width: 10.5rem;
-  }
-}
-
