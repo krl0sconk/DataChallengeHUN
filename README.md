@@ -4,7 +4,7 @@ Proyecto del equipo para el **Data Challenge HUN 2026** del **Hospital Universid
 
 > [!CAUTION]
 > **Los datos del hospital son CONFIDENCIALES y NUNCA se suben a GitHub.**
-> Esto incluye archivos crudos, procesados, exportaciones de Excel/CSV, modelos entrenados con esos datos,
+> Esto incluye archivos crudos, procesados, exportaciones de Excel/CSV y artefactos con datos de pacientes,
 > archivos `.pbix` y notebooks con salidas. Los datos se comparten solo por el canal privado que indique el hospital.
 > El `.gitignore` y los hooks de `pre-commit` ayudan, pero **la responsabilidad final es de cada integrante**:
 > revisa `git status` antes de cada commit.
@@ -21,7 +21,9 @@ con factores externos (clima, festivos, temporadas escolares y epidemiológicas)
 3. Presentar los resultados de forma **interactiva y fácil de entender para el personal del hospital**,
    mediante una aplicación web y un dashboard en Power BI.
 
-## Equipo (Scrum, sprints de 1 semana)
+## Equipo y trabajo iterativo
+
+El equipo organiza tareas y revisiones por sprints, con entregas incrementales de datos, modelos e interfaz; no se presupone una cadencia semanal fija.
 
 | Integrante | Rol |
 |---|---|
@@ -45,14 +47,14 @@ con factores externos (clima, festivos, temporadas escolares y epidemiológicas)
 │       ├── config.py     # rutas y parámetros leídos de .env
 │       ├── data/         # conexión DB, auditoría, conceptos y agregaciones
 │       ├── features/     # ingeniería de variables y rezagos anti-fuga
-│       ├── models/       # demanda, saturación, explicabilidad, predict, validación
+│       ├── models/       # demanda, saturación, optimización, explicabilidad y validación
 │       └── visualization/# utilidades de visualización y reportes
 ├── models/               # artefactos locales de modelos
 ├── app/                  # aplicación web (React + Vite) y backend FastAPI (`app/api/`)
 ├── dashboards/powerbi/   # plantillas .pbit (sin datos)
 ├── reports/figures/      # figuras generadas para informes
 ├── docs/                 # documentación, auditorías, hallazgos y bitácora de decisiones
-├── tests/                # 81 pruebas unitarias y de integración con pytest
+├── tests/                # 156 pruebas unitarias y de integración con pytest
 └── .github/              # plantillas de PR e issues
 ```
 
@@ -61,8 +63,8 @@ con factores externos (clima, festivos, temporadas escolares y epidemiológicas)
 Requisitos: **Python 3.11 o superior**, Node.js 18+ y Git.
 
 ```bash
-git clone https://github.com/<usuario>/data-challenge-hun.git
-cd data-challenge-hun
+git clone https://github.com/krl0sconk/DataChallengeHUN.git
+cd DataChallengeHUN
 
 # 1. Entorno virtual Python
 python -m venv .venv
@@ -78,7 +80,7 @@ pre-commit install
 # 4. Variables de entorno
 cp .env.example .env               # Windows: copy .env.example .env
 
-# 5. Verificar suite de tests (81 pruebas)
+# 5. Verificar suite de tests (156 pruebas)
 pytest
 ```
 
@@ -104,10 +106,14 @@ Luego, en cualquier notebook o script de Python:
 from hun import config
 import pandas as pd
 
-df = pd.read_parquet(config.RAW_DIR / "02_flujo_horario_urgencias.parquet")
+df = pd.read_parquet(config.RAW_DIR / "entradas_por_hora.parquet")
 ```
 
 ## Documentación
+
+- [Informe final — Equipo MediFlow](reports/informe_final.md): metodología, resultados, limitaciones y recomendaciones, organizados por los siete criterios de evaluación.
+- [Optimización operacional](docs/resultados/optimizacion.md): Erlang C, Ley de Little y simulación horaria de altas tempranas. El módulo `src/hun/models/optimizacion.py` se consume mediante `GET /api/optimizacion` y `POST /api/optimizacion/simular`.
+- [Modelo de demanda](docs/resultados/modelo_demanda.md): WAPE diario 18.0% en la línea base, 15.6% en Poisson estratificado y 10.5% en `lgbm_final` (mejora relativa de 41.6% frente a la base).
 
 ## Despliegue
 
@@ -128,8 +134,13 @@ npm run build
 La carpeta `app/dist/` es el artefacto estático que debe publicar el proveedor web. La API debe arrancar con:
 
 ```bash
+export HUN_MODO_PRODUCCION=1
+export HUN_BUNDLE_PATH=models/modelos_web_bundle.joblib
+export ALLOWED_ORIGINS=https://mediflow.example.org
 uvicorn app.api:app --host 0.0.0.0 --port ${PORT:-8000}
 ```
+
+`ALLOWED_ORIGINS` admite orígenes del frontend separados por comas; reemplazar el dominio ilustrativo por el real. Si se omite, CORS permite los orígenes locales de desarrollo. El bundle autorizado contiene modelos y agregados, no registros individuales; en modo estricto su ausencia produce un error y no activa datos sintéticos.
 
 Antes de publicar, verificar que el despliegue incluya únicamente el paquete del modelo autorizado y no copie `data/`, archivos `.parquet`, CSV hospitalarios, `.env` ni credenciales. La URL pública del frontend y de la API se añadirán aquí después de crear el despliegue en el proveedor elegido.
 

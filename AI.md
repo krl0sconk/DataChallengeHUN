@@ -51,19 +51,20 @@ Un sistema de **pronóstico de demanda y saturación hospitalaria** en tres capa
 | Daniel | Web y despliegue, validación del modelo | Análisis de datos |
 | Juan | Preparación de datos, análisis de cuellos de botella, Power BI | Recomendaciones |
 
-Trabajamos en **Scrum con sprints de una semana**. Las tareas viven en Notion.
+Trabajamos de forma **ágil e iterativa, con tareas y revisiones por sprints**. Las tareas viven en Notion; no se presupone una cadencia semanal fija.
 
 ### Estado actual
 
-- **Extracciones de base de datos completadas al 100%** (PostgreSQL por VPN, solo lectura; ver `docs/guia_sesion_bd.md`). Se generaron 24 archivos parquet agregados en `data/raw/`, respetando estrictamente la privacidad y anonimización de pacientes.
+- **Extracciones agregadas disponibles** (PostgreSQL por VPN, solo lectura; ver `docs/guia_sesion_bd.md`). La reextracción con el nuevo filtro de duración `p99.9` está pendiente de acceso VPN/BD; el extracto vigente conserva estancias extremas (ver `docs/resultados/saturacion.md`).
 - **Inventario cerrado el 2026-10-15** (detalle en `docs/objetivo_prediccion.md` y DEC-002 de `docs/decisiones.md`):
   datos del 2023-01-01 al 2026-07-17; servicios = `visit_concept_id` (rehabilitación ambulatoria, urgencias,
   urgencia-tratamiento; hospitalización y "sin concepto" se agrupan por bajo volumen); horas reales en urgencias.
 - **Auditoría de calidad y desplazamiento:** confirmados 0 días de desplazamiento temporal (anclaje perfecto en festivos nacionales y domingos, ver `docs/calidad_datos.md`).
 - **`visit_end_datetime` = `visit_start_datetime` en toda la base**, resuelto mediante la extracción de etapas en `visit_detail`: el censo y saturación se reconstruyeron exitosamente a partir de los tiempos de etapas (ver `docs/resultados/saturacion.md`).
-- **Escalera de modelos completada:** evaluada mediante walk-forward de 26 pliegues (Línea base WAPE 18.0% → Poisson 17.5% → LightGBM Cuantil WAPE 16.5% diario, cobertura p10-p90 de 81.3%; ver `docs/resultados/modelo_demanda.md`).
-- **Contrato modelo-web operativo:** `src/hun/models/predict.py` y el backend FastAPI (`app/api/__init__.py`) cargan el bundle entrenado (`data/processed/modelos_web_bundle.joblib`) y proveen explicabilidad SHAP real en milisegundos.
-- La base termina ~3 meses antes de hoy: no hay rezagos para predecir el futuro real; la web re-simula dentro del rango y ofrece el simulador "¿qué pasa si?".
+- **Escalera vigente:** walk-forward de 26 pliegues, línea base WAPE 18.0% → Poisson estratificado por servicio 15.6% (mejora 13.2%) → `lgbm_final` 10.5% (mejora 41.6%). El 41.6% es mejora relativa del modelo final, no WAPE vigente de Poisson. LightGBM con todos los externos también redondea a 10.5%, con mejora 41.8%; se seleccionan solo `festivos_y_puentes` y `carnaval_y_semana_santa` (ver `docs/resultados/modelo_demanda.md`).
+- **Incertidumbre:** el reporte independiente de cuantiles del 2026-11-03 registra cobertura global p10–p90 de 83.2%, con diferencias por servicio; no es una nueva medición de la corrida puntual del 2026-11-18.
+- **Contrato modelo-web operativo:** `src/hun/models/predict.py` y FastAPI cargan `models/modelos_web_bundle.joblib`; `HUN_MODO_PRODUCCION=1` exige el artefacto y no lee datos crudos. Optimización incluye Erlang C, Ley de Little y altas tempranas; ver `docs/resultados/optimizacion.md`.
+- El último día completo es 2026-07-16. La web ofrece comparación histórica y un modelo separado de largo plazo para agosto–noviembre de 2026, sin rezagos cortos.
 
 ---
 
@@ -83,7 +84,7 @@ Datos clínicos anonimizados en formato **OMOP Common Data Model**:
 | `MEASUREMENT` | Laboratorios, signos vitales y valores numéricos (sin unidad ni tipo; texto en `measurement_source_value_extended`) |
 
 - Los `concept_id` se traducen a nombres legibles con la tabla `concept` de la propia base (diccionario oficial en `docs/diccionario_datos/`, resumen en `docs/diccionario_datos.md`).
-- **Posible desplazamiento de fechas por anonimización.** Revisado en el inventario: no parece haberlo (urgencias tiene ~11 % de visitas en domingo, rehabilitación ~0,1 %). Antes de cruzar con Carnaval y diciembre, confirmarlo con la auditoría de Juan.
+- **Desplazamiento de fechas auditado: 0 días**, respaldado por el patrón de rehabilitación en festivos; ver `docs/calidad_datos.md`.
 
 ### 3.2 Datos externos
 
@@ -139,7 +140,7 @@ La lógica reutilizable va en `src/`. Los notebooks y la web **importan** de `sr
 - **Modelo de demanda (principal):** llegadas por servicio por día (u hora, si el volumen lo permite), con horizonte de 1 a 7 días. Un solo modelo global con el servicio como variable. Servicios con menos de 1 llegada diaria se agrupan en "Otros" y no se evalúan.
 - **Modelo de estancia:** duración esperada de cada visita al momento del ingreso. Objetivo transformado con logaritmo.
 - **Saturación:** se deriva de ambos: pacientes dentro + llegadas previstas − altas esperadas. La base no trae capacidad instalada: el umbral es relativo a la historia (percentiles p75/p90 del servicio). El censo sale de `visit_detail`, no de `visit_occurrence` (ver Estado actual).
-- **Escalera de modelos:** línea base (promedio del mismo día de la semana en las últimas 4 semanas) → regresión de Poisson → LightGBM con objetivo Poisson → LightGBM por cuantiles (p10, p50, p90). Cada escalón debe superar al anterior.
+- **Escalera de modelos:** línea base (mediana del mismo día en 8 semanas) → Poisson estratificado por servicio → LightGBM con todos los externos → LightGBM con grupos aceptados (`lgbm_final`). Los cuantiles p10/p50/p90 complementan la estimación puntual; la selección no depende solo de una mejora redondeada.
 - **Explicabilidad:** SHAP para descomponer cada predicción en aportes de cada factor.
 
 ### 5.2 Validación
@@ -160,7 +161,7 @@ La lógica reutilizable va en `src/`. Los notebooks y la web **importan** de `sr
 
 ## 6. Contrato modelo–web
 
-La web interactúa con el modelo a través de las funciones en `src/hun/models/predict.py` (respaldadas por el bundle entrenado en `data/processed/modelos_web_bundle.joblib` con fallback calibrado) expuestas mediante la API FastAPI en `app/api/__init__.py`:
+La web interactúa con `src/hun/models/predict.py` mediante FastAPI (`app/api/__init__.py`). El bundle canónico es `models/modelos_web_bundle.joblib`; el respaldo de desarrollo no se admite en modo estricto de producción:
 
 ```python
 def predecir(fecha: date, servicio: str, horizonte_dias: int = 1) -> dict:
@@ -184,6 +185,7 @@ Funciones complementarias disponibles en `predict.py` para la API y la interfaz 
 - `obtener_indicadores_cuellos_botella()`: duraciones y umbrales de censo por etapa hospitalaria.
 - `obtener_efectos_eventos(servicio)`: impacto porcentual y en visitas de festivos, Carnaval y temporadas.
 - `obtener_pronostico_largo_plazo(servicio, fecha_inicio, fecha_fin)`: proyección a 4 meses sin rezagos cortos.
+- `obtener_optimizacion()` y `simular_optimizacion(...)`: resultados y escenarios de Erlang C, camas y altas tempranas, expuestos en `/api/optimizacion` y `/api/optimizacion/simular`.
 - Endpoint `/api/chat`: asistente asistencial seguro basado en estado de pantalla y salidas agregadas (documentado en `docs/contrato_modelo_web.md`).
 
 Cualquier cambio en esta estructura se acuerda entre Krlos y Daniel y se actualiza aquí.

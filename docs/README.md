@@ -23,10 +23,13 @@ Documentación integral del proyecto: decisiones de arquitectura, auditoría de 
 - [resultados/README.md](resultados/README.md): Índice y resumen de experimentos de modelado.
   - [resultados/linea_base.md](resultados/linea_base.md): Evaluación horaria del modelo estacional de 8 semanas (WAPE 29.4%).
   - [resultados/linea_base_diaria.md](resultados/linea_base_diaria.md): Evaluación diaria del modelo de referencia (WAPE 18.0%).
-  - [resultados/modelo_demanda.md](resultados/modelo_demanda.md): Comparativa de la escalera de modelos (Baseline vs. Poisson vs. LightGBM Cuantil WAPE 16.5%).
+   - [resultados/modelo_demanda.md](resultados/modelo_demanda.md): Línea base 18.0% → Poisson estratificado 15.6% → `lgbm_final` 10.5% WAPE.
   - [resultados/factores_externos.md](resultados/factores_externos.md): Análisis de impacto de variables meteorológicas, festivos y epidemiológicas.
-  - [resultados/saturacion.md](resultados/saturacion.md): Reconstrucción del censo por etapas en urgencias (`visit_detail`) y percentiles de capacidad.
-  - [resultados/intervalos_shap.md](resultados/intervalos_shap.md): Cobertura de incertidumbre (81.3%) y explicabilidad local de predicciones.
+   - [resultados/saturacion.md](resultados/saturacion.md): Reconstrucción del censo por etapas (`visit_detail`), percentiles de presión histórica y nota sobre estancias extremas.
+   - [resultados/intervalos_shap.md](resultados/intervalos_shap.md): Cobertura global 83.2% y explicabilidad local, corrida de cuantiles del 2026-11-03.
+   - [resultados/optimizacion.md](resultados/optimizacion.md): Erlang C, Ley de Little, altas tempranas y recomendaciones cuantificadas.
+   - [resultados/largo_plazo.md](resultados/largo_plazo.md): Pronóstico agosto–noviembre de 2026 y validación a 120 días.
+   - [Informe final](../reports/informe_final.md): Síntesis ejecutiva y técnica alineada con los siete criterios de la rúbrica.
 
 ### 4. Gestión del Proyecto
 - [sprints/sprint_1.md](sprints/sprint_1.md): Bitácora, compromisos y cierre del Sprint 1 (Extracción, Auditoría, Línea Base y Prototipo).

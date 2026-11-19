@@ -28,17 +28,17 @@ Solo agregados. Cada hallazgo dice de qué gráfica sale. Sirven de base empíri
 ## Dónde se demora la atención
 
 - **Duración de etapas según franja horaria (`03_duracion_etapas_franja.png`):**
-  - En **Hospitalización (9201)**, las estancias iniciadas en la tarde, noche o fines de semana presentan duraciones acumuladas superiores (p50 ~46 h, p90 ~186 h) frente a ingresos matutinos en días hábiles, asociado al ritmo operativo de rondas de alta médica y trámites de egreso.
+   - En **Hospitalización (9201)**, el reporte consolidado registra p50 46.0 h y p90 188.2 h. Las diferencias por franja motivan evaluar rondas de alta y trámites de egreso, sin atribuir causalidad. La [simulación horaria de altas tempranas](resultados/optimizacion.md#ley-de-little-y-altas-matutinas) cuantifica esta hipótesis: adelantar el 35% de las altas elegibles de 14–20 h a 08–12 h reduce las horas rojas de 9.79% a 6.89%, sin reducir el pico histórico de 378 pacientes.
   - En **Urgencia - tratamiento (3045729)**, la estancia en observación se alarga en pacientes que ingresan en la tarde/noche (el p90 se eleva de 1,2 h hasta más de 12–15 h).
 - **Esperas y cuellos de botella en transiciones (`transiciones_etapas`):**
-  - La transición con mayor dilación es **Urgencias → Hospitalización**: la mediana de espera para asignación y traslado a cama de piso es de ~2,1 h, pero el percentil 90 alcanza **24,5 h**, evidenciando episodios críticos de congestión cuando las salas de piso se encuentran saturadas.
+   - La transición **Treatment urgency (3045729) → Inpatient Visit (9201)** registra **47.670 pasos**, mediana ponderada mensual 0.0 h y **p90 mensual ponderado 24.45 h** (24.5 h a una decimal). `espera_h = start_siguiente - end_anterior` en OMOP: puede incluir solapamientos negativos y no mide necesariamente asignación de cama ni boarding clínico. El p90 es un promedio de percentiles mensuales ponderado por pasos, no el percentil exacto de todos los registros. La correlación mensual con censo es **r = -0.30**, por lo que no respalda atribuir estas demoras a saturación. Véanse el [análisis empírico](resultados/optimizacion.md#urgencias--hospitalización) y la [simulación de rondas de alta](resultados/optimizacion.md#ley-de-little-y-altas-matutinas).
   - La transición **Urgencias → Urgencias - tratamiento** es inmediata (mediana 0,0 h, p90 0,0 h), confirmando que el paso a sala de observación o hidratación post-triaje no sufre cuellos de botella iniciales.
 
 ## Dónde parece haber saturación
 
 - **Separación entre mediana y p90 del censo (`04_censo_etapas.png`):**
-  - **Urgencia - tratamiento (3045729):** El percentil 90 del censo se separa fuertemente de la mediana entre las 14:00 y las 20:00 horas, alcanzando entre 35 y 45 pacientes activos en observación (frente a una mediana basal de 18–22). Este cuello de botella vespertino refleja la acumulación de pacientes en espera de laboratorio, imágenes diagnósticas o respuesta terapéutica antes de definir alta u hospitalización.
-  - **Hospitalización (9201):** Presenta una ocupación basal alta y continua (~100–120 pacientes concurrentes), con percentil 90 que supera los 135–140 pacientes.
+   - **Urgencia - tratamiento (3045729):** El [censo consolidado](resultados/saturacion.md) tiene mediana **219.0**, p75 **260.0** y p90 **300.0** pacientes concurrentes. Reemplaza las estimaciones preliminares de la exploración; no identifica por sí solo las causas clínicas de permanencia.
+   - **Hospitalización (9201):** Mediana **288.0**, p75 **306.0** y p90 **319.0** pacientes concurrentes. La Ley de Little aporta un contraste independiente: **83.93 ingresos/día × 81.30 h / 24 ≈ 284.29 pacientes**, calculado con tasas sin redondear. La coincidencia respalda el nivel global, sin eliminar el posible sesgo de estancias extremas ni equivaler a capacidad instalada.
   - **Urgencias (9203):** Mantiene una rotación rápida (estancia p50 de ~6 minutos), pero registra sobrecarga puntual del censo entre las 10:00 y las 14:00 horas.
 
 ## Contraste con la visita al hospital

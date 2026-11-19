@@ -87,7 +87,17 @@ Devuelve siempre un diccionario con:
 - `GET /api/ocupacion` — Presión hospitalaria actual por servicio.
 - `GET /api/cuellos-botella` — Duraciones (`p50`, `p90`, `p99`) y umbrales de censo por etapa de `visit_detail`.
 
-### 3.6 Asistente Clínico Operativo (`/api/chat`)
+### 3.6 Optimización Operacional (`/api/optimizacion` y `/api/optimizacion/simular`)
+
+- `GET /api/optimizacion` — Devuelve el paquete precalculado de optimización operacional:
+  - `erlang_c`: dotación mínima de equipos equivalentes por franja (`normal`, `p75`, `p90`) y tabla de sensibilidad (`1/μ ∈ {15, 20, 30}` min).
+  - `ley_little_camas`: balance `L = λ · W` en `Inpatient Visit (9201)`, escenarios de reducción de estancia (`-2/-4/-6/-8 h`) y simulación horaria real de rondas de alta temprana (`20/35/50 %`).
+  - `cuello_urgencias_hospitalizacion`: transición `Treatment urgency (3045729) → Inpatient Visit (9201)` (`p50`, `p90` mensual ponderado y correlación mensual con censo).
+  - `recomendaciones`: 5 recomendaciones operacionales cuantificadas (`REC-01`..`REC-05`).
+- `POST /api/optimizacion/simular` — Recalcula escenarios interactivos para `{ "servicio", "tiempo_servicio_min", "meta_espera_min", "reduccion_estancia_horas", "pct_altas_tempranas" }`.
+- **CORS en despliegue:** configurar la variable de entorno `ALLOWED_ORIGINS` (lista separada por comas) en el servidor FastAPI; si no se define, permite orígenes locales de desarrollo (`localhost:5173`, `127.0.0.1:5173`, `localhost:3000`).
+
+### 3.7 Asistente Clínico Operativo (`/api/chat`)
 
 - `POST /api/chat`
 - **Entrada:**
@@ -115,7 +125,6 @@ Devuelve siempre un diccionario con:
   }
   ```
 - **Garantías de seguridad y confidencialidad:**
-  - El chatbot **nunca accede a registros individuales ni datos de pacientes**; solo consume funciones de agregados y salidas del modelo (`predecir`, `predecir_rango`, `simular_escenario`, `efecto_promedio_evento`, `indicadores_cuellos_botella`).
+  - El chatbot **nunca accede a registros individuales ni datos de pacientes**; solo consume funciones de agregados y salidas del modelo (`predecir`, `predecir_rango`, `simular_escenario`, `efecto_promedio_evento`, `indicadores_cuellos_botella`, `recomendaciones_optimizacion`).
   - Rate limit de 20 consultas/minuto por cliente y tiempo de espera máximo de 12 segundos.
   - Modo de contingencia (*fallback*) determinista offline si no hay conexión a la API externa.
-

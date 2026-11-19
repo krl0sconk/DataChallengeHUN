@@ -6,6 +6,8 @@
 Cada uno muestra lo logrado; con eso se planea el Sprint 2. Las cifras se copian de los documentos
 de resultados, nunca de memoria.
 
+> **Corte histórico:** este acta conserva resultados y planes del Sprint 1, no el estado final. La corrida de demanda del 2026-11-18 registra línea base 18.0%, Poisson estratificado 15.6% y modelo seleccionado `lgbm_final` 10.5% WAPE (mejora relativa 41.6%, no WAPE de Poisson). Véanse [resultados vigentes](../resultados/modelo_demanda.md) e [informe final](../../reports/informe_final.md).
+
 ## Juan · preparación de datos
 
 | Tarea | Estado | Dónde está |
@@ -29,8 +31,8 @@ Correcciones de la revisión del PR (antes de correr las extracciones):
 Resultados de la auditoría y calidad (`docs/calidad_datos.md`):
 
 - **¿Las fechas están corridas?:** NO. Desplazamiento verificado de **0 días** (anclaje perfecto con festivos oficiales de Colombia y domingo/semana en rehabilitación vs urgencias).
-- **Problemas de calidad identificados:** Nulos 0.00% en identificadores; duplicados 13.38% en `visit_occurrence` y 6.94% en `visit_detail`; 7 visitas con edades imposibles (<0 o >120 años); `visit_end_datetime = visit_start_datetime` en el 100% de `visit_occurrence` (resuelto extrayendo etapas en `visit_detail`).
-- **Primeros lugares con congestión (`docs/hallazgos.md`):** Cuello de botella crítico en observación/hospitalización dentro de urgencias (estancia mediana ~46 h, p90 ~158 h); pico matutino de admisiones (8:00 a 11:00 am) y saturación que bloquea el flujo desde urgencias ambulatorias.
+- **Corrección de calidad según auditoría consolidada:** Nulos 0.00% en identificadores; duplicados sobrantes 13.38% en `visit_occurrence` y 0.43% en `visit_detail`; 43 visitas con edades imposibles (<0 o >110 años); `visit_end_datetime = visit_start_datetime` en `visit_occurrence` (censo reconstruido con `visit_detail`).
+- **Flujo reconciliado:** Hospitalización tiene estancia p50 46.0 h y p90 188.2 h, y censo mediano 288.0. La transición Treatment urgency → Inpatient Visit tiene p90 mensual ponderado 24.45 h; no demuestra bloqueo causal por saturación (ver `docs/resultados/optimizacion.md`).
 
 ## Krlos · modelo y datos externos
 
@@ -78,7 +80,7 @@ Protocolo de evaluación de factores externos (DEC-004):
 
 - **Decisiones aceptadas:** DEC-003 (validación walk-forward), DEC-004 (protocolo de factores externos), DEC-005 (Power BI), DEC-006 (React + Vite) y DEC-007 (FastAPI Backend).
 - **Entregables clave de Sprint 2:**
-  1. **Modelo de Demanda y Factores:** LightGBM por cuantiles entrenado y evaluado (WAPE 16.5% diario vs 18.0% baseline; 81.3% cobertura p10-p90; ver `docs/resultados/modelo_demanda.md`).
+   1. **Modelo de Demanda y Factores:** La referencia histórica era WAPE 16.5% diario y cobertura 81.3%. No es el resultado final: `lgbm_final` alcanza 10.5% WAPE frente a 18.0% de la base y 15.6% de Poisson estratificado; el reporte separado de intervalos del 2026-11-03 registra 83.2% de cobertura global.
   2. **Modelo de Censo y Saturación:** Reconstrucción horaria por etapas en `visit_detail` con warm-up de 24 días y semáforos de saturación p75/p90 (`docs/resultados/saturacion.md`).
   3. **Explicabilidad SHAP e Intervalos:** Cálculo y ranking de aportes de festivos, clima y rezagos (`docs/resultados/intervalos_shap.md`).
   4. **Plantilla Power BI (`dashboards/powerbi/`):** Construcción de la plantilla `.pbit` conectada a los agregados procesados para publicación final del enlace interactivo.
