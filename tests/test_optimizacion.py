@@ -138,7 +138,9 @@ def test_contrato_simulador_y_recomendaciones(monkeypatch):
         "erlang_c_franjas",
         "camas_liberadas_estancia",
         "escenario_altas_tempranas",
+        "decision_jornada",
     }
+    assert r["decision_jornada"] is None
     assert r["camas_liberadas_estancia"] == 8
     assert len(r["erlang_c_franjas"]) == 4
     json.dumps(r, allow_nan=False)
@@ -258,3 +260,208 @@ def test_cuello_excluye_otras_transiciones_y_correlacion_indefinida():
     assert r["espera_p90_horas"] == 2
     assert r["correlacion_censo_espera_p90"] is None
     json.dumps(r, allow_nan=False)
+
+
+def _turnos_ejemplo_urgencias() -> dict:
+    estimados = [300, 400, 200, 100]  # pesos lun: 0.3, 0.4, 0.2, 0.1
+    matriz = []
+    for f_idx, franja in enumerate(opt.FRANJAS):
+        fila = [
+            {"dia": d, "franja": franja, "estimado": estimados[f_idx]}
+            for d in ("Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom")
+        ]
+        matriz.append(fila)
+    return {"urgencias": {"servicio": "urgencias", "franjas": opt.FRANJAS, "matriz": matriz}}
+
+
+def test_dimensionar_jornada_con_pronostico_pesos_incertidumbre_y_parametrica():
+    from hun.models import predict
+
+    erlang = opt.calcular_erlang_c_servicios(parametros_servicio=predict.PARAMETROS_SERVICIO)
+    base = {
+        "erlang_c": erlang,
+        "ley_little_camas": opt.calcular_ley_little_y_altas_tempranas(*datos_hospitalizacion()),
+    }
+    turnos = _turnos_ejemplo_urgencias()
+    res = opt.dimensionar_jornada_con_pronostico(
+        base,
+        "urgencias",
+        pred_p10=400,
+        pred_p50=520,
+        pred_p90=680,
+        fecha="2026-07-06",  # lunes (dia_idx=0)
+        turnos=turnos,
+        tiempo_servicio_min=20.0,
+        meta_espera_min=15.0,
+        dotacion_habitual=12,
+        dotacion_alternativa=18,
+        alerta="amarillo",
+        llegadas_reales=515,
+    )
+    assert res["fecha"] == "2026-07-06"
+    assert res["dia_semana"] == "Lun"
+    assert res["servicio"] == "urgencias"
+    assert res["tipo_comparacion"] == "parametrica"
+    assert res["origen_dotacion_habitual"] == "usuario"
+    assert res["origen_dotacion_alternativa"] == "usuario"
+    assert res["pronostico_diario"] == {
+        "p10": 400.0,
+        "p50": 520.0,
+        "p90": 680.0,
+        "alerta": "amarillo",
+        "llegadas_reales_observadas": 515,
+    }
+    assert res["franja_critica"] == "Tarde (12-18h)"
+    assert len(res["franjas"]) == 4
+    assert sum(f["peso_franja"] for f in res["franjas"]) == pytest.approx(1.0)
+
+    pesos_esperados = [0.3, 0.4, 0.2, 0.1]
+    for f, w in zip(res["franjas"], pesos_esperados, strict=True):
+        assert f["peso_franja"] == pytest.approx(w)
+        assert f["lambda_prevista_p10_h"] == pytest.approx(400 * w / 6.0)
+        assert f["lambda_prevista_p50_h"] == pytest.approx(520 * w / 6.0)
+        assert f["lambda_prevista_p90_h"] == pytest.approx(680 * w / 6.0)
+        assert (
+            f["brecha_incertidumbre_equipos"]
+            == f["servidores_previstos_p90"] - f["servidores_previstos_p10"]
+        )
+        assert f["brecha_incertidumbre_equipos"] >= 0
+        assert f["dotacion_habitual"] == 12
+        assert f["dotacion_alternativa"] == 18
+        assert f["delta_alternativa_vs_habitual"] == 6
+
+    pico = next(f for f in res["franjas"] if f["franja"] == "Tarde (12-18h)")
+    # lambda_prevista_p90_h = 680 * 0.4 / 6 = 45.333/h > 12 * 3 = 36/h (cola inestable)
+    assert pico["espera_habitual_p90_min"] is None
+    assert pico["cola_inestable_habitual_p90"] is True
+    assert pico["nivel_servicio_habitual_p90"] == 0.0
+    # 18 * 3 = 54/h > 45.333/h (cola estable)
+    assert pico["cola_inestable_alternativa_p90"] is False
+    assert isinstance(pico["espera_alternativa_p90_min"], float)
+    assert pico["espera_alternativa_p90_min"] >= 0.0
+
+    assert len(res["requisitos_validacion_hospital"]) == 3
+    texto_reqs = " ".join(res["requisitos_validacion_hospital"])
+    assert "hora_decision_hospitalizar" in texto_reqs
+    assert "hora_asignacion_cama" in texto_reqs
+    assert "hora_traslado_efectivo" in texto_reqs
+    json.dumps(res, allow_nan=False)
+
+
+def test_dimensionar_jornada_fallback_sin_turnos_y_dotacion_por_defecto():
+    from hun.models import predict
+
+    erlang = opt.calcular_erlang_c_servicios(parametros_servicio=predict.PARAMETROS_SERVICIO)
+    base = {
+        "erlang_c": erlang,
+        "ley_little_camas": opt.calcular_ley_little_y_altas_tempranas(*datos_hospitalizacion()),
+    }
+    res = opt.dimensionar_jornada_con_pronostico(
+        base,
+        "urgencias",
+        pred_p10=350,
+        pred_p50=460,
+        pred_p90=600,
+    )
+    assert res["dia_semana"] == "Lun"
+    assert res["origen_dotacion_habitual"] == "regimen_historico_normal"
+    assert res["origen_dotacion_alternativa"] == "requerimiento_p90_previsto"
+    assert sum(f["peso_franja"] for f in res["franjas"]) == pytest.approx(1.0)
+    for f in res["franjas"]:
+        assert f["dotacion_habitual"] == f["servidores_historico_normal"]
+        assert f["dotacion_alternativa"] == f["servidores_previstos_p90"]
+    json.dumps(res, allow_nan=False)
+
+
+def test_simular_optimizacion_con_fecha_y_dotaciones_parametricas(monkeypatch):
+    from datetime import date
+
+    from hun.models import predict
+
+    erlang = opt.calcular_erlang_c_servicios(parametros_servicio=predict.PARAMETROS_SERVICIO)
+    base = {
+        "erlang_c": erlang,
+        "ley_little_camas": opt.calcular_ley_little_y_altas_tempranas(*datos_hospitalizacion()),
+        "cuello_urgencias_hospitalizacion": {},
+    }
+    base["recomendaciones"] = opt.generar_recomendaciones_cuantificadas(base)
+    antes = json.dumps(base, sort_keys=True)
+    turnos = _turnos_ejemplo_urgencias()
+    monkeypatch.setattr(
+        predict,
+        "_bundle_o_sintetico",
+        lambda: {"optimizacion": base, "turnos": turnos},
+    )
+    pred_esperada = predict.predecir(date(2026, 7, 6), "urgencias")
+    real_esperada = predict.obtener_llegadas_reales(date(2026, 7, 6), "urgencias")
+
+    res = predict.simular_optimizacion(
+        "urgencias",
+        fecha="2026-07-06",
+        dotacion_habitual=12,
+        dotacion_alternativa=15,
+    )
+    assert json.dumps(base, sort_keys=True) == antes
+    dec = res["decision_jornada"]
+    assert dec is not None
+    assert dec["fecha"] == "2026-07-06"
+    assert dec["dia_semana"] == "Lun"
+    assert dec["tipo_comparacion"] == "parametrica"
+    assert dec["pronostico_diario"]["p10"] == pred_esperada["min"]
+    assert dec["pronostico_diario"]["p50"] == pred_esperada["prediccion"]
+    assert dec["pronostico_diario"]["p90"] == pred_esperada["max"]
+    assert dec["pronostico_diario"]["alerta"] == pred_esperada["alerta"]
+    assert dec["pronostico_diario"]["llegadas_reales_observadas"] == real_esperada
+    assert len(dec["franjas"]) == 4
+    assert all(
+        f["dotacion_habitual"] == 12 and f["dotacion_alternativa"] == 15 for f in dec["franjas"]
+    )
+    json.dumps(res, allow_nan=False)
+
+
+def test_simular_escenario_optimizacion_solo_dotacion_sin_fecha():
+    from hun.models import predict
+
+    erlang = opt.calcular_erlang_c_servicios(parametros_servicio=predict.PARAMETROS_SERVICIO)
+    base = {
+        "erlang_c": erlang,
+        "ley_little_camas": opt.calcular_ley_little_y_altas_tempranas(*datos_hospitalizacion()),
+    }
+    res = opt.simular_escenario_optimizacion(
+        base,
+        "urgencias",
+        dotacion_habitual=10,
+        dotacion_alternativa=14,
+    )
+    dec = res["decision_jornada"]
+    assert dec is not None
+    assert dec["tipo_comparacion"] == "parametrica"
+    assert dec["origen_dotacion_habitual"] == "usuario"
+    assert dec["origen_dotacion_alternativa"] == "usuario"
+    hist_p90_esperado = sum(f["lambda_p90_h"] * 6.0 for f in res["erlang_c_franjas"])
+    assert dec["pronostico_diario"]["p90"] == pytest.approx(hist_p90_esperado)
+    json.dumps(res, allow_nan=False)
+
+
+def test_simular_optimizacion_preserva_errores_y_valida_parametricas(monkeypatch):
+    from hun.models import predict
+
+    erlang = opt.calcular_erlang_c_servicios(parametros_servicio=predict.PARAMETROS_SERVICIO)
+    base = {
+        "erlang_c": erlang,
+        "ley_little_camas": opt.calcular_ley_little_y_altas_tempranas(*datos_hospitalizacion()),
+        "cuello_urgencias_hospitalizacion": {},
+    }
+    base["recomendaciones"] = opt.generar_recomendaciones_cuantificadas(base)
+    monkeypatch.setattr(predict, "_bundle_o_sintetico", lambda: {"optimizacion": base})
+
+    with pytest.raises(ValueError, match="Servicio no disponible"):
+        predict.simular_optimizacion("inexistente", fecha="2026-07-06")
+    with pytest.raises(ValueError, match="Fecha inválida"):
+        predict.simular_optimizacion("urgencias", fecha="no-es-fecha")
+    with pytest.raises(ValueError):
+        predict.simular_optimizacion("urgencias", fecha="2026-07-06", dotacion_habitual=0)
+
+    normalizado = predict.simular_optimizacion("9203")
+    assert normalizado["servicio"] == "urgencias"
+    assert normalizado["decision_jornada"] is None

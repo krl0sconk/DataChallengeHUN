@@ -24,6 +24,7 @@ FRANJAS = [
     "Noche (18-24h)",
     "Madrugada (00-06h)",
 ]
+DIAS_SEMANA = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
 SERVICIOS = {"urgencias": 9203, "rehabilitacion": 581479, "tratamiento_urgencia": 3045729}
 NOTA_ERLANG = (
     "1/mu es un supuesto operativo paramétrico (15, 20 o 30 min), no una duración "
@@ -506,6 +507,11 @@ def simular_escenario_optimizacion(
     meta_espera_min: float = 15.0,
     reduccion_estancia_horas: float = 4.0,
     pct_altas_tempranas: float = 30,
+    *,
+    pronostico_jornada: dict[str, Any] | None = None,
+    turnos: dict[str, Any] | None = None,
+    dotacion_habitual: int | None = None,
+    dotacion_alternativa: int | None = None,
 ) -> dict[str, Any]:
     """Erlang exacto; Little estacionario; altas interpoladas, no nueva simulación causal."""
     erlang = optimizacion_base["erlang_c"]
@@ -555,11 +561,306 @@ def simular_escenario_optimizacion(
             if pct_altas_tempranas in xs
             else "interpolación lineal de escenarios; horas rojas aproximadas"
         )
+    decision_jornada = None
+    if pronostico_jornada is not None:
+        decision_jornada = dimensionar_jornada_con_pronostico(
+            optimizacion_base=optimizacion_base,
+            servicio=servicio,
+            pred_p10=float(pronostico_jornada["p10"]),
+            pred_p50=float(pronostico_jornada["p50"]),
+            pred_p90=float(pronostico_jornada["p90"]),
+            fecha=pronostico_jornada.get("fecha"),
+            dia_semana=pronostico_jornada.get("dia_semana"),
+            turnos=turnos,
+            tiempo_servicio_min=tiempo_servicio_min,
+            meta_espera_min=meta_espera_min,
+            dotacion_habitual=dotacion_habitual,
+            dotacion_alternativa=dotacion_alternativa,
+            alerta=pronostico_jornada.get("alerta"),
+            llegadas_reales=pronostico_jornada.get("llegadas_reales"),
+        )
+    elif dotacion_habitual is not None or dotacion_alternativa is not None:
+        decision_jornada = dimensionar_jornada_con_pronostico(
+            optimizacion_base=optimizacion_base,
+            servicio=servicio,
+            pred_p10=sum(float(f["lambda_normal_h"]) * 6.0 for f in filas),
+            pred_p50=sum(float(f["lambda_p75_h"]) * 6.0 for f in filas),
+            pred_p90=sum(float(f["lambda_p90_h"]) * 6.0 for f in filas),
+            turnos=turnos,
+            tiempo_servicio_min=tiempo_servicio_min,
+            meta_espera_min=meta_espera_min,
+            dotacion_habitual=dotacion_habitual,
+            dotacion_alternativa=dotacion_alternativa,
+        )
     return {
         "servicio": servicio,
         "erlang_c_franjas": filas,
         "camas_liberadas_estancia": camas,
         "escenario_altas_tempranas": escenario,
+        "decision_jornada": decision_jornada,
+    }
+
+
+def _evaluar_dotacion_fija(
+    llegadas_h: float,
+    tiempo_servicio_min: float,
+    meta_espera_min: float,
+    servidores: int,
+) -> dict[str, Any]:
+    """Evalúa espera media, nivel de servicio y estabilidad en M/M/c para c fijo."""
+    if (
+        not math.isfinite(tiempo_servicio_min)
+        or tiempo_servicio_min <= 0
+        or not math.isfinite(meta_espera_min)
+        or meta_espera_min <= 0
+        or isinstance(servidores, bool)
+        or not isinstance(servidores, int)
+        or servidores < 1
+    ):
+        raise ValueError("Servicio, meta y servidores (>= 1) deben ser positivos.")
+    mu = 60.0 / tiempo_servicio_min
+    _validar_tasa(llegadas_h, mu, servidores)
+    ocupacion_pct = 100.0 * llegadas_h / (servidores * mu)
+    estable = (servidores * mu) > llegadas_h
+    if estable:
+        p_esp = probabilidad_espera_erlang_c(llegadas_h, mu, servidores)
+        espera_min = float(tiempo_espera_erlang_c_min(llegadas_h, mu, servidores))
+        nivel_servicio = float(
+            1.0 - p_esp * math.exp(-(servidores * mu - llegadas_h) * meta_espera_min / 60.0)
+        )
+    else:
+        espera_min = None
+        nivel_servicio = 0.0
+    return {
+        "estable": estable,
+        "espera_min": espera_min,
+        "nivel_servicio": nivel_servicio,
+        "ocupacion_pct": float(ocupacion_pct),
+    }
+
+
+def dimensionar_jornada_con_pronostico(
+    optimizacion_base: dict[str, Any],
+    servicio: str,
+    pred_p10: float,
+    pred_p50: float,
+    pred_p90: float,
+    fecha: str | None = None,
+    dia_semana: int | None = None,
+    turnos: dict[str, Any] | None = None,
+    tiempo_servicio_min: float = 20.0,
+    meta_espera_min: float = 15.0,
+    dotacion_habitual: int | None = None,
+    dotacion_alternativa: int | None = None,
+    alerta: str | None = None,
+    llegadas_reales: int | None = None,
+) -> dict[str, Any]:
+    """Acopla pronóstico diario (p10/p50/p90) con perfiles de franja y Erlang C paramétrico."""
+    erlang = optimizacion_base["erlang_c"]
+    if servicio not in erlang["servicios"]:
+        raise ValueError("Servicio no disponible para optimización.")
+    if dotacion_habitual is not None and (
+        isinstance(dotacion_habitual, bool) or dotacion_habitual < 1
+    ):
+        raise ValueError("La dotación habitual debe ser un entero >= 1.")
+    if dotacion_alternativa is not None and (
+        isinstance(dotacion_alternativa, bool) or dotacion_alternativa < 1
+    ):
+        raise ValueError("La dotación alternativa debe ser un entero >= 1.")
+
+    valores = [float(pred_p10), float(pred_p50), float(pred_p90)]
+    if any(not math.isfinite(v) for v in valores):
+        raise ValueError("El pronóstico diario debe contener valores finitos.")
+    p10_v, p50_v, p90_v = sorted(max(0.0, v) for v in valores)
+
+    if dia_semana is not None:
+        dia_idx = int(dia_semana) % 7
+    elif fecha is not None:
+        dia_idx = int(pd.Timestamp(fecha).dayofweek) % 7
+    else:
+        dia_idx = 0
+    dia_nombre = DIAS_SEMANA[dia_idx]
+
+    franjas_hist = erlang["servicios"][servicio]["franjas"]
+    matriz_turnos = (
+        turnos[servicio].get("matriz")
+        if isinstance(turnos, dict) and isinstance(turnos.get(servicio), dict)
+        else None
+    )
+    if (
+        isinstance(matriz_turnos, list)
+        and len(matriz_turnos) == 4
+        and all(isinstance(fila, list) and len(fila) > dia_idx for fila in matriz_turnos)
+    ):
+        pesos_brutos = [max(0.0, float(matriz_turnos[i][dia_idx]["estimado"])) for i in range(4)]
+    else:
+        pesos_brutos = [max(0.0, float(franjas_hist[i]["lambda_normal_h"])) for i in range(4)]
+
+    suma_pesos = sum(pesos_brutos)
+    pesos_franja = (
+        [b / suma_pesos for b in pesos_brutos] if suma_pesos > 0 else [0.25, 0.25, 0.25, 0.25]
+    )
+
+    nivel_objetivo = float(erlang.get("nivel_servicio_objetivo", 0.80))
+    franjas_salida: list[dict[str, Any]] = []
+
+    for i, franja_nombre in enumerate(FRANJAS):
+        w = float(pesos_franja[i])
+        lambda_p10_h = p10_v * w / 6.0
+        lambda_p50_h = p50_v * w / 6.0
+        lambda_p90_h = p90_v * w / 6.0
+
+        dim_p10 = dimensionar_erlang_c(
+            lambda_p10_h, tiempo_servicio_min, meta_espera_min, nivel_objetivo
+        )
+        dim_p50 = dimensionar_erlang_c(
+            lambda_p50_h, tiempo_servicio_min, meta_espera_min, nivel_objetivo
+        )
+        dim_p90 = dimensionar_erlang_c(
+            lambda_p90_h, tiempo_servicio_min, meta_espera_min, nivel_objetivo
+        )
+        c_hist_normal = int(
+            dimensionar_erlang_c(
+                float(franjas_hist[i]["lambda_normal_h"]),
+                tiempo_servicio_min,
+                meta_espera_min,
+                nivel_objetivo,
+            )["servidores"]
+        )
+
+        c_hab = max(1, int(dotacion_habitual) if dotacion_habitual is not None else c_hist_normal)
+        c_alt = max(
+            1,
+            int(dotacion_alternativa)
+            if dotacion_alternativa is not None
+            else int(dim_p90["servidores"]),
+        )
+
+        ev_hab_p50 = _evaluar_dotacion_fija(
+            lambda_p50_h, tiempo_servicio_min, meta_espera_min, c_hab
+        )
+        ev_hab_p90 = _evaluar_dotacion_fija(
+            lambda_p90_h, tiempo_servicio_min, meta_espera_min, c_hab
+        )
+        ev_alt_p50 = _evaluar_dotacion_fija(
+            lambda_p50_h, tiempo_servicio_min, meta_espera_min, c_alt
+        )
+        ev_alt_p90 = _evaluar_dotacion_fija(
+            lambda_p90_h, tiempo_servicio_min, meta_espera_min, c_alt
+        )
+
+        requiere_refuerzo = (
+            c_alt > c_hab
+            or not ev_hab_p90["estable"]
+            or (ev_hab_p90["espera_min"] is not None and ev_hab_p90["espera_min"] > meta_espera_min)
+        )
+        if requiere_refuerzo and c_alt > c_hab:
+            accion_franja = (
+                f"Reforzar de {c_hab} a {c_alt} equipos equivalentes (+{c_alt - c_hab}) "
+                "y coordinar traslados/altas previas"
+            )
+        elif requiere_refuerzo:
+            accion_franja = (
+                f"Activar contingencia sobre {c_hab} equipos equivalentes y priorizar "
+                "traslados/altas matutinas para contener espera bajo p90"
+            )
+        else:
+            accion_franja = f"Mantener dotación habitual ({c_hab} equipos equivalentes)"
+
+        franjas_salida.append(
+            {
+                "franja": franja_nombre,
+                "peso_franja": w,
+                "lambda_prevista_p10_h": float(lambda_p10_h),
+                "lambda_prevista_p50_h": float(lambda_p50_h),
+                "lambda_prevista_p90_h": float(lambda_p90_h),
+                "servidores_previstos_p10": int(dim_p10["servidores"]),
+                "servidores_previstos_p50": int(dim_p50["servidores"]),
+                "servidores_previstos_p90": int(dim_p90["servidores"]),
+                "servidores_historico_normal": c_hist_normal,
+                "brecha_incertidumbre_equipos": int(dim_p90["servidores"] - dim_p10["servidores"]),
+                "delta_p90_previsto_vs_historico": int(dim_p90["servidores"] - c_hist_normal),
+                "dotacion_habitual": c_hab,
+                "dotacion_alternativa": c_alt,
+                "delta_alternativa_vs_habitual": int(c_alt - c_hab),
+                "espera_habitual_p50_min": ev_hab_p50["espera_min"],
+                "espera_habitual_p90_min": ev_hab_p90["espera_min"],
+                "cola_inestable_habitual_p90": bool(not ev_hab_p90["estable"]),
+                "nivel_servicio_habitual_p90": float(ev_hab_p90["nivel_servicio"]),
+                "ocupacion_habitual_p90_pct": float(ev_hab_p90["ocupacion_pct"]),
+                "espera_alternativa_p50_min": ev_alt_p50["espera_min"],
+                "espera_alternativa_p90_min": ev_alt_p90["espera_min"],
+                "cola_inestable_alternativa_p90": bool(not ev_alt_p90["estable"]),
+                "nivel_servicio_alternativa_p90": float(ev_alt_p90["nivel_servicio"]),
+                "ocupacion_alternativa_p90_pct": float(ev_alt_p90["ocupacion_pct"]),
+                "accion_franja": accion_franja,
+            }
+        )
+
+    pico = max(franjas_salida, key=lambda f: f["lambda_prevista_p90_h"])
+    franja_critica = pico["franja"]
+    espera_hab_txt = (
+        "cola inestable (ρ ≥ 1)"
+        if pico["cola_inestable_habitual_p90"] or pico["espera_habitual_p90_min"] is None
+        else f"{pico['espera_habitual_p90_min']:.1f} min"
+    )
+    espera_alt_txt = (
+        "cola inestable (ρ ≥ 1)"
+        if pico["cola_inestable_alternativa_p90"] or pico["espera_alternativa_p90_min"] is None
+        else f"{pico['espera_alternativa_p90_min']:.1f} min"
+    )
+    decision_recomendada = (
+        f"Franja crítica {franja_critica} ({pico['lambda_prevista_p90_h']:.1f} llegadas/h en p90; "
+        f"demanda diaria p50={p50_v:.0f}, rango p10–p90={p10_v:.0f}–{p90_v:.0f}). "
+        f"Comparación paramétrica: {pico['dotacion_habitual']} equipos habituales "
+        f"({espera_hab_txt}) frente a {pico['dotacion_alternativa']} en alternativa "
+        f"({espera_alt_txt}); sensibilidad por incertidumbre de "
+        f"{pico['brecha_incertidumbre_equipos']} equipos. "
+        "Coordinar traslados tempranos y adelantar altas elegibles en Hospitalización."
+    )
+    requisitos_validacion_hospital = [
+        "Validar dotación real y capacidad habilitada por turno, pues OMOP no contiene tabla de "
+        "plantilla ni camas físicas asignadas por franja.",
+        "Medir tiempo clínico real de atención (1/μ) por equipo equivalente y verificar la "
+        "estacionariedad de llegadas frente al supuesto paramétrico M/M/c.",
+        "Instrumentar en el HIS los tres sellos temporales: hora_decision_hospitalizar, "
+        "hora_asignacion_cama y hora_traslado_efectivo para separar boarding clínico del salto "
+        "administrativo OMOP.",
+    ]
+    nota_metodologica = (
+        "Comparación paramétrica: la dotación habitual y la alternativa son supuestos del usuario "
+        "o derivados del régimen histórico base, no plantilla real observada en OMOP. La demanda "
+        "diaria (p10/p50/p90) se reparte entre las 4 franjas de 6 h según pesos históricos del día "
+        "de semana (suma = 1.0) y se convierte a tasa horaria (λ = Demanda × peso / 6). "
+        "Cuando ρ ≥ 1 la espera se reporta como None (cola inestable). Cualquier valor en "
+        "llegadas_reales_observadas es solo contraste retrospectivo y no alimenta el pronóstico."
+    )
+
+    return {
+        "fecha": fecha,
+        "dia_semana": dia_nombre,
+        "servicio": servicio,
+        "tipo_comparacion": "parametrica",
+        "origen_dotacion_habitual": "usuario"
+        if dotacion_habitual is not None
+        else "regimen_historico_normal",
+        "origen_dotacion_alternativa": "usuario"
+        if dotacion_alternativa is not None
+        else "requerimiento_p90_previsto",
+        "pronostico_diario": {
+            "p10": float(p10_v),
+            "p50": float(p50_v),
+            "p90": float(p90_v),
+            "alerta": alerta,
+            "llegadas_reales_observadas": int(llegadas_reales)
+            if llegadas_reales is not None
+            else None,
+        },
+        "franja_critica": franja_critica,
+        "franjas": franjas_salida,
+        "decision_recomendada": decision_recomendada,
+        "requisitos_validacion_hospital": requisitos_validacion_hospital,
+        "nota_metodologica": nota_metodologica,
     }
 
 
@@ -660,7 +961,98 @@ def reporte_markdown(base: dict) -> str:
             f"Horizonte: {r['horizonte']}.",
             "",
         ]
+    demo = base.get("demo_decision_jornada")
+    if not demo:
+        demo = dimensionar_jornada_con_pronostico(
+            base,
+            servicio="urgencias",
+            pred_p10=418.0,
+            pred_p50=488.0,
+            pred_p90=600.0,
+            fecha="2026-07-06",
+            dotacion_habitual=12,
+            alerta="verde",
+            llegadas_reales=526,
+        )
     lineas += [
+        "## Decisión de principio a fin con pronóstico acoplado (Etapa 1)",
+        "",
+        demo["nota_metodologica"],
+        "",
+        f"- jornada_demostrada: {demo['fecha']} ({demo['dia_semana']})",
+        f"- servicio: {demo['servicio']}",
+        f"- tipo_comparacion: {demo['tipo_comparacion']}",
+        f"- pronostico_diario_p10_p50_p90: {demo['pronostico_diario']['p10']:.0f} / "
+        f"{demo['pronostico_diario']['p50']:.0f} / {demo['pronostico_diario']['p90']:.0f}",
+        f"- llegadas_reales_observadas_contraste: "
+        f"{demo['pronostico_diario']['llegadas_reales_observadas']}",
+        f"- franja_critica: {demo['franja_critica']}",
+        "",
+        "| Franja | Peso | λ prevista p10/p50/p90 (/h) | c req p10/p50/p90 | Brecha inc. "
+        "| Dot. habitual → alt. | Espera hab. p50 / p90 (min) | Espera alt. p50 / p90 (min) |",
+        "|---|---:|---|---:|---:|---:|---|---|",
+    ]
+    for f in demo["franjas"]:
+        esp_hab_p50 = (
+            "inestable (ρ≥1)"
+            if f["espera_habitual_p50_min"] is None
+            else f"{f['espera_habitual_p50_min']:.2f}"
+        )
+        esp_hab_p90 = (
+            "inestable (ρ≥1)"
+            if f["cola_inestable_habitual_p90"] or f["espera_habitual_p90_min"] is None
+            else f"{f['espera_habitual_p90_min']:.2f}"
+        )
+        esp_alt_p50 = (
+            "inestable (ρ≥1)"
+            if f["espera_alternativa_p50_min"] is None
+            else f"{f['espera_alternativa_p50_min']:.2f}"
+        )
+        esp_alt_p90 = (
+            "inestable (ρ≥1)"
+            if f["cola_inestable_alternativa_p90"] or f["espera_alternativa_p90_min"] is None
+            else f"{f['espera_alternativa_p90_min']:.2f}"
+        )
+        lineas.append(
+            f"| {f['franja']} | {100 * f['peso_franja']:.1f}% | "
+            f"{f['lambda_prevista_p10_h']:.2f} / {f['lambda_prevista_p50_h']:.2f} / "
+            f"{f['lambda_prevista_p90_h']:.2f} | "
+            f"{f['servidores_previstos_p10']} / {f['servidores_previstos_p50']} / "
+            f"{f['servidores_previstos_p90']} | {f['brecha_incertidumbre_equipos']} | "
+            f"{f['dotacion_habitual']} → {f['dotacion_alternativa']} | "
+            f"{esp_hab_p50} / {esp_hab_p90} | {esp_alt_p50} / {esp_alt_p90} |"
+        )
+    lineas += [
+        "",
+        f"**Decisión recomendada del turno:** {demo['decision_recomendada']}",
+        "",
+        "### Hoja de ruta de decisión anticipada (Urgencias → Hospitalización)",
+        "",
+        "| Etapa | Qué construir | Qué demostrar | Estado en MediFlow |",
+        "|---|---|---|---|",
+        (
+            "| 1. Pronóstico que alimenta decisiones | Reutilizar el LightGBM existente. Repartir "
+            "la demanda diaria prevista por franjas con perfiles históricos y pasar escenarios de "
+            "demanda típica y alta al dimensionamiento. | Cuándo cambia el requerimiento de "
+            "equipos y qué tan sensible es a la incertidumbre del pronóstico. | Implementado "
+            "(`dimensionar_jornada_con_pronostico`, `POST /api/optimizacion/simular`, UI y chat) |"
+        ),
+        (
+            "| 2. Simulador del recorrido | Incorporar capacidad habilitada, dotación, tiempos de "
+            "atención y marcas de decisión y traslado. Reconstruir el censo con stock inicial y "
+            "comparar escenarios con restricciones reales. | Qué alternativa reduce la espera de "
+            "traslado o las horas de presión, a qué costo y bajo qué supuestos. | Diseño "
+            "paramétrico; requiere 3 marcas HIS (`hora_decision_hospitalizar`, "
+            "`hora_asignacion_cama`, `hora_traslado_efectivo`) |"
+        ),
+        (
+            "| 3. Piloto prospectivo | Ejecutar MediFlow en paralelo con la operación habitual. "
+            "Registrar alertas, recomendaciones y resultados observados antes de probar una "
+            "intervención supervisada. | Si las alertas llegan con suficiente anticipación, si el "
+            "equipo puede actuar y si el beneficio estimado se sostiene en la práctica. | "
+            "Propuesto para validación operativa en sombra en el HUN |"
+        ),
+        "",
         "## Alcance",
         "",
         "Resultados históricos agregados, no promesas de impacto. "
