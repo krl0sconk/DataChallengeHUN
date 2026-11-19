@@ -112,7 +112,16 @@ df = pd.read_parquet(config.RAW_DIR / "entradas_por_hora.parquet")
 ## Documentación
 
 - [Informe final — Equipo MediFlow](reports/informe_final.md): metodología, resultados, limitaciones y recomendaciones, organizados por los siete criterios de evaluación.
-- [Optimización operacional](docs/resultados/optimizacion.md): Erlang C, Ley de Little y simulación horaria de altas tempranas. El módulo `src/hun/models/optimizacion.py` se consume mediante `GET /api/optimizacion` y `POST /api/optimizacion/simular`.
+- [Optimización operacional](docs/resultados/optimizacion.md): Erlang C, Ley de Little y simulación horaria de altas tempranas. El módulo `src/hun/models/optimizacion.py` se consume mediante `GET /api/optimizacion` y `POST /api/optimizacion/simular` (admite `modo_demanda: "historico" | "pronostico"`).
+
+### Reproducción rápida del modo pronóstico en Erlang C (`HUN_MODO_PRODUCCION=1`)
+
+El bundle v2.0 real (`models/modelos_web_bundle.joblib`) no incluye perfiles horarios por corte, por lo que en modo pronóstico informa «Pronóstico por franja no disponible» y mantiene operativo el modo histórico. Con un bundle v2.1 regenerado con datos autorizados (`python -m hun.models.empaquetar`) o un paquete sintético temporal en pruebas:
+
+```bash
+# Ejemplo sintético en modo estricto sin tocar data/
+python -c "import tempfile, joblib; from pathlib import Path; from fastapi.testclient import TestClient; from hun.models import empaquetar, predict; import os; p=Path(tempfile.gettempdir())/'bundle_v21.joblib'; b=empaquetar.construir_paquete_sintetico_prueba(); joblib.dump(b, p); os.environ['HUN_MODO_PRODUCCION']='1'; os.environ['HUN_BUNDLE_PATH']=str(p); predict.limpiar_cache_modelo(); from app.api import app; c=TestClient(app); f=next(x['fecha'] for x in b['comparacion_real']['urgencias']['serie'] if x.get('origen')); print(c.post('/api/optimizacion/simular', json={'servicio':'urgencias','modo_demanda':'pronostico','fecha':f}).json()['reconciliacion'])"
+```
 - [Modelo de demanda](docs/resultados/modelo_demanda.md): WAPE diario 18.0% en la línea base, 15.6% en Poisson estratificado y 10.5% en `lgbm_final` (mejora relativa de 41.6% frente a la base).
 
 ## Despliegue

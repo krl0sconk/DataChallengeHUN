@@ -31,7 +31,7 @@ export function StatCardGrid({ alerta, prediccion, p10, p90, servicio, isApiConn
               {etiqueta}
             </p>
             <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-              Umbrales: p75 ({servicio.p75}) · p90 ({servicio.p90})
+              Umbrales históricos de demanda: p75 ({servicio.p75}) · p90 ({servicio.p90})
             </p>
 
             <footer className="mt-4 flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
@@ -95,7 +95,7 @@ export function StatCardGrid({ alerta, prediccion, p10, p90, servicio, isApiConn
               )}
             </div>
             <footer className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-600 dark:border-slate-800 dark:text-slate-300">
-              <span>Rango esperado (80% conf.):</span>
+              <span>Banda de pronóstico (cuantiles p10–p90):</span>
               <strong className="font-mono text-slate-900 dark:text-white">{p10} – {p90} pacientes</strong>
             </footer>
           </>

@@ -260,7 +260,7 @@ ${(factores || []).map((f) => `- ${f.nombre}: ${f.aporte > 0 ? '+' : ''}${f.apor
                     strokeDasharray="4 4"
                     strokeWidth={1.5}
                     label={{
-                      value: `Límite Saturación (${servicio.p90})`,
+                      value: `Umbral histórico p90 (${servicio.p90})`,
                       fill: isDark ? '#FFA8B6' : '#C5304C',
                       fontSize: 10,
                       position: 'top',

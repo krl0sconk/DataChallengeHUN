@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import math
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -38,6 +39,35 @@ NOTA_TRANSICIONES = (
     "promedio de p90 mensuales ponderado por pasos, no un percentil agrupado exacto. "
     "El mes corresponde al inicio de la visita; correlación ecológica, no causal."
 )
+DIAS_SEMANA_NOMBRE: tuple[str, ...] = (
+    "Lunes",
+    "Martes",
+    "Miércoles",
+    "Jueves",
+    "Viernes",
+    "Sábado",
+    "Domingo",
+)
+MIN_DIAS_PERFIL_HORARIO: int = 4
+NOTA_PRONOSTICO_FRANJA = (
+    "Los volúmenes por franja reparten el pronóstico diario (p50 central y p90 alto) usando "
+    "el perfil horario del día de semana calculado únicamente con observaciones completas "
+    "anteriores al corte (incluyendo ceros de días completos). Repartir el p90 diario genera "
+    "un escenario horario de demanda alta y no estima el p90 marginal independiente de cada "
+    "franja. Los equipos equivalentes son requerimientos teóricos bajo 1/mu y meta elegidos, "
+    "no comparación frente a plantilla real salvo que el operador aporte una referencia explícita."
+)
+
+
+def _validar_dotacion_referencia(dotacion_referencia: int | None) -> int | None:
+    """Valida la dotación real de referencia opcional (equipos equivalentes >= 1)."""
+    if dotacion_referencia is None:
+        return None
+    if isinstance(dotacion_referencia, bool) or not isinstance(dotacion_referencia, int):
+        raise ValueError("La dotación de referencia debe ser un entero positivo.")
+    if dotacion_referencia < 1:
+        raise ValueError("La dotación de referencia debe ser al menos 1 equipo equivalente.")
+    return dotacion_referencia
 
 
 def _validar_tasa(llegadas_h: float, mu_h: float, servidores: int) -> None:
@@ -500,23 +530,186 @@ def construir_resumen_optimizacion(
     return base
 
 
-def simular_escenario_optimizacion(
-    optimizacion_base: dict,
-    servicio: str,
-    tiempo_servicio_min: float = 20.0,
-    meta_espera_min: float = 15.0,
-    reduccion_estancia_horas: float = 4.0,
-    pct_altas_tempranas: float = 30,
+def construir_perfiles_horarios_por_corte(
+    entradas: pd.DataFrame | None,
     *,
-    pronostico_jornada: dict[str, Any] | None = None,
-    turnos: dict[str, Any] | None = None,
-    dotacion_habitual: int | None = None,
-    dotacion_alternativa: int | None = None,
+    fecha_corte_datos: Any = None,
+    cortes: list[Any] | None = None,
+    cortes_extra: list[Any] | None = None,
+    min_dias_por_dia_semana: int = MIN_DIAS_PERFIL_HORARIO,
 ) -> dict[str, Any]:
-    """Erlang exacto; Little estacionario; altas interpoladas, no nueva simulación causal."""
-    erlang = optimizacion_base["erlang_c"]
-    if servicio not in erlang["servicios"]:
-        raise ValueError("Servicio no disponible para optimización.")
+    """Construye perfiles horarios por servicio, corte y día de semana sin fuga temporal.
+
+    Incluye ceros de horas y días calendario completos dentro del historial anterior a cada
+    corte para evitar sesgos por días con cero llegadas.
+    """
+    vacio: dict[str, Any] = {
+        "version": "1.0",
+        "franjas": list(FRANJAS),
+        "min_dias_por_dia_semana": int(min_dias_por_dia_semana),
+        "incluye_ceros_dias_completos": True,
+        "cortes_disponibles": [],
+        "servicios": {sid: {} for sid in SERVICIOS},
+    }
+    if entradas is None or entradas.empty:
+        return vacio
+
+    horas = pd.to_datetime(entradas["hora"])
+    if fecha_corte_datos is not None:
+        corte_max = pd.Timestamp(fecha_corte_datos).normalize()
+        df_in = entradas[horas < corte_max].copy()
+        if df_in.empty:
+            return vacio
+        ultimo_dia = corte_max - pd.Timedelta(days=1)
+    else:
+        df_in = entradas.copy()
+        ultimo_dia = horas.max().normalize()
+        corte_max = ultimo_dia + pd.Timedelta(days=1)
+
+    primer_dia = pd.to_datetime(df_in["hora"]).min().normalize()
+    if primer_dia > ultimo_dia:
+        return vacio
+
+    regular = serie_llegadas(
+        df_in,
+        freq="h",
+        inicio=primer_dia,
+        fin=ultimo_dia + pd.Timedelta(hours=23),
+    )
+    ts = pd.to_datetime(regular["ts"])
+    regular["dia"] = ts.dt.normalize()
+    # Alinea la hora con el orden de presentación en FRANJAS: 06-12, 12-18, 18-24, 00-06.
+    regular["franja_idx"] = ((ts.dt.hour // 6) - 1) % 4
+
+    diario = regular.groupby(["serie", "dia", "franja_idx"], as_index=False)["y"].sum()
+    piv = (
+        diario.pivot(index=["serie", "dia"], columns="franja_idx", values="y")
+        .reindex(columns=[0, 1, 2, 3], fill_value=0.0)
+        .fillna(0.0)
+        .reset_index()
+    )
+    piv["dia_semana"] = pd.to_datetime(piv["dia"]).dt.day_of_week
+
+    if cortes is not None:
+        cortes_ts = sorted({pd.Timestamp(c).normalize() for c in cortes})
+    else:
+        mensuales = list(pd.date_range(primer_dia, corte_max, freq="MS"))
+        extras = [pd.Timestamp(c).normalize() for c in (cortes_extra or [])]
+        cortes_ts = sorted({*mensuales, *extras, corte_max})
+
+    servicios_out: dict[str, dict[str, dict[str, Any]]] = {sid: {} for sid in SERVICIOS}
+    for sid, cid in SERVICIOS.items():
+        df_srv = piv[piv["serie"] == cid]
+        if df_srv.empty:
+            continue
+        for corte_ts in cortes_ts:
+            prev = df_srv[df_srv["dia"] < corte_ts]
+            if prev.empty:
+                continue
+            corte_str = corte_ts.strftime("%Y-%m-%d")
+            perfil_corte: dict[str, Any] = {}
+            for dow in range(7):
+                g = prev[prev["dia_semana"] == dow]
+                if len(g) < min_dias_por_dia_semana:
+                    continue
+                totales = [float(g[i].sum()) for i in range(4)]
+                total = sum(totales)
+                if total <= 0:
+                    continue
+                props = [t / total for t in totales]
+                suma = sum(props)
+                props = [p / suma for p in props]
+                perfil_corte[str(dow)] = {
+                    "proporciones": props,
+                    "dias_observados": int(len(g)),
+                    "fecha_inicio_obs": pd.Timestamp(g["dia"].min()).strftime("%Y-%m-%d"),
+                    "fecha_fin_obs": pd.Timestamp(g["dia"].max()).strftime("%Y-%m-%d"),
+                }
+            if perfil_corte:
+                servicios_out[sid][corte_str] = perfil_corte
+
+    cortes_disponibles = sorted({c for s_dict in servicios_out.values() for c in s_dict})
+    return {
+        "version": "1.0",
+        "franjas": list(FRANJAS),
+        "min_dias_por_dia_semana": int(min_dias_por_dia_semana),
+        "incluye_ceros_dias_completos": True,
+        "cortes_disponibles": cortes_disponibles,
+        "servicios": servicios_out,
+    }
+
+
+def seleccionar_perfil_horario(
+    perfiles_horarios: dict[str, Any] | None,
+    servicio: str,
+    fecha_objetivo: date,
+    *,
+    corte_maximo: date | None = None,
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Selecciona el perfil horario más reciente sin fuga para (servicio, fecha)."""
+    if not isinstance(perfiles_horarios, dict) or "servicios" not in perfiles_horarios:
+        return (
+            None,
+            "Pronóstico por franja no disponible: el paquete del modelo no contiene perfiles "
+            "horarios por corte.",
+        )
+    srv_cortes = perfiles_horarios.get("servicios", {}).get(servicio)
+    if not srv_cortes:
+        return (
+            None,
+            f"Pronóstico por franja no disponible: no hay perfiles horarios registrados para "
+            f"'{servicio}'.",
+        )
+    limite = (corte_maximo or fecha_objetivo).isoformat()
+    dow = fecha_objetivo.weekday()
+    dow_key = str(dow)
+    candidatos = sorted(
+        c for c in srv_cortes if c <= limite and (dow_key in srv_cortes[c] or dow in srv_cortes[c])
+    )
+    if not candidatos:
+        return (
+            None,
+            f"Pronóstico por franja no disponible: historial insuficiente o sin llegadas previas "
+            f"para {DIAS_SEMANA_NOMBRE[dow]} antes del corte {limite}.",
+        )
+    corte_sel = candidatos[-1]
+    entrada = srv_cortes[corte_sel].get(dow_key) or srv_cortes[corte_sel].get(dow)
+    if not isinstance(entrada, dict):
+        return None, "Pronóstico por franja no disponible: perfil horario inválido."
+    try:
+        props = [float(x) for x in entrada.get("proporciones", [])]
+    except (TypeError, ValueError):
+        return None, "Pronóstico por franja no disponible: proporciones horarias inválidas."
+    if (
+        len(props) != 4
+        or any(not math.isfinite(p) or p < 0 for p in props)
+        or abs(sum(props) - 1.0) > 1e-6
+    ):
+        return None, "Pronóstico por franja no disponible: el perfil horario no suma 1."
+    return (
+        {
+            "corte_perfil": corte_sel,
+            "dia_semana": dow,
+            "nombre_dia": DIAS_SEMANA_NOMBRE[dow],
+            "dias_observados": int(entrada.get("dias_observados", 0)),
+            "fecha_inicio_obs": entrada.get("fecha_inicio_obs"),
+            "fecha_fin_obs": entrada.get("fecha_fin_obs"),
+            "incluye_ceros_dias_completos": bool(
+                perfiles_horarios.get("incluye_ceros_dias_completos", True)
+            ),
+            "proporciones": props,
+            "suma_proporciones": float(sum(props)),
+        },
+        None,
+    )
+
+
+def _simular_estancia_y_altas(
+    optimizacion_base: dict,
+    reduccion_estancia_horas: float,
+    pct_altas_tempranas: float,
+) -> tuple[float | None, dict[str, Any] | None]:
+    """Calcula escenarios históricos separados de estancia (Little) y altas tempranas."""
     if (
         not math.isfinite(reduccion_estancia_horas)
         or reduccion_estancia_horas < 0
@@ -524,16 +717,6 @@ def simular_escenario_optimizacion(
         or not 0 <= pct_altas_tempranas <= 100
     ):
         raise ValueError("Reducción de estancia >= 0 y porcentaje de altas entre 0 y 100.")
-    filas = [
-        _fila_erlang(
-            f["franja"],
-            [f[f"lambda_{r}_h"] for r in ("normal", "p75", "p90")],
-            tiempo_servicio_min,
-            meta_espera_min,
-            erlang["nivel_servicio_objetivo"],
-        )
-        for f in erlang["servicios"][servicio]["franjas"]
-    ]
     little = optimizacion_base["ley_little_camas"]
     camas = None
     if little["ingresos_dia_promedio"] is not None:
@@ -561,6 +744,127 @@ def simular_escenario_optimizacion(
             if pct_altas_tempranas in xs
             else "interpolación lineal de escenarios; horas rojas aproximadas"
         )
+    return camas, escenario
+
+
+def simular_erlang_c_pronostico(
+    demanda_central: float,
+    demanda_alta: float,
+    proporciones_franjas: list[float],
+    *,
+    tiempo_servicio_min: float = 20.0,
+    meta_espera_min: float = 15.0,
+    nivel_servicio_objetivo: float = 0.80,
+    dotacion_referencia: int | None = None,
+) -> dict[str, Any]:
+    """Reparte p50 y p90 diarios por franja de 6 h y dimensiona Erlang C en cada una."""
+    _validar_dotacion_referencia(dotacion_referencia)
+    if (
+        not math.isfinite(demanda_central)
+        or not math.isfinite(demanda_alta)
+        or demanda_central < 0
+        or demanda_alta < demanda_central
+    ):
+        raise ValueError("Se requiere 0 <= demanda_central <= demanda_alta finitas.")
+    if len(proporciones_franjas) != 4:
+        raise ValueError("Se requieren exactamente 4 proporciones de franja.")
+    props_raw = [float(p) for p in proporciones_franjas]
+    suma = sum(props_raw)
+    if any(not math.isfinite(p) or p < 0 for p in props_raw) or suma <= 0 or abs(suma - 1.0) > 1e-6:
+        raise ValueError("Las proporciones por franja deben ser no negativas y sumar 1.")
+    props = [p / suma for p in props_raw]
+
+    filas = []
+    for franja, prop in zip(FRANJAS, props, strict=True):
+        vol_c = float(demanda_central) * prop
+        vol_a = float(demanda_alta) * prop
+        lam_c = vol_c / 6.0
+        lam_a = vol_a / 6.0
+        res_c = dimensionar_erlang_c(
+            lam_c,
+            tiempo_servicio_min,
+            meta_espera_min,
+            nivel_servicio_objetivo,
+        )
+        res_a = dimensionar_erlang_c(
+            lam_a,
+            tiempo_servicio_min,
+            meta_espera_min,
+            nivel_servicio_objetivo,
+        )
+        fila: dict[str, Any] = {
+            "franja": franja,
+            "proporcion_franja": prop,
+            "volumen_central": vol_c,
+            "volumen_alto": vol_a,
+            "lambda_central_h": lam_c,
+            "lambda_alto_h": lam_a,
+            "servidores_central": res_c["servidores"],
+            "servidores_alto": res_a["servidores"],
+            "delta_alto_vs_central": res_a["servidores"] - res_c["servidores"],
+            "espera_esperada_central_min": res_c["espera_esperada_min"],
+            "espera_esperada_alto_min": res_a["espera_esperada_min"],
+            "nivel_servicio_central": res_c["nivel_servicio"],
+            "nivel_servicio_alto": res_a["nivel_servicio"],
+            "ocupacion_central_pct": res_c["ocupacion_pct"],
+            "ocupacion_alto_pct": res_a["ocupacion_pct"],
+        }
+        if dotacion_referencia is not None:
+            fila["dotacion_referencia"] = dotacion_referencia
+            fila["brecha_central_vs_referencia"] = res_c["servidores"] - dotacion_referencia
+            fila["brecha_alto_vs_referencia"] = res_a["servidores"] - dotacion_referencia
+        filas.append(fila)
+
+    return {
+        "erlang_c_franjas": filas,
+        "reconciliacion": {
+            "total_central_objetivo": float(demanda_central),
+            "suma_franjas_central": float(sum(f["volumen_central"] for f in filas)),
+            "total_alto_objetivo": float(demanda_alta),
+            "suma_franjas_alto": float(sum(f["volumen_alto"] for f in filas)),
+        },
+    }
+
+
+def simular_escenario_optimizacion(
+    optimizacion_base: dict,
+    servicio: str,
+    tiempo_servicio_min: float = 20.0,
+    meta_espera_min: float = 15.0,
+    reduccion_estancia_horas: float = 4.0,
+    pct_altas_tempranas: float = 30,
+    *,
+    pronostico_jornada: dict[str, Any] | None = None,
+    turnos: dict[str, Any] | None = None,
+    dotacion_habitual: int | None = None,
+    dotacion_alternativa: int | None = None,
+    dotacion_referencia: int | None = None,
+) -> dict[str, Any]:
+    """Erlang exacto; Little estacionario; altas interpoladas, no nueva simulación causal."""
+    _validar_dotacion_referencia(dotacion_referencia)
+    erlang = optimizacion_base["erlang_c"]
+    if servicio not in erlang["servicios"]:
+        raise ValueError("Servicio no disponible para optimización.")
+    camas, escenario = _simular_estancia_y_altas(
+        optimizacion_base,
+        reduccion_estancia_horas,
+        pct_altas_tempranas,
+    )
+    filas = []
+    for f in erlang["servicios"][servicio]["franjas"]:
+        fila = _fila_erlang(
+            f["franja"],
+            [f[f"lambda_{r}_h"] for r in ("normal", "p75", "p90")],
+            tiempo_servicio_min,
+            meta_espera_min,
+            erlang["nivel_servicio_objetivo"],
+        )
+        if dotacion_referencia is not None:
+            fila["dotacion_referencia"] = dotacion_referencia
+            fila["brecha_normal_vs_referencia"] = fila["servidores_normal"] - dotacion_referencia
+            fila["brecha_p90_vs_referencia"] = fila["servidores_p90"] - dotacion_referencia
+        filas.append(fila)
+
     decision_jornada = None
     if pronostico_jornada is not None:
         decision_jornada = dimensionar_jornada_con_pronostico(
@@ -592,13 +896,17 @@ def simular_escenario_optimizacion(
             dotacion_habitual=dotacion_habitual,
             dotacion_alternativa=dotacion_alternativa,
         )
-    return {
+
+    salida: dict[str, Any] = {
         "servicio": servicio,
         "erlang_c_franjas": filas,
         "camas_liberadas_estancia": camas,
         "escenario_altas_tempranas": escenario,
         "decision_jornada": decision_jornada,
     }
+    if dotacion_referencia is not None:
+        salida["dotacion_referencia"] = dotacion_referencia
+    return salida
 
 
 def _evaluar_dotacion_fija(

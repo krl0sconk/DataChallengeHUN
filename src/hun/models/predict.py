@@ -348,8 +348,8 @@ def _bundle_o_sintetico() -> dict[str, Any]:
     return _BUNDLE_CACHE
 
 
-def obtener_optimizacion() -> dict[str, Any]:
-    """Obtiene el resumen; un paquete antiguo en producción no accede a datos raw."""
+def _optimizacion_desde_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
+    """Extrae o reconstruye el resumen de optimización sin tocar `data/` en producción."""
     from hun.models.optimizacion import (
         _little_no_disponible,
         analizar_cuello_urgencias_hospitalizacion,
@@ -358,7 +358,6 @@ def obtener_optimizacion() -> dict[str, Any]:
         generar_recomendaciones_cuantificadas,
     )
 
-    bundle = _bundle_o_sintetico()
     if "optimizacion" in bundle:
         return bundle["optimizacion"]
     if not es_modo_produccion():
@@ -378,6 +377,219 @@ def obtener_optimizacion() -> dict[str, Any]:
     return base
 
 
+def obtener_optimizacion() -> dict[str, Any]:
+    """Obtiene el resumen; un paquete antiguo en producción no accede a datos raw."""
+    return _optimizacion_desde_bundle(_bundle_o_sintetico())
+
+
+def _metricas_cuantilicas_servicio(comp_srv: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not isinstance(comp_srv, dict):
+        return None
+    return {
+        "modelo": "LightGBM cuantílico (p10, p50, p90)",
+        "wape": comp_srv.get("wape"),
+        "exactitud_pct": comp_srv.get("exactitud_pct"),
+        "mae": comp_srv.get("mae"),
+        "cobertura_p10_p90": comp_srv.get("cobertura"),
+        "n_dias": comp_srv.get("n_dias"),
+        "nota_separacion_experimentos": (
+            "Métricas de la variante cuantílica que sirve la web. "
+            "El WAPE de 10,5 % (lgbm_final) corresponde al experimento LightGBM Poisson "
+            "en docs/resultados/modelo_demanda.md."
+        ),
+    }
+
+
+def _simular_optimizacion_pronostico(
+    bundle: dict[str, Any],
+    optimizacion_base: dict[str, Any],
+    servicio: str,
+    fecha_dt: date,
+    tiempo_servicio_min: float,
+    meta_espera_min: float,
+    reduccion_estancia_horas: float,
+    pct_altas_tempranas: float,
+    dotacion_referencia: int | None,
+) -> dict[str, Any]:
+    from hun.models.optimizacion import (
+        NOTA_ERLANG,
+        NOTA_PRONOSTICO_FRANJA,
+        _simular_estancia_y_altas,
+        _validar_dotacion_referencia,
+        dimensionar_erlang_c,
+        seleccionar_perfil_horario,
+        simular_erlang_c_pronostico,
+    )
+
+    _validar_dotacion_referencia(dotacion_referencia)
+    erlang_base = optimizacion_base["erlang_c"]
+    if servicio not in erlang_base["servicios"]:
+        raise ValueError("Servicio no disponible para optimización.")
+    nivel_obj = float(erlang_base.get("nivel_servicio_objetivo", 0.80))
+    dimensionar_erlang_c(0.0, tiempo_servicio_min, meta_espera_min, nivel_obj)
+    camas, escenario = _simular_estancia_y_altas(
+        optimizacion_base,
+        reduccion_estancia_horas,
+        pct_altas_tempranas,
+    )
+
+    comp_map = bundle.get("comparacion_real")
+    comp_srv = comp_map.get(servicio) if isinstance(comp_map, dict) else None
+    metricas_q = _metricas_cuantilicas_servicio(comp_srv)
+
+    params_hist = PARAMETROS_SERVICIO.get(servicio, PARAMETROS_SERVICIO["otros"])
+    umbrales_hist = {
+        "media_diaria_historica": params_hist["media_diaria"],
+        "umbral_historico_p75": params_hist["umbral_p75"],
+        "umbral_historico_p90": params_hist["umbral_p90"],
+        "nota": (
+            "Percentiles históricos de demanda diaria del servicio; distintos de los "
+            "cuantiles p10/p50/p90 del pronóstico para esta fecha."
+        ),
+    }
+
+    fecha_iso = fecha_dt.isoformat()
+    punto_bt = None
+    if isinstance(comp_srv, dict):
+        punto_bt = next(
+            (p for p in comp_srv.get("serie", []) if str(p.get("fecha")) == fecha_iso),
+            None,
+        )
+
+    perfiles = bundle.get("perfiles_horarios")
+    perfil: dict[str, Any] | None = None
+    motivo_perfil: str | None = None
+    demanda_diaria: dict[str, Any] | None = None
+    tipo_evaluacion = "retrospectivo"
+    origen_pronostico: str | None = None
+    fuente_pronostico = (
+        "Pronóstico histórico retrospectivo (prueba funcional): modelo cuantílico del bundle; "
+        "carece de origen walk-forward o de perfil anterior al origen."
+    )
+
+    if punto_bt and punto_bt.get("origen"):
+        origen_str = str(punto_bt["origen"])[:10]
+        origen_dt = date.fromisoformat(origen_str)
+        perfil_oos, motivo_oos = seleccionar_perfil_horario(
+            perfiles, servicio, fecha_dt, corte_maximo=origen_dt
+        )
+        if perfil_oos is not None:
+            perfil = perfil_oos
+            motivo_perfil = None
+            tipo_evaluacion = "fuera_de_muestra"
+            origen_pronostico = origen_str
+            fuente_pronostico = (
+                "Evaluación fuera de muestra: predicción archivada del backtest walk-forward "
+                "y perfil horario calculado únicamente antes del origen del pliegue."
+            )
+            p50_bt = int(punto_bt["prediccion"])
+            demanda_diaria = {
+                "p10": int(punto_bt["min"]),
+                "p50": p50_bt,
+                "p90": int(punto_bt["max"]),
+                "real_observado": punto_bt.get("real"),
+                "alerta_umbral_historico": _determinar_alerta(p50_bt, servicio),
+            }
+        else:
+            motivo_perfil = motivo_oos
+
+    if demanda_diaria is None:
+        if (
+            "modelos_q" in bundle
+            and "cols" in bundle
+            and "lookup_y" in bundle
+            and "medianas_dw" in bundle
+        ):
+            s_id = CANONICO_A_SERIE.get(servicio, -1)
+            row_df = _construir_fila_fecha(fecha_dt, s_id, bundle)
+            pred_res = predecir(
+                fecha_dt,
+                servicio,
+                modelos_cuantiles=bundle["modelos_q"],
+                X_fecha=row_df,
+                columnas=bundle["cols"],
+            )
+            real_obs = bundle.get("lookup_y", {}).get((s_id, fecha_dt))
+            demanda_diaria = {
+                "p10": int(pred_res["min"]),
+                "p50": int(pred_res["prediccion"]),
+                "p90": int(pred_res["max"]),
+                "real_observado": real_obs,
+                "alerta_umbral_historico": pred_res["alerta"],
+            }
+        if perfil is None:
+            perfil, motivo_perfil = seleccionar_perfil_horario(
+                perfiles, servicio, fecha_dt, corte_maximo=fecha_dt
+            )
+
+    fuente_estancia = (
+        "Escenarios históricos agregados de Hospitalización (Inpatient Visit 9201); "
+        "se mantienen separados del pronóstico por franja."
+    )
+    salida_base: dict[str, Any] = {
+        "servicio": servicio,
+        "modo_demanda": "pronostico",
+        "fecha": fecha_iso,
+        "tipo_evaluacion": tipo_evaluacion,
+        "origen_pronostico": origen_pronostico,
+        "fuente_pronostico": fuente_pronostico,
+        "demanda_diaria_pronosticada": demanda_diaria,
+        "umbrales_historicos": umbrales_hist,
+        "metricas_modelo_cuantilico": metricas_q,
+        "nota_escenario_pronostico": NOTA_PRONOSTICO_FRANJA,
+        "nota_metodologica_erlang": NOTA_ERLANG,
+        "fuente_estancia_y_altas": fuente_estancia,
+        "camas_liberadas_estancia": camas,
+        "escenario_altas_tempranas": escenario,
+    }
+    if dotacion_referencia is not None:
+        salida_base["dotacion_referencia"] = dotacion_referencia
+
+    if demanda_diaria is None:
+        return {
+            **salida_base,
+            "disponible": False,
+            "motivo_no_disponible": (
+                "Pronóstico por franja no disponible: el paquete del modelo no contiene modelos "
+                "cuantílicos ni predicción archivada para esa fecha."
+            ),
+            "perfil_horario": perfil,
+            "erlang_c_franjas": [],
+            "reconciliacion": None,
+        }
+
+    if perfil is None:
+        return {
+            **salida_base,
+            "disponible": False,
+            "motivo_no_disponible": (
+                motivo_perfil
+                or "Pronóstico por franja no disponible: falta un perfil horario válido."
+            ),
+            "perfil_horario": None,
+            "erlang_c_franjas": [],
+            "reconciliacion": None,
+        }
+
+    res_erlang = simular_erlang_c_pronostico(
+        demanda_diaria["p50"],
+        demanda_diaria["p90"],
+        perfil["proporciones"],
+        tiempo_servicio_min=tiempo_servicio_min,
+        meta_espera_min=meta_espera_min,
+        nivel_servicio_objetivo=nivel_obj,
+        dotacion_referencia=dotacion_referencia,
+    )
+    return {
+        **salida_base,
+        "disponible": True,
+        "motivo_no_disponible": None,
+        "perfil_horario": perfil,
+        "erlang_c_franjas": res_erlang["erlang_c_franjas"],
+        "reconciliacion": res_erlang["reconciliacion"],
+    }
+
+
 def simular_optimizacion(
     servicio: str,
     tiempo_servicio_min: float = 20.0,
@@ -387,14 +599,45 @@ def simular_optimizacion(
     fecha: date | str | None = None,
     dotacion_habitual: int | None = None,
     dotacion_alternativa: int | None = None,
+    *,
+    modo_demanda: Literal["historico", "pronostico"] = "historico",
+    dotacion_referencia: int | None = None,
 ) -> dict[str, Any]:
-    """Simula equipos y camas equivalentes, sin atribuir dotación actual."""
+    """Simula equipos y camas equivalentes, en modo histórico o desde pronóstico diario."""
     from hun.models.optimizacion import simular_escenario_optimizacion
 
+    if modo_demanda not in ("historico", "pronostico"):
+        raise ValueError("El modo de demanda debe ser 'historico' o 'pronostico'.")
+
     bundle = _bundle_o_sintetico()
-    optimizacion_base = obtener_optimizacion()
+    optimizacion_base = _optimizacion_desde_bundle(bundle)
     servicio_canonico = normalizar_servicio(servicio)
     servicio_objetivo = servicio if servicio_canonico == "otros" else servicio_canonico
+
+    if modo_demanda == "pronostico":
+        if fecha is None:
+            raise ValueError("El modo pronóstico requiere una fecha objetivo.")
+        if isinstance(fecha, str):
+            try:
+                fecha_dt = date.fromisoformat(fecha)
+            except ValueError as exc:
+                raise ValueError(f"Fecha inválida para simulación: {fecha}") from exc
+        elif isinstance(fecha, date):
+            fecha_dt = fecha
+        else:
+            raise ValueError("Formato de fecha inválido.")
+
+        return _simular_optimizacion_pronostico(
+            bundle,
+            optimizacion_base,
+            servicio_objetivo,
+            fecha_dt,
+            tiempo_servicio_min,
+            meta_espera_min,
+            reduccion_estancia_horas,
+            pct_altas_tempranas,
+            dotacion_referencia,
+        )
 
     pronostico_jornada = None
     if fecha is not None and servicio_objetivo in optimizacion_base["erlang_c"]["servicios"]:
@@ -403,8 +646,10 @@ def simular_optimizacion(
                 fecha_dt = date.fromisoformat(fecha)
             except ValueError as exc:
                 raise ValueError(f"Fecha inválida para simulación: {fecha}") from exc
-        else:
+        elif isinstance(fecha, date):
             fecha_dt = fecha
+        else:
+            raise ValueError("Formato de fecha inválido.")
         pred = predecir(fecha_dt, servicio_objetivo)
         reales = obtener_llegadas_reales(fecha_dt, servicio_objetivo)
         pronostico_jornada = {
@@ -428,6 +673,7 @@ def simular_optimizacion(
         turnos=bundle.get("turnos"),
         dotacion_habitual=dotacion_habitual,
         dotacion_alternativa=dotacion_alternativa,
+        dotacion_referencia=dotacion_referencia,
     )
 
 

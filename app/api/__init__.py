@@ -11,7 +11,7 @@ import os
 import sys
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 # Asegurar resolución del paquete `hun` al ejecutar desde cualquier directorio
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
@@ -21,7 +21,7 @@ if str(SRC_DIR) not in sys.path:
 
 from fastapi import FastAPI, HTTPException  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
-from pydantic import BaseModel, Field  # noqa: E402
+from pydantic import BaseModel, Field, model_validator  # noqa: E402
 
 from hun.models import predict as _predict_mod  # noqa: E402
 from hun.models.predict import (  # noqa: E402
@@ -108,6 +108,14 @@ class SimulacionOptimizacionRequest(BaseModel):
             "Dotación alternativa paramétrica (si se omite, usa el requerimiento p90 previsto)"
         ),
     )
+    modo_demanda: Literal["historico", "pronostico"] = "historico"
+    dotacion_referencia: int | None = Field(default=None, ge=1, le=500)
+
+    @model_validator(mode="after")
+    def validar_fecha_pronostico(self) -> SimulacionOptimizacionRequest:
+        if self.modo_demanda == "pronostico" and self.fecha is None:
+            raise ValueError("El modo pronóstico requiere una fecha objetivo (YYYY-MM-DD).")
+        return self
 
 
 def _consultar_optimizacion(nombre: str, **parametros: Any) -> dict[str, Any]:
@@ -141,7 +149,24 @@ def endpoint_optimizacion() -> dict[str, Any]:
 @app.post("/api/optimizacion/simular")
 def endpoint_simular_optimizacion(payload: SimulacionOptimizacionRequest) -> dict[str, Any]:
     """Simula dotación, estancia y altas sin modificar los datos históricos."""
-    return _consultar_optimizacion("simular_optimizacion", **payload.model_dump(exclude_none=True))
+    kwargs: dict[str, Any] = {
+        "servicio": payload.servicio,
+        "tiempo_servicio_min": payload.tiempo_servicio_min,
+        "meta_espera_min": payload.meta_espera_min,
+        "reduccion_estancia_horas": payload.reduccion_estancia_horas,
+        "pct_altas_tempranas": payload.pct_altas_tempranas,
+    }
+    if "modo_demanda" in payload.model_fields_set or payload.modo_demanda != "historico":
+        kwargs["modo_demanda"] = payload.modo_demanda
+    if payload.fecha is not None:
+        kwargs["fecha"] = payload.fecha
+    if payload.dotacion_habitual is not None:
+        kwargs["dotacion_habitual"] = payload.dotacion_habitual
+    if payload.dotacion_alternativa is not None:
+        kwargs["dotacion_alternativa"] = payload.dotacion_alternativa
+    if payload.dotacion_referencia is not None:
+        kwargs["dotacion_referencia"] = payload.dotacion_referencia
+    return _consultar_optimizacion("simular_optimizacion", **kwargs)
 
 
 @app.get("/api/health")

@@ -206,15 +206,15 @@ export function DemandChart({
             </span>
             <span className="flex items-center gap-1.5">
               <span className="h-2.5 w-4 rounded-xs bg-sky-400/20 border border-sky-400/30" />
-              Intervalo p10–p90
+              Banda de pronóstico (p10–p90)
             </span>
             <span className="flex items-center gap-1.5">
               <span className="h-[1px] w-4 bg-amber-500" />
-              Umbral de alerta ({p75})
+              Umbral histórico de alerta ({p75})
             </span>
             <span className="flex items-center gap-1.5">
               <span className="h-[1px] w-4 bg-rose-600" />
-              Umbral de saturación ({p90})
+              Umbral histórico de saturación ({p90})
             </span>
           </div>
 
@@ -264,7 +264,7 @@ export function DemandChart({
                       stroke="#f59e0b"
                       strokeWidth={1}
                       label={{
-                        value: `Umbral de Alerta · ${p75}`,
+                        value: `Umbral histórico de alerta · ${p75}`,
                         fill: '#f59e0b',
                         fontSize: 10,
                         fontWeight: 600,
@@ -276,7 +276,7 @@ export function DemandChart({
                       stroke="#e11d48"
                       strokeWidth={1}
                       label={{
-                        value: `Umbral de Saturación · ${p90}`,
+                        value: `Umbral histórico de saturación · ${p90}`,
                         fill: '#e11d48',
                         fontSize: 10,
                         fontWeight: 600,
@@ -289,7 +289,7 @@ export function DemandChart({
                       stroke="none"
                       fill="#38bdf8"
                       fillOpacity={0.16}
-                      name="Intervalo p10–p90"
+                      name="Banda de pronóstico (p10–p90)"
                     />
                     <Area
                       type="monotone"
