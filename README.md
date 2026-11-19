@@ -54,7 +54,7 @@ El equipo organiza tareas y revisiones por sprints, con entregas incrementales d
 ├── dashboards/powerbi/   # plantillas .pbit (sin datos)
 ├── reports/figures/      # figuras generadas para informes
 ├── docs/                 # documentación, auditorías, hallazgos y bitácora de decisiones
-├── tests/                # 156 pruebas unitarias y de integración con pytest
+├── tests/                # 170 pruebas unitarias y de integración con pytest
 └── .github/              # plantillas de PR e issues
 ```
 
@@ -80,7 +80,7 @@ pre-commit install
 # 4. Variables de entorno
 cp .env.example .env               # Windows: copy .env.example .env
 
-# 5. Verificar suite de tests (156 pruebas)
+# 5. Verificar suite de tests (170 pruebas)
 pytest
 ```
 

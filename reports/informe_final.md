@@ -215,6 +215,21 @@ La prioridad empírica es revisar las **47.670 transiciones** y el **p90 mensual
 
 Se propone ejecutar REC-01 y REC-02 en planificación de turnos, REC-03 en un piloto de revisión de demoras evitables, REC-04 en un piloto intradía de egreso seguro y REC-05 en seguimiento mensual. La tabla ejecutiva conserva la trazabilidad individual de las cinco recomendaciones y sus condiciones.
 
+### 5.5 Demostración de decisión de principio a fin con pronóstico acoplado (Etapa 1)
+
+Para responder **«Con la demanda prevista y los recursos disponibles, ¿qué acción conviene tomar hoy?»**, MediFlow acopla el pronóstico diario por cuantiles (`lgbm_final`, usando únicamente información previa al inicio de la jornada) con los perfiles horarios del día de la semana (`turnos`) y el motor Erlang C (`dimensionar_jornada_con_pronostico`).
+
+Sobre la jornada histórica demostrativa **lunes 2026-07-06** en **Urgencias** (pronóstico al inicio del día: **p50 = 488**, intervalo **p10–p90 = 418–600** llegadas; llegadas reales observadas al cierre = **526**, usadas únicamente como contraste retrospectivo), una comparación paramétrica frente a una dotación habitual de **12 equipos equivalentes** ($1/\mu = 20\text{ min}$, meta $< 15\text{ min}$) muestra:
+
+| Franja | Peso lunes | λ prevista p10 / p50 / p90 (/h) | Equipos req. p10 / p50 / p90 | Brecha inc. | Dotación habitual → alternativa | Espera hab. p50 / p90 (min) | Espera alt. p50 / p90 (min) |
+|---|---:|---|---:|---:|---:|---|---|
+| Mañana (06–12 h) | 39.0% | 27.19 / 31.74 / 39.02 | 11 / 13 / 15 | 4 | 12 → 15 | 8.22 / **inestable (ρ ≥ 1)** | 0.67 / 4.99 |
+| Tarde (12–18 h) | 35.1% | 24.44 / 28.54 / 35.08 | 10 / 11 / 14 | 4 | 12 → 14 | 2.83 / 58.99 | 0.57 / 3.66 |
+| Noche (18–24 h) | 19.1% | 13.33 / 15.56 / 19.14 | 6 / 7 / 8 | 2 | 12 → 8 | 0.02 / 0.12 | 1.40 / 5.58 |
+| Madrugada (00–06 h) | 6.8% | 4.71 / 5.49 / 6.75 | 3 / 3 / 4 | 1 | 12 → 4 | 0.00 / 0.00 | 1.25 / 2.76 |
+
+En la franja crítica **Mañana (06–12 h)**, mantener 12 equipos equivale a una espera aceptable si ocurre la mediana (**8.22 min**), pero si la jornada se desplaza hacia la cota alta del pronóstico (**39.02 llegadas/h**, como efectivamente ocurrió con 526 llegadas reales en el día), la ocupación supera el 100 % (**108.4 %**, $\rho \ge 1$) y la cola se vuelve inestable. La alternativa paramétrica de **15 equipos equivalentes** (+3) sostiene la espera media en **4.99 min** (nivel de servicio **88.8 %**) incluso bajo el escenario `p90`, y se complementa adelantando altas elegibles en Hospitalización para evitar bloqueo de camas.
+
 ## 6. Integración de la solución, visualización y aplicación web (15 %)
 
 ### Arquitectura y recorrido del usuario
@@ -228,8 +243,8 @@ El paquete modular `src/hun/` produce modelos y agregados; **FastAPI** expone co
 | Mapa de turnos y radar de presión | Comparar franjas y servicios sin mezclar unidades | `/api/turnos/{servicio}`, `/api/ocupacion` |
 | Cuellos de botella | Distinguir duración en horas de censo en pacientes | `/api/cuellos-botella` |
 | Planeación extendida | Consultar agosto–noviembre de 2026 | `/api/largo-plazo/{servicio}` |
-| Panel de optimización y simuladores | Explorar atención, estancia y altas tempranas | `GET /api/optimizacion`, `POST /api/optimizacion/simular` |
-| Chatbot contextual | Explicar resultados y recomendaciones de la pantalla | `POST /api/chat` |
+| Panel de optimización y decisión por turno | Explorar atención, estancia, altas tempranas y decisión acoplada al pronóstico (`fecha`, `dotacion_habitual`, `dotacion_alternativa`) | `GET /api/optimizacion`, `POST /api/optimizacion/simular` |
+| Chatbot contextual | Explicar resultados, recomendaciones y decisión paramétrica del turno | `POST /api/chat` |
 
 El chatbot dispone de **seis herramientas de solo lectura**: predicción puntual, rango, simulación de demanda, efectos históricos de eventos, indicadores de cuellos de botella y recomendaciones de optimización. No tiene acceso SQL ni consulta registros de pacientes. Si el proveedor de IA no está disponible, ofrece respaldo determinista offline con resultados agregados. No reemplaza criterio médico.
 
@@ -247,7 +262,7 @@ Power BI complementa la aplicación para exploración y comunicación de agregad
 
 `src/hun/data/` concentra extracción y auditoría; `features/`, variables y rezagos; `models/`, validación, demanda, saturación, intervalos, largo plazo, empaquetado y optimización. `app/api/` adapta las salidas a HTTP y `app/src/` contiene la interfaz. Los notebooks exploran y comunican; no duplican la lógica compartida.
 
-La suite actual cuenta con **156 pruebas automatizadas con `pytest`**. Los hooks `pre-commit` y `ruff` controlan calidad, formato y protección de archivos; los notebooks se mantienen sin salidas que revelen información clínica. La entrega documental no cambia lógica ni dependencias.
+La suite actual cuenta con **170 pruebas automatizadas con `pytest`**. Los hooks `pre-commit` y `ruff` controlan calidad, formato y protección de archivos; los notebooks se mantienen sin salidas que revelen información clínica. La entrega documental no cambia lógica ni dependencias.
 
 La privacidad se protege con conexión de solo lectura, agregación en origen y exclusión de datos crudos, credenciales y archivos hospitalarios de Git. No se publican PHI/PII ni identificadores individuales en este informe o la aplicación. La anonimización OMOP no sustituye la revisión de riesgo de reidentificación por celdas pequeñas antes de publicar agregados o Power BI.
 
@@ -307,14 +322,24 @@ El piloto más directamente cuantificado es adelantar altas elegibles: el escena
 - **Simulación agregada:** tasas fijas y reparto uniforme de altas no representan restricciones clínicas individuales, abandono, tiempos no exponenciales ni variabilidad completa intraturno. No se suman automáticamente los efectos Little y altas como beneficios independientes.
 - **Entrega pública:** deben comprobarse enlaces, autorización del bundle, celdas pequeñas, CORS y acceso a la demo; no se declara un despliegue o aprobación clínica no verificados.
 
-### Hoja de ruta
+### Hoja de ruta evolutiva: del pronóstico a la decisión operativa (Urgencias → Hospitalización)
+
+Hoy, la diferencia entre marcas OMOP de dos etapas (`start_siguiente - end_anterior`) no permite saber cuánto tiempo esperó un paciente específicamente por una cama. Para evolucionar desde el control de presión agregada hacia la gestión clínica de traslados en tiempo real, MediFlow estructura su evolución en tres etapas:
+
+| Etapa | Qué construir | Qué demostrar | Estado actual |
+|---|---|---|---|
+| **1. Pronóstico que alimenta decisiones** | Reutilizar el LightGBM existente. Repartir la demanda diaria prevista por franjas con perfiles históricos y pasar escenarios de demanda típica (`p50`) y alta (`p90`) al dimensionamiento Erlang C. | Cuándo cambia el requerimiento de equipos, cómo responde la espera frente a la dotación habitual/alternativa y qué tan sensible es a la incertidumbre del pronóstico. | **Implementado** en motor (`dimensionar_jornada_con_pronostico`), API (`POST /api/optimizacion/simular`), interfaz y chatbot. |
+| **2. Simulador del recorrido** | Incorporar capacidad habilitada, dotación real, tiempos de atención medidos y tres marcas del HIS (`hora_decision_hospitalizar`, `hora_asignacion_cama`, `hora_traslado_efectivo`). Reconstruir el censo con stock inicial y comparar escenarios con restricciones reales. | Qué alternativa reduce la espera efectiva de traslado o las horas de presión, a qué costo y bajo qué supuestos verificados. | **Diseñado**; sujeto a instrumentación de las tres marcas temporales en el HIS del HUN. |
+| **3. Piloto prospectivo** | Ejecutar MediFlow en paralelo con la operación habitual (modo sombra). Registrar alertas, recomendaciones y resultados observados antes de probar una intervención supervisada. | Si las alertas llegan con suficiente anticipación, si el equipo puede actuar y si el beneficio estimado se sostiene en la práctica. | **Hoja de ruta institucional** con coordinación asistencial del HUN. |
+
+### Hoja de ruta institucional por horizonte
 
 | Horizonte | Acción | Responsable funcional propuesto | Evidencia de aceptación |
 |---|---|---|---|
 | Corto plazo | Validar los umbrales depurados (`p99.9`) contra camas censales habilitadas | Datos y gestión de camas HUN | Contraste de p75/p90 de ocupación y estancias largas reales frente a capacidad física instalada |
-| Corto plazo | Auditar REC-05 y medir atención y dotación para REC-01/02 | Coordinación de Urgencias, Hospitalización y Rehabilitación | Semántica validada de transiciones y contraste de equipos requeridos con disponibles |
+| Corto plazo | Auditar REC-05, instrumentar las 3 marcas de traslado en el HIS y medir atención/dotación para REC-01/02 | Coordinación de Urgencias, Hospitalización y Rehabilitación | Semántica validada de transiciones (`decisión → asignación → traslado`) y contraste de equipos requeridos con disponibles |
 | Mediano plazo | Pilotar REC-04 y revisar demoras evitables de REC-03 | Gestión de camas, equipos clínicos y egreso | Horas rojas con umbral fijo, estancia, seguridad de altas y demoras; sin atribución causal automática |
 | Mediano plazo | Recalibrar intervalos y validar prospectivamente la versión completa | Analítica y validación independiente | WAPE, MAE, sesgo y cobertura por servicio, día y horizonte |
-| Largo plazo | Integrar actualización periódica, monitoreo y gobernanza | Sistemas, calidad y dirección asistencial | Trazabilidad de versiones, revisión de deriva, privacidad y accesos; aprobación institucional antes del uso clínico |
+| Largo plazo | Integrar actualización periódica, monitoreo en sombra (Etapa 3) y gobernanza | Sistemas, calidad y dirección asistencial | Trazabilidad de versiones, revisión de deriva, privacidad y accesos; aprobación institucional antes del uso clínico |
 
 **Decisión recomendada:** iniciar pilotos supervisados y medibles, no automatizar asignación de recursos ni altas clínicas. El valor del sistema es hacer explícitos datos, supuestos e incertidumbre para que el HUN decida con evidencia.

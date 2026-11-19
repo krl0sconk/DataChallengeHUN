@@ -384,17 +384,50 @@ def simular_optimizacion(
     meta_espera_min: float = 15.0,
     reduccion_estancia_horas: float = 4.0,
     pct_altas_tempranas: float = 30,
+    fecha: date | str | None = None,
+    dotacion_habitual: int | None = None,
+    dotacion_alternativa: int | None = None,
 ) -> dict[str, Any]:
     """Simula equipos y camas equivalentes, sin atribuir dotación actual."""
     from hun.models.optimizacion import simular_escenario_optimizacion
 
+    bundle = _bundle_o_sintetico()
+    optimizacion_base = obtener_optimizacion()
+    servicio_canonico = normalizar_servicio(servicio)
+    servicio_objetivo = servicio if servicio_canonico == "otros" else servicio_canonico
+
+    pronostico_jornada = None
+    if fecha is not None and servicio_objetivo in optimizacion_base["erlang_c"]["servicios"]:
+        if isinstance(fecha, str):
+            try:
+                fecha_dt = date.fromisoformat(fecha)
+            except ValueError as exc:
+                raise ValueError(f"Fecha inválida para simulación: {fecha}") from exc
+        else:
+            fecha_dt = fecha
+        pred = predecir(fecha_dt, servicio_objetivo)
+        reales = obtener_llegadas_reales(fecha_dt, servicio_objetivo)
+        pronostico_jornada = {
+            "fecha": fecha_dt.isoformat(),
+            "p10": pred["min"],
+            "p50": pred["prediccion"],
+            "p90": pred["max"],
+            "alerta": pred["alerta"],
+            "factores": pred.get("factores", []),
+            "llegadas_reales": reales,
+        }
+
     return simular_escenario_optimizacion(
-        obtener_optimizacion(),
-        servicio,
+        optimizacion_base,
+        servicio_objetivo,
         tiempo_servicio_min,
         meta_espera_min,
         reduccion_estancia_horas,
         pct_altas_tempranas,
+        pronostico_jornada=pronostico_jornada,
+        turnos=bundle.get("turnos"),
+        dotacion_habitual=dotacion_habitual,
+        dotacion_alternativa=dotacion_alternativa,
     )
 
 

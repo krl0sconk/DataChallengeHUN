@@ -6,6 +6,7 @@ para su consumo desacoplado desde la interfaz React (Vite).
 
 from __future__ import annotations
 
+import inspect
 import os
 import sys
 from datetime import date, timedelta
@@ -83,12 +84,46 @@ class SimulacionOptimizacionRequest(BaseModel):
     meta_espera_min: float = Field(15.0, ge=1.0, le=120.0)
     reduccion_estancia_horas: float = Field(4.0, ge=0.0, le=48.0)
     pct_altas_tempranas: int = Field(30, ge=0, le=80)
+    fecha: date | None = Field(
+        default=None,
+        description=(
+            "Fecha de la jornada para acoplar pronóstico diario p10/p50/p90 al "
+            "dimensionamiento por franja"
+        ),
+    )
+    dotacion_habitual: int | None = Field(
+        default=None,
+        ge=1,
+        le=200,
+        description=(
+            "Dotación habitual paramétrica (equipos activos equivalentes) para comparar "
+            "espera e incertidumbre"
+        ),
+    )
+    dotacion_alternativa: int | None = Field(
+        default=None,
+        ge=1,
+        le=200,
+        description=(
+            "Dotación alternativa paramétrica (si se omite, usa el requerimiento p90 previsto)"
+        ),
+    )
 
 
 def _consultar_optimizacion(nombre: str, **parametros: Any) -> dict[str, Any]:
     funcion = getattr(_predict_mod, nombre, None)
     if funcion is None:
         raise HTTPException(status_code=503, detail="Módulo de optimización no disponible.")
+    try:
+        sig = inspect.signature(funcion)
+    except (TypeError, ValueError):
+        sig = None
+    if sig is not None:
+        acepta_kwargs = any(
+            p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
+        )
+        if not acepta_kwargs:
+            parametros = {k: v for k, v in parametros.items() if k in sig.parameters}
     try:
         return funcion(**parametros)
     except FileNotFoundError as exc:
@@ -106,7 +141,7 @@ def endpoint_optimizacion() -> dict[str, Any]:
 @app.post("/api/optimizacion/simular")
 def endpoint_simular_optimizacion(payload: SimulacionOptimizacionRequest) -> dict[str, Any]:
     """Simula dotación, estancia y altas sin modificar los datos históricos."""
-    return _consultar_optimizacion("simular_optimizacion", **payload.model_dump())
+    return _consultar_optimizacion("simular_optimizacion", **payload.model_dump(exclude_none=True))
 
 
 @app.get("/api/health")

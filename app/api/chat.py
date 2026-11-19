@@ -18,6 +18,7 @@ la IA no está configurada o no responde.
 
 from __future__ import annotations
 
+import inspect
 import json
 import logging
 import os
@@ -65,6 +66,9 @@ _PALABRAS_OPTIMIZACION = (
     "traslado",
     "hospitalización",
     "hospitalizacion",
+    "dotacion",
+    "dotación",
+    "equipos",
 )
 
 _PALABRAS_FUERA_DE_TEMA: tuple[str, ...] = (
@@ -200,10 +204,32 @@ HERRAMIENTAS_ESQUEMA: list[dict[str, Any]] = [
         "name": "recomendaciones_optimizacion",
         "description": (
             "Consulta recomendaciones cuantificadas: personal por franja (Erlang C), "
-            "liberación de camas (Ley de Little y altas tempranas), y el cuello "
-            "Urgencias → Hospitalización. Incluye supuestos y limitaciones metodológicas."
+            "liberación de camas (Ley de Little y altas tempranas), el cuello "
+            "Urgencias → Hospitalización y, si se indica una fecha, la decisión del turno "
+            "acoplada al pronóstico p10/p50/p90. Incluye supuestos y limitaciones metodológicas."
         ),
-        "input_schema": {"type": "object", "properties": {}},
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "fecha": {
+                    "type": "string",
+                    "description": (
+                        "Fecha opcional YYYY-MM-DD para acoplar el pronóstico diario al "
+                        "dimensionamiento por franja"
+                    ),
+                },
+                "servicio": {
+                    "type": "string",
+                    "description": (
+                        "Servicio opcional (urgencias, rehabilitacion o tratamiento_urgencia)"
+                    ),
+                },
+                "dotacion_habitual": {
+                    "type": "integer",
+                    "description": "Dotación habitual paramétrica opcional (equipos equivalentes)",
+                },
+            },
+        },
     },
     {
         "name": "predecir",
@@ -287,9 +313,48 @@ def ejecutar_herramienta(nombre: str, argumentos: dict[str, Any]) -> dict[str, A
         if funcion is None:
             raise HTTPException(status_code=503, detail="Módulo de optimización no disponible.")
         try:
-            return funcion()
+            base = funcion()
         except FileNotFoundError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+        fecha_arg = argumentos.get("fecha")
+        dot_hab_arg = argumentos.get("dotacion_habitual")
+        if not fecha_arg and dot_hab_arg is None:
+            return base
+
+        sim_fn = getattr(_predict_mod, "simular_optimizacion", None)
+        if sim_fn is None:
+            return base
+
+        srv_arg = normalizar_servicio(str(argumentos.get("servicio") or "urgencias"))
+        sim_kwargs: dict[str, Any] = {"servicio": srv_arg}
+        if fecha_arg:
+            sim_kwargs["fecha"] = str(fecha_arg)[:10]
+        if dot_hab_arg is not None:
+            sim_kwargs["dotacion_habitual"] = int(dot_hab_arg)
+
+        try:
+            sig = inspect.signature(sim_fn)
+            acepta_kwargs = any(
+                p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
+            )
+            if not acepta_kwargs:
+                sim_kwargs = {k: v for k, v in sim_kwargs.items() if k in sig.parameters}
+        except (TypeError, ValueError):
+            pass
+
+        if "fecha" not in sim_kwargs and "dotacion_habitual" not in sim_kwargs:
+            return base
+
+        try:
+            sim_res = sim_fn(**sim_kwargs)
+        except (FileNotFoundError, ValueError, TypeError):
+            return base
+
+        combinado = dict(base)
+        if isinstance(sim_res, dict) and sim_res.get("decision_jornada") is not None:
+            combinado["decision_jornada"] = sim_res["decision_jornada"]
+        return combinado
 
     if nombre == "predecir":
         f = date.fromisoformat(str(argumentos.get("fecha", "2026-07-10"))[:10])
@@ -453,7 +518,28 @@ def _respuesta_respaldo(mensaje: str, estado: EstadoPantalla | None) -> tuple[st
     msg = mensaje.lower()
 
     if any(k in msg for k in _PALABRAS_OPTIMIZACION):
-        datos = ejecutar_herramienta("recomendaciones_optimizacion", {})
+        tool_args: dict[str, Any] = {}
+        if estado is not None and estado.fecha and estado.prediccion is not None:
+            tool_args = {"fecha": estado.fecha, "servicio": srv}
+        datos = ejecutar_herramienta("recomendaciones_optimizacion", tool_args)
+        decision = datos.get("decision_jornada") if isinstance(datos, dict) else None
+        if isinstance(decision, dict) and decision.get("decision_recomendada"):
+            pron = decision.get("pronostico_diario") or {}
+            p50 = pron.get("p50", est.prediccion)
+            p10 = pron.get("p10", est.intervalo[0] if est.intervalo else None)
+            p90_default = est.intervalo[1] if est.intervalo and len(est.intervalo) > 1 else None
+            p90 = pron.get("p90", p90_default)
+            rango_txt = f" (p10–p90: {p10}–{p90})" if p10 is not None and p90 is not None else ""
+            franja_crit = decision.get("franja_critica", "franja pico")
+            return (
+                f"Modo respaldo (comparación paramétrica para {srv} el "
+                f"{decision.get('fecha', fecha_str)}): demanda prevista {p50} llegadas"
+                f"{rango_txt}. Franja crítica: {franja_crit}. "
+                f"{recortar_palabras(str(decision.get('decision_recomendada', '')), 45)} "
+                "Supuestos paramétricos; OMOP no incluye plantilla real. "
+                "Acción: validar dotación y traslados con coordinación asistencial.",
+                ["recomendaciones_optimizacion"],
+            )
         cuello = datos.get("cuello_urgencias_hospitalizacion", {})
         espera_p90 = cuello.get("espera_p90_horas")
         espera_txt = f"{espera_p90} h" if espera_p90 is not None else "no disponible"
