@@ -6,6 +6,7 @@ para su consumo desacoplado desde la interfaz React (Vite).
 
 from __future__ import annotations
 
+import os
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -21,6 +22,7 @@ from fastapi import FastAPI, HTTPException  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
+from hun.models import predict as _predict_mod  # noqa: E402
 from hun.models.predict import (  # noqa: E402
     PARAMETROS_SERVICIO,
     SERVICIOS_CANONICOS,
@@ -43,13 +45,16 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Permitir solicitudes locales desde el frontend de desarrollo (Vite)
+# Configurar orígenes explícitos para despliegue; conservar desarrollo local por defecto.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
+        origen.strip()
+        for origen in os.getenv(
+            "ALLOWED_ORIGINS",
+            "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000",
+        ).split(",")
+        if origen.strip()
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -68,6 +73,40 @@ class RangoRequest(BaseModel):
     fecha_inicio: date = Field(..., description="Fecha de inicio (YYYY-MM-DD)")
     dias: int = Field(default=7, ge=1, le=30, description="Horizonte de días a predecir")
     servicio: str = Field(..., description="Nombre o concept_id del servicio")
+
+
+class SimulacionOptimizacionRequest(BaseModel):
+    """Supuestos configurables, no mediciones de dotación real."""
+
+    servicio: str = "urgencias"
+    tiempo_servicio_min: float = Field(20.0, ge=5.0, le=120.0)
+    meta_espera_min: float = Field(15.0, ge=1.0, le=120.0)
+    reduccion_estancia_horas: float = Field(4.0, ge=0.0, le=48.0)
+    pct_altas_tempranas: int = Field(30, ge=0, le=80)
+
+
+def _consultar_optimizacion(nombre: str, **parametros: Any) -> dict[str, Any]:
+    funcion = getattr(_predict_mod, nombre, None)
+    if funcion is None:
+        raise HTTPException(status_code=503, detail="Módulo de optimización no disponible.")
+    try:
+        return funcion(**parametros)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get("/api/optimizacion")
+def endpoint_optimizacion() -> dict[str, Any]:
+    """Consulta recomendaciones cuantificadas y sus supuestos operacionales."""
+    return _consultar_optimizacion("obtener_optimizacion")
+
+
+@app.post("/api/optimizacion/simular")
+def endpoint_simular_optimizacion(payload: SimulacionOptimizacionRequest) -> dict[str, Any]:
+    """Simula dotación, estancia y altas sin modificar los datos históricos."""
+    return _consultar_optimizacion("simular_optimizacion", **payload.model_dump())
 
 
 @app.get("/api/health")

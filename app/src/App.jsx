@@ -13,6 +13,8 @@ import {
   NavTabs,
   PrecisionPanel,
   EventEffectsChart,
+  OptimizationPanel,
+  SimulatorPanel,
   StatCardGrid,
 } from './components';
 import {
@@ -21,21 +23,21 @@ import {
   SERVICIOS,
 } from './constants/servicios';
 import { useDemandaSimulator } from './hooks/useDemandaSimulator';
-import { getCuellosBotella } from './lib/api';
+import { getOptimizacion } from './lib/api';
 import { AlertCircle, CalendarDays } from 'lucide-react';
 
 export default function App() {
   const [tabActiva, setTabActiva] = useState('hoy');
-  const [cuellosData, setCuellosData] = useState(null);
+  const [optimizacionData, setOptimizacionData] = useState(null);
   const [isDark, setIsDark] = useState(() => {
     return localStorage.getItem('hun-theme') === 'dark';
   });
 
   useEffect(() => {
     let activo = true;
-    getCuellosBotella()
-      .then((data) => { if (activo) setCuellosData(data); })
-      .catch(() => { if (activo) setCuellosData(null); });
+    getOptimizacion()
+      .then((data) => { if (activo) setOptimizacionData(data); })
+      .catch(() => { if (activo) setOptimizacionData(null); });
     return () => { activo = false; };
   }, []);
 
@@ -72,7 +74,7 @@ export default function App() {
         isApiConnected={isApiConnected}
       />
 
-      {(tabActiva === 'hoy' || tabActiva === 'atascos' || tabActiva === 'precision') && (
+      {['hoy', 'atascos', 'precision', 'simulador'].includes(tabActiva) && (
         <NavTabs
           servicios={listaServicios}
           servicioActivoId={servicioSel}
@@ -101,7 +103,7 @@ export default function App() {
         )}
 
         {tabActiva === 'simulador' && (
-          <h1 className="font-heading text-3xl font-bold tracking-tight text-[#102A43] dark:text-[#D8EFF7]">¿Qué pasa si ocurre un evento?</h1>
+          <h1 className="font-heading text-3xl font-bold tracking-tight text-[#102A43] dark:text-[#D8EFF7]">Eventos y escenarios de optimización</h1>
         )}
 
         {/* Banner institucional cuando el servicio no está disponible */}
@@ -153,33 +155,41 @@ export default function App() {
           </section>
         )}
 
-        {tabActiva === 'simulador' && <EventEffectsChart servicio={servicio} />}
+        {tabActiva === 'simulador' && (
+          <section className="space-y-6">
+            <EventEffectsChart servicio={servicio} />
+            <SimulatorPanel
+              servicio={servicio}
+              fechaSimulacion={fechaSimulacion}
+              setFechaSimulacion={setFechaSimulacion}
+              proyeccion={proyeccion}
+              isDark={isDark}
+            />
+            <OptimizationPanel key={servicio.id} servicio={servicio} />
+          </section>
+        )}
 
         {tabActiva === 'atascos' && (
           <section className="space-y-6">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <BottleneckGauge
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {isApiConnected && !isLoading && <BottleneckGauge
                 value={proyeccion.prediccion ?? 0}
                 p75={servicio.p75}
                 p90={servicio.p90}
                 unidad="pacientes/día"
                 label={`Demanda en ${servicio.nombre}`}
-              />
-              <BottleneckGauge
-                value={cuellosData?.etapas?.[0]?.p90_horas ?? 0}
-                p75={cuellosData?.etapas?.[0]?.umbral_p75 ?? 12}
-                p90={cuellosData?.etapas?.[0]?.umbral_p90 ?? 24}
-                unidad="horas (p90)"
-                label={`Demora: ${cuellosData?.etapas?.[0]?.etapa || 'Etapa Crítica'}`}
-              />
-              <BottleneckGauge
-                value={cuellosData?.etapas?.[0]?.mediana_horas ?? 0}
-                p75={Math.round((cuellosData?.etapas?.[0]?.umbral_p75 || 20) * 0.5)}
-                p90={cuellosData?.etapas?.[0]?.umbral_p75 ?? 20}
-                unidad="horas (mediana)"
-                label={`Tiempo Típico: ${cuellosData?.etapas?.[0]?.etapa || 'Espera Piso'}`}
-              />
+              />}
+              {Number.isFinite(optimizacionData?.ley_little_camas?.censo_mediana_observada) && <BottleneckGauge
+                value={optimizacionData.ley_little_camas.censo_mediana_observada}
+                p75={optimizacionData.ley_little_camas.umbral_p75}
+                p90={optimizacionData.ley_little_camas.umbral_p90}
+                unidad="pacientes simultáneos"
+                label="Hospitalización: censo mediano histórico (no actual)"
+              />}
             </div>
+            {!Number.isFinite(optimizacionData?.ley_little_camas?.censo_mediana_observada) && (
+              <p role="status">Censo de referencia no disponible.</p>
+            )}
             <HeatmapTurnos servicio={servicio} isDark={isDark} />
             <RadarPresionServicios servicios={SERVICIOS} servicioActivoId={servicioSel} isDark={isDark} />
           </section>
@@ -212,4 +222,3 @@ export default function App() {
     </div>
   );
 }
-

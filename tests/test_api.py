@@ -4,11 +4,156 @@ Verifica códigos de estado HTTP, esquemas JSON, contrato canónico
 (prediccion, min, max, alerta, factores), y robustez ante entradas inválidas.
 """
 
+import importlib
+
+import pytest
 from fastapi.testclient import TestClient
 
 from app.api import app
 
 client = TestClient(app)
+
+
+def test_optimizacion_endpoint(monkeypatch):
+    from hun.models import predict
+
+    datos = {"erlang_c": {}, "ley_little_camas": {}, "recomendaciones": []}
+    monkeypatch.setattr(predict, "obtener_optimizacion", lambda: datos, raising=False)
+    response = client.get("/api/optimizacion")
+    assert response.status_code == 200
+    assert response.json() == datos
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {
+            "servicio": "rehabilitacion",
+            "tiempo_servicio_min": 5,
+            "meta_espera_min": 1,
+            "reduccion_estancia_horas": 0,
+            "pct_altas_tempranas": 0,
+        },
+        {
+            "tiempo_servicio_min": 120,
+            "meta_espera_min": 120,
+            "reduccion_estancia_horas": 48,
+            "pct_altas_tempranas": 80,
+        },
+    ],
+)
+def test_simular_optimizacion_endpoint(monkeypatch, payload):
+    from hun.models import predict
+
+    llamadas = []
+    resultado = {
+        "servicio": payload.get("servicio", "urgencias"),
+        "erlang_c_franjas": [],
+        "camas_liberadas_estancia": 12.5,
+        "escenario_altas_tempranas": {},
+    }
+
+    def simular(**kwargs):
+        llamadas.append(kwargs)
+        return resultado
+
+    monkeypatch.setattr(predict, "simular_optimizacion", simular, raising=False)
+    response = client.post("/api/optimizacion/simular", json=payload)
+    assert response.status_code == 200
+    assert response.json() == resultado
+    assert llamadas == [
+        {
+            "servicio": "urgencias",
+            "tiempo_servicio_min": 20.0,
+            "meta_espera_min": 15.0,
+            "reduccion_estancia_horas": 4.0,
+            "pct_altas_tempranas": 30,
+            **payload,
+        }
+    ]
+
+
+@pytest.mark.parametrize(
+    ("campo", "valor"),
+    [
+        ("tiempo_servicio_min", 4.9),
+        ("tiempo_servicio_min", 120.1),
+        ("meta_espera_min", 0.9),
+        ("meta_espera_min", 120.1),
+        ("reduccion_estancia_horas", -0.1),
+        ("reduccion_estancia_horas", 48.1),
+        ("pct_altas_tempranas", -1),
+        ("pct_altas_tempranas", 81),
+        ("pct_altas_tempranas", 30.5),
+        ("servicio", None),
+    ],
+)
+def test_simular_optimizacion_valida_sin_ejecutar(monkeypatch, campo, valor):
+    from hun.models import predict
+
+    llamadas = []
+    monkeypatch.setattr(
+        predict,
+        "simular_optimizacion",
+        lambda **kw: llamadas.append(kw),
+        raising=False,
+    )
+    response = client.post("/api/optimizacion/simular", json={campo: valor})
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", campo]
+    assert llamadas == []
+
+
+@pytest.mark.parametrize(
+    ("nombre", "metodo", "ruta"),
+    [
+        ("obtener_optimizacion", "get", "/api/optimizacion"),
+        ("simular_optimizacion", "post", "/api/optimizacion/simular"),
+    ],
+)
+def test_optimizacion_no_disponible(monkeypatch, nombre, metodo, ruta):
+    from hun.models import predict
+
+    monkeypatch.delattr(predict, nombre, raising=False)
+    response = client.get(ruta) if metodo == "get" else client.post(ruta, json={})
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Módulo de optimización no disponible."}
+
+
+@pytest.mark.parametrize(
+    "origenes",
+    [
+        None,
+        "https://app.vercel.app, http://localhost:5173",
+    ],
+)
+def test_cors_configurable(monkeypatch, origenes):
+    import app.api as api_mod
+
+    if origenes is None:
+        monkeypatch.delenv("ALLOWED_ORIGINS", raising=False)
+        permitidos = ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"]
+    else:
+        monkeypatch.setenv("ALLOWED_ORIGINS", origenes)
+        permitidos = [o.strip() for o in origenes.split(",")]
+    try:
+        cors_client = TestClient(importlib.reload(api_mod).app)
+        for origen in [*permitidos, "https://no-permitido.example"]:
+            response = cors_client.options(
+                "/api/health",
+                headers={
+                    "Origin": origen,
+                    "Access-Control-Request-Method": "GET",
+                },
+            )
+            assert response.status_code == (200 if origen in permitidos else 400)
+            assert response.headers.get("access-control-allow-origin") == (
+                origen if origen in permitidos else None
+            )
+    finally:
+        monkeypatch.delenv("ALLOWED_ORIGINS", raising=False)
+        importlib.reload(api_mod)
 
 
 def test_health_endpoint():

@@ -68,7 +68,11 @@ export function Metodologia() {
               Descomposición de Factores
             </h4>
             <p className="text-xs leading-relaxed text-[#102A43] dark:text-[#D8EFF7] font-medium">
-              Explica cuantitativamente el origen de cada pico asistencial: <em>Efecto Lunes (+8% pacientes acumulados del fin de semana)</em>, <em>Fin de semana en urgencias (+5%)</em> o <em>Quincenas (+4% días 15 y 30)</em>.
+              El modelo utiliza rezagos de 1–8 semanas, nivel local exponencial y variables de calendario
+              (festivos, puentes, Carnaval y Semana Santa), con estratificación por servicio.
+              Los aportes se consultan para cada fecha; no son porcentajes fijos.
+              La capa de optimización combina Erlang C para dotación por franja, Ley de Little
+              para camas y simulación horaria de altas tempranas, con supuestos configurables.
             </p>
           </div>
 
@@ -189,4 +193,3 @@ export function Metodologia() {
     </article>
   );
 }
-

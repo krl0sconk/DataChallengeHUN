@@ -11,6 +11,6 @@ export { ComparadorServicios } from './ComparadorServicios';
 export { HallazgosCards } from './HallazgosCards';
 export { RadarPresionServicios } from './RadarPresionServicios';
 export { SimulatorPanel } from './SimulatorPanel';
+export { OptimizationPanel } from './OptimizationPanel';
 export { PrecisionPanel } from './PrecisionPanel';
 export { EventEffectsChart } from './EventEffectsChart';
-

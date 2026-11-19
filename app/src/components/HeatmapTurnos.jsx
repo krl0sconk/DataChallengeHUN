@@ -9,15 +9,21 @@ const DIAS_DEFAULT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 const turnosCache = {};
 
 export function HeatmapTurnos({ servicio, isDark }) {
-  const [datosTurnos, setDatosTurnos] = useState(() => turnosCache[servicio.id] || null);
+  const [respuesta, setRespuesta] = useState(() => ({
+    servicioId: servicio.id, datos: turnosCache[servicio.id] || null,
+  }));
+  const [error, setError] = useState(null);
+  const datosTurnos = respuesta.servicioId === servicio.id ? respuesta.datos : null;
 
   // Consulta al backend para obtener la matriz calculada en el servidor (con caché en memoria)
   useEffect(() => {
     let cancelado = false;
+    setError(null);
+    setRespuesta({ servicioId: servicio.id, datos: null });
 
     // Si ya existe en el diccionario, no hace petición HTTP
     if (turnosCache[servicio.id]) {
-      setDatosTurnos(turnosCache[servicio.id]);
+      setRespuesta({ servicioId: servicio.id, datos: turnosCache[servicio.id] });
       return;
     }
 
@@ -25,9 +31,9 @@ export function HeatmapTurnos({ servicio, isDark }) {
       try {
         const data = await getTurnos(servicio.id);
         turnosCache[servicio.id] = data; // Guardado en el diccionario
-        if (!cancelado) setDatosTurnos(data);
+        if (!cancelado) setRespuesta({ servicioId: servicio.id, datos: data });
       } catch {
-        // Fallback defensivo silencioso
+        if (!cancelado) setError('No se pudo cargar la matriz de este servicio.');
       }
     }
     cargarTurnos();
@@ -39,16 +45,8 @@ export function HeatmapTurnos({ servicio, isDark }) {
   const franjas = datosTurnos?.franjas || FRANJAS_DEFAULT;
   const dias = datosTurnos?.dias || DIAS_DEFAULT;
 
-  // Si aún no responde la API remota, estructura básica
-  const matriz = datosTurnos?.matriz || franjas.map((franja) =>
-    dias.map((dia) => ({
-      dia,
-      franja,
-      estimado: Math.round(servicio.mediaDiaria / 4),
-      ratio: 1.0,
-      nivel: 'amarillo',
-    }))
-  );
+  // Sin datos no se inventa una distribución ni se conserva la de otro servicio.
+  const matriz = datosTurnos?.matriz || [];
 
   const getCellColor = (nivel) => {
     if (nivel === 'rojo') {
@@ -84,21 +82,22 @@ export function HeatmapTurnos({ servicio, isDark }) {
             <p className="text-xs font-semibold mt-0.5 text-[#102A43] dark:text-[#D8EFF7]">
               Distribución de pacientes según día y guardia horaria
             </p>
-            <CircleHelp className="mt-1 h-4 w-4 shrink-0 text-[#14516B] dark:text-[#B9E2F0]" title="Distribución por día y franja; colores según p75 y p90" />
+            <CircleHelp className="mt-1 h-4 w-4 shrink-0 text-[#14516B] dark:text-[#B9E2F0]" title="Razón respecto al promedio de cada franja, no percentiles" />
           </div>
           <div className="flex items-center gap-3 text-xs font-bold">
             <span className="flex items-center gap-1.5 text-[#14472C] dark:text-[#D8EFF7]">
-              <span className="h-2.5 w-2.5 rounded-sm bg-[#A9D6B5] dark:bg-[#0E3E5B] border border-[#14516B]" /> Bajo p75
+              <span className="h-2.5 w-2.5 rounded-sm bg-[#A9D6B5] dark:bg-[#0E3E5B] border border-[#14516B]" /> Baja/Normal: &lt; 0.85× promedio/franja
             </span>
             <span className="flex items-center gap-1.5 text-[#663E00] dark:text-[#FFD875]">
-              <span className="h-2.5 w-2.5 rounded-sm bg-[#F0C86A] dark:bg-[#D98A00]" /> p75–p90
+              <span className="h-2.5 w-2.5 rounded-sm bg-[#F0C86A] dark:bg-[#D98A00]" /> Media/Alerta: 0.85×–1.25×
             </span>
             <span className="flex items-center gap-1.5 text-[#781827] dark:text-[#FFA8B6]">
-              <span className="h-2.5 w-2.5 rounded-sm bg-[#D96B78]" /> Sobre p90
+              <span className="h-2.5 w-2.5 rounded-sm bg-[#D96B78]" /> Alta/Pico: &gt; 1.25×
             </span>
           </div>
         </header>
 
+        {!datosTurnos && <p role="status">{error || 'Cargando matriz del servicio…'}</p>}
         <div className="overflow-x-auto">
           <table className="w-full text-xs font-mono-num text-center border-collapse">
             <thead>
@@ -147,4 +146,3 @@ export function HeatmapTurnos({ servicio, isDark }) {
     </section>
   );
 }
-

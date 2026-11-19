@@ -31,6 +31,14 @@ export function getServicios() {
   return getCachedJson(apiUrl('/api/servicios'));
 }
 
+export function getOptimizacion() {
+  return getCachedJson(apiUrl('/api/optimizacion'));
+}
+
+export function simularOptimizacion(payload) {
+  return postJson('/api/optimizacion/simular', payload);
+}
+
 export function getOcupacion() {
   return getCachedJson(apiUrl('/api/ocupacion'));
 }

@@ -2,13 +2,14 @@
 
 Conecta el modelo `claude-haiku-5-5` (API de Anthropic, clave `ANTHROPIC_API_KEY` solo en `.env`)
 con el contexto de `docs/guia_chatbot.md`, el estado actual de la pantalla enviado por la web y
-cinco herramientas de solo lectura sobre las salidas del modelo:
+seis herramientas de solo lectura sobre las salidas del modelo:
 
 1. `predecir`: pronóstico puntual, intervalo, alerta y factores SHAP.
 2. `predecir_rango`: serie diaria de 1 a 30 días.
 3. `simular_escenario`: qué pasa si ocurre un evento (festivos, Carnaval, vacaciones, etc.).
 4. `efecto_promedio_evento`: impacto histórico medido de cada evento por servicio.
 5. `indicadores_cuellos_botella`: duración y saturación por etapa de atención en urgencias.
+6. `recomendaciones_optimizacion`: Erlang C, camas, altas tempranas y traslados a piso.
 
 Nunca accede a la base de datos ni a filas de pacientes. Incluye límite de solicitudes por
 minuto, tiempo máximo de espera, tope de ~150 palabras y respuesta de respaldo determinista si
@@ -32,6 +33,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from hun import config
+from hun.models import predict as _predict_mod
 from hun.models.predict import (
     PARAMETROS_SERVICIO,
     normalizar_servicio,
@@ -52,6 +54,18 @@ TIMEOUT_IA_SEGUNDOS: float = 12.0
 MAX_SOLICITUDES_POR_MINUTO: int = 20
 
 _VENTANA_SOLICITUDES: dict[str, deque[float]] = {}
+_PALABRAS_OPTIMIZACION = (
+    "personal",
+    "enfermer",
+    "camas",
+    "altas",
+    "optimiz",
+    "erlang",
+    "little",
+    "traslado",
+    "hospitalización",
+    "hospitalizacion",
+)
 
 _PALABRAS_FUERA_DE_TEMA: tuple[str, ...] = (
     "receta",
@@ -163,7 +177,7 @@ def cargar_guia_chatbot() -> str:
 
 def _es_fuera_de_tema(mensaje: str) -> bool:
     texto = mensaje.lower()
-    if any(p in texto for p in _PALABRAS_DOMINIO):
+    if any(p in texto for p in (*_PALABRAS_DOMINIO, *_PALABRAS_OPTIMIZACION)):
         return False
     if any(p in texto for p in _PALABRAS_FUERA_DE_TEMA):
         return True
@@ -182,6 +196,15 @@ def recortar_palabras(texto: str, max_palabras: int = MAX_PALABRAS_RESPUESTA) ->
 
 
 HERRAMIENTAS_ESQUEMA: list[dict[str, Any]] = [
+    {
+        "name": "recomendaciones_optimizacion",
+        "description": (
+            "Consulta recomendaciones cuantificadas: personal por franja (Erlang C), "
+            "liberación de camas (Ley de Little y altas tempranas), y el cuello "
+            "Urgencias → Hospitalización. Incluye supuestos y limitaciones metodológicas."
+        ),
+        "input_schema": {"type": "object", "properties": {}},
+    },
     {
         "name": "predecir",
         "description": (
@@ -259,6 +282,15 @@ HERRAMIENTAS_ESQUEMA: list[dict[str, Any]] = [
 
 def ejecutar_herramienta(nombre: str, argumentos: dict[str, Any]) -> dict[str, Any]:
     """Ejecuta una herramienta interna de la API (solo lecturas del modelo y agregados)."""
+    if nombre == "recomendaciones_optimizacion":
+        funcion = getattr(_predict_mod, "obtener_optimizacion", None)
+        if funcion is None:
+            raise HTTPException(status_code=503, detail="Módulo de optimización no disponible.")
+        try:
+            return funcion()
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+
     if nombre == "predecir":
         f = date.fromisoformat(str(argumentos.get("fecha", "2026-07-10"))[:10])
         srv = normalizar_servicio(str(argumentos.get("servicio", "urgencias")))
@@ -419,6 +451,27 @@ def _respuesta_respaldo(mensaje: str, estado: EstadoPantalla | None) -> tuple[st
     fecha_str = est.fecha or "2026-07-10"
     usadas: list[str] = []
     msg = mensaje.lower()
+
+    if any(k in msg for k in _PALABRAS_OPTIMIZACION):
+        datos = ejecutar_herramienta("recomendaciones_optimizacion", {})
+        cuello = datos.get("cuello_urgencias_hospitalizacion", {})
+        espera_p90 = cuello.get("espera_p90_horas")
+        espera_txt = f"{espera_p90} h" if espera_p90 is not None else "no disponible"
+        # Resumir cada palanca para no desplazar las advertencias fuera del límite de palabras.
+        frases = [
+            f"{r['id']}: {recortar_palabras(str(r['impacto_cuantificado']), 14)}."
+            for r in datos.get("recomendaciones", [])[:5]
+        ]
+        return (
+            "Modo respaldo: optimización operacional (Erlang C, Ley de Little y altas "
+            "tempranas). "
+            f"Urgencias → Hospitalización: p90 {espera_txt}. "
+            f"{recortar_palabras(str(cuello.get('nota_metodologica', '')), 30)} "
+            + " ".join(frases)
+            + " Supuestos configurables; no equivalen a dotación observada. "
+            "Acción: contrastar escenarios y validar con coordinación asistencial.",
+            ["recomendaciones_optimizacion"],
+        )
 
     if "cuello" in msg or "etapa" in msg or "observaci" in msg:
         cb = ejecutar_herramienta("indicadores_cuellos_botella", {})
