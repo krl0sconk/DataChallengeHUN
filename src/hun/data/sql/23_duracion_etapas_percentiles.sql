@@ -17,6 +17,7 @@ SELECT
     PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY horas) AS horas_p50,
     PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY horas) AS horas_p90,
     PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY horas) AS horas_p99,
+    PERCENTILE_CONT(0.999) WITHIN GROUP (ORDER BY horas) AS horas_p999,
     MAX(horas) AS horas_max
 FROM d
 GROUP BY visit_detail_concept_id

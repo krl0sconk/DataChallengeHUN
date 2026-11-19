@@ -95,3 +95,13 @@ def test_consultas_de_llegadas_cuentan_visitas_unicas(archivo):
     assert "count(distinct" in sql
     for columna in ("person_id", "visit_concept_id", "visit_start_datetime"):
         assert columna in sql.split("count(distinct", 1)[1].split("from", 1)[0]
+
+
+def test_consultas_etapas_recortan_extremos_sobre_p999():
+    """Las consultas de censo y percentiles de etapas deben acotar outliers por encima de p99.9."""
+    sql_pct = extraer.leer_sql("23_duracion_etapas_percentiles.sql").lower()
+    assert "0.999" in sql_pct and "horas_p999" in sql_pct
+
+    for archivo in ("14_etapas_entradas_por_hora.sql", "15_etapas_salidas_por_hora.sql"):
+        sql = extraer.leer_sql(archivo).lower()
+        assert "0.999" in sql, f"{archivo} debe recortar duraciones extremas sobre p99.9"

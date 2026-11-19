@@ -331,3 +331,16 @@ def test_reporte_incluye_exactitud_por_horizonte_y_semana_sin_otros():
     assert "Exactitud por servicio y día del horizonte" in texto
     assert "por semana" in texto and "techo" in texto.lower()
     assert "Otros (agrupados)" not in texto
+
+
+def test_poisson_respeta_patrones_opuestos_entre_servicios():
+    """Poisson por serie captura dinámicas opuestas entre servicios (finde/festivo)."""
+    serie, externos = _simular_demanda_diaria(dias=450)
+    origen = pd.Timestamp("2024-01-01")
+    df = demanda.construir_features_demanda(serie, externos, origen=origen)
+    train = df[df["ts"] < origen]
+    test = df[(df["ts"] >= origen) & (df["ts"] < origen + pd.Timedelta("60D"))]
+
+    pred = demanda.ajustar_predecir_poisson(train, test)
+    wape = validacion.metricas(test["y"], pred)["wape"]
+    assert wape < 0.15, f"WAPE Poisson demasiado alto ({wape:.3f}); faltan interacciones por serie."

@@ -244,59 +244,94 @@ def ajustar_predecir_poisson(
     else:
         cols = [c for c in columnas if c in train.columns]
 
-    # Incorporar variable que identifica la serie
-    if "serie" in train.columns and "serie" not in cols:
-        cols.append("serie")
-    elif "serie_cod" in train.columns and "serie_cod" not in cols:
-        cols.append("serie_cod")
+    col_serie = (
+        "serie"
+        if "serie" in train.columns and "serie" in test.columns
+        else ("serie_cod" if "serie_cod" in train.columns and "serie_cod" in test.columns else None)
+    )
 
     train_valid = train[train["y"].notna() & (train["y"] >= 0)]
     if len(train_valid) == 0:
         return np.zeros(len(test), dtype=float)
 
-    cat_candidates = {"serie", "serie_cod", "dia_semana", "mes"}
-    cat_cols = [c for c in cols if c in cat_candidates]
-    num_cols = [c for c in cols if c not in cat_candidates]
+    def _fit_predict_bloque(
+        sub_tr: pd.DataFrame, sub_te: pd.DataFrame, cols_bloque: list[str]
+    ) -> np.ndarray:
+        if len(sub_tr) == 0 or len(sub_te) == 0:
+            return np.zeros(len(sub_te), dtype=float)
+        cat_candidates = {"serie", "serie_cod", "dia_semana", "mes"}
+        cat_cols = [c for c in cols_bloque if c in cat_candidates]
+        num_cols = [c for c in cols_bloque if c not in cat_candidates]
 
-    transformers = []
-    if cat_cols:
-        transformers.append(
-            (
-                "cat",
-                Pipeline(
-                    [
-                        ("imputer", SimpleImputer(strategy="most_frequent")),
-                        ("ohe", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
-                    ]
-                ),
-                cat_cols,
+        transformers = []
+        if cat_cols:
+            transformers.append(
+                (
+                    "cat",
+                    Pipeline(
+                        [
+                            ("imputer", SimpleImputer(strategy="most_frequent")),
+                            ("ohe", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
+                        ]
+                    ),
+                    cat_cols,
+                )
             )
-        )
-    if num_cols:
-        transformers.append(
-            (
-                "num",
-                Pipeline(
-                    [
-                        ("imputer", SimpleImputer(strategy="median")),
-                        ("scaler", StandardScaler()),
-                    ]
-                ),
-                num_cols,
+        if num_cols:
+            transformers.append(
+                (
+                    "num",
+                    Pipeline(
+                        [
+                            ("imputer", SimpleImputer(strategy="median")),
+                            ("scaler", StandardScaler()),
+                        ]
+                    ),
+                    num_cols,
+                )
             )
+
+        preprocessor = ColumnTransformer(transformers=transformers)
+        pipe = Pipeline(
+            [
+                ("prep", preprocessor),
+                ("reg", PoissonRegressor(alpha=1e-4, max_iter=500)),
+            ]
         )
+        pipe.fit(sub_tr[cols_bloque], sub_tr["y"])
+        pred_b = pipe.predict(sub_te[cols_bloque])
+        return np.maximum(0.0, np.asarray(pred_b, dtype=float))
 
-    preprocessor = ColumnTransformer(transformers=transformers)
-    pipe = Pipeline(
-        [
-            ("prep", preprocessor),
-            ("reg", PoissonRegressor(alpha=1e-4, max_iter=500)),
-        ]
-    )
+    # Ajustar por servicio equivale a incluir todas las interacciones `servicio × calendario`
+    # (clave porque Rehabilitación cierra en fines de semana/festivos y Urgencias opera 24/7).
+    if col_serie is not None and train_valid[col_serie].nunique() > 1:
+        cols_sin_serie = [c for c in cols if c != col_serie]
+        if cols_sin_serie:
+            preds = np.zeros(len(test), dtype=float)
+            pos_index = np.arange(len(test))
+            series_test = test[col_serie].to_numpy()
+            unseen_mask = np.zeros(len(test), dtype=bool)
+            for s_val in pd.unique(series_test):
+                mask_te = series_test == s_val
+                sub_tr = train_valid[train_valid[col_serie] == s_val]
+                if len(sub_tr) < 10:
+                    unseen_mask |= mask_te
+                    continue
+                preds[pos_index[mask_te]] = _fit_predict_bloque(
+                    sub_tr, test.iloc[pos_index[mask_te]], cols_sin_serie
+                )
+            if unseen_mask.any():
+                cols_global = list(cols)
+                if col_serie not in cols_global:
+                    cols_global.append(col_serie)
+                preds[pos_index[unseen_mask]] = _fit_predict_bloque(
+                    train_valid, test.iloc[pos_index[unseen_mask]], cols_global
+                )
+            return preds
 
-    pipe.fit(train_valid[cols], train_valid["y"])
-    pred = pipe.predict(test[cols])
-    return np.maximum(0.0, np.asarray(pred, dtype=float))
+    if col_serie is not None and col_serie not in cols:
+        cols.append(col_serie)
+    return _fit_predict_bloque(train_valid, test, cols)
 
 
 def _preparar_lgbm(
