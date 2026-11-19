@@ -45,19 +45,10 @@ export function DemandChart({
   }, [servicio.id]);
 
   const datosFiltrados = (serie7d || []).slice(0, horizonte);
-  const datosGrafica = datosFiltrados.map((d) => {
-    const minNorm = Math.max(0, d.min ?? d.prediccion);
-    const maxCrudo = d.max ?? d.prediccion;
-    const maxNorm = d.prediccion < 80
-      ? Math.max(d.prediccion, Math.min(maxCrudo, Math.max(d.prediccion + 15, Math.ceil(d.prediccion * 1.5))))
-      : Math.max(d.prediccion, maxCrudo);
-    return {
-      ...d,
-      min: minNorm,
-      max: maxNorm,
-      banda: [minNorm, maxNorm],
-    };
-  });
+  const datosGrafica = datosFiltrados.map((d) => ({
+    ...d,
+    banda: [d.min ?? d.prediccion, d.max ?? d.prediccion],
+  }));
   const p75 = datosFiltrados.find((d) => d.p75 != null)?.p75 ?? servicio.p75;
   const p90 = datosFiltrados.find((d) => d.p90 != null)?.p90 ?? servicio.p90;
 
@@ -401,4 +392,3 @@ export function DemandChart({
     </section>
   );
 }
-

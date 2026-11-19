@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Activity, CalendarDays, CircleHelp, ShieldCheck, Target } from 'lucide-react';
-import { CartesianGrid, Legend, Line, LineChart, ReferenceArea, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { getComparacion } from '../lib/api';
 
 function shortDate(value) {
@@ -32,9 +32,11 @@ export function PrecisionPanel({ servicio }) {
     return () => { activo = false; };
   }, [servicio.id, rango.inicio, rango.fin]);
 
-  const datos = useMemo(() => (resultado?.serie || []).map((point) => ({ ...point, etiqueta: shortDate(point.fecha) })), [resultado]);
-  const minBanda = datos.length ? Math.min(...datos.map((point) => point.min)) : 0;
-  const maxBanda = datos.length ? Math.max(...datos.map((point) => point.max)) : 0;
+  const datos = useMemo(() => (resultado?.serie || []).map((point) => ({
+    ...point,
+    etiqueta: shortDate(point.fecha),
+    intervalo: [point.min, point.max],
+  })), [resultado]);
   const metricas = useMemo(() => {
     if (!datos.length) return null;
     const totalReal = datos.reduce((sum, point) => sum + Math.abs(point.real || 0), 0);
@@ -72,7 +74,7 @@ export function PrecisionPanel({ servicio }) {
         </div>
         <article className="min-w-0 rounded-3xl border border-[#D1DEE7] bg-white p-5 dark:border-[#19506B] dark:bg-[#0E3E5B] sm:p-7">
           <div className="mb-5 flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-heading text-base font-extrabold text-[#102A43] dark:text-[#D8EFF7]">Predicción contra llegada real</h3><p className="mt-1 text-xs text-[#46657A] dark:text-[#B9D4DF]">{resultado.nombre} · {datos.length} observaciones disponibles</p></div><div className="flex flex-wrap gap-4 text-xs text-[#294B63] dark:text-[#B9D4DF]"><span><i className="mr-2 inline-block h-2 w-2 rounded-full bg-[#0F2942]" />Predicha</span><span><i className="mr-2 inline-block h-2 w-2 rounded-full bg-[#2C7A9B]" />Real</span><span><i className="mr-2 inline-block h-2 w-2 rounded-sm bg-[#DCEFF7]" />Intervalo</span></div></div>
-          <div className="min-h-[20rem] min-w-0 w-full" aria-label="Curva de predicción frente a llegadas reales"><ResponsiveContainer width="100%" height={320} minWidth={0}><LineChart data={datos} margin={{ top: 10, right: 16, left: 0, bottom: 5 }}><CartesianGrid strokeDasharray="3 3" stroke="#D1DEE7" vertical={false} /><ReferenceArea y1={minBanda} y2={maxBanda} fill="#DCEFF7" fillOpacity={0.55} /><XAxis dataKey="etiqueta" interval="preserveStartEnd" tick={{ fill: '#46657A', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#B7CBD6' }} /><YAxis tick={{ fill: '#46657A', fontSize: 11 }} tickLine={false} axisLine={false} width={42} /><Tooltip contentStyle={{ border: '1px solid #D1DEE7', borderRadius: 8, boxShadow: '0 8px 24px rgba(16,42,67,.12)' }} formatter={(value, name) => [value, name === 'prediccion' ? 'Predicha' : name === 'real' ? 'Real' : name]} /><Legend verticalAlign="top" height={28} wrapperStyle={{ fontSize: 12, color: '#294B63' }} /><Line type="monotone" dataKey="prediccion" name="Predicha" stroke="#0F2942" strokeWidth={2.5} dot={false} activeDot={{ r: 5, fill: '#0F2942' }} /><Line type="monotone" dataKey="real" name="Real" stroke="#2C7A9B" strokeWidth={2} dot={{ r: 2.5, fill: '#2C7A9B' }} activeDot={{ r: 5 }} /></LineChart></ResponsiveContainer></div>
+          <div className="min-h-[20rem] min-w-0 w-full" aria-label="Curva de predicción frente a llegadas reales"><ResponsiveContainer width="100%" height={320} minWidth={0}><ComposedChart data={datos} margin={{ top: 10, right: 16, left: 0, bottom: 5 }}><CartesianGrid strokeDasharray="3 3" stroke="#D1DEE7" vertical={false} /><Area type="linear" dataKey="intervalo" name="Intervalo p10–p90" fill="#DCEFF7" fillOpacity={0.55} stroke="none" activeDot={false} /><XAxis dataKey="etiqueta" interval="preserveStartEnd" tick={{ fill: '#46657A', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#B7CBD6' }} /><YAxis tick={{ fill: '#46657A', fontSize: 11 }} tickLine={false} axisLine={false} width={42} /><Tooltip contentStyle={{ border: '1px solid #D1DEE7', borderRadius: 8, boxShadow: '0 8px 24px rgba(16,42,67,.12)' }} formatter={(value, name) => [Array.isArray(value) ? `${value[0]} – ${value[1]}` : value, name === 'prediccion' ? 'Predicha' : name === 'real' ? 'Real' : name]} /><Legend verticalAlign="top" height={28} wrapperStyle={{ fontSize: 12, color: '#294B63' }} /><Line type="monotone" dataKey="prediccion" name="Predicha" stroke="#0F2942" strokeWidth={2.5} dot={false} activeDot={{ r: 5, fill: '#0F2942' }} /><Line type="monotone" dataKey="real" name="Real" stroke="#2C7A9B" strokeWidth={2} dot={{ r: 2.5, fill: '#2C7A9B' }} activeDot={{ r: 5 }} /></ComposedChart></ResponsiveContainer></div>
         </article>
       </>}
     </section>
