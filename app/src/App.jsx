@@ -165,7 +165,11 @@ export default function App() {
               proyeccion={proyeccion}
               isDark={isDark}
             />
-            <OptimizationPanel key={servicio.id} servicio={servicio} />
+            <OptimizationPanel
+              servicio={servicio}
+              fechaSimulacion={fechaSimulacion}
+              onCambiarFecha={setFechaSimulacion}
+            />
           </section>
         )}
 

@@ -2,10 +2,12 @@
 
 import json
 import math
+from datetime import date
 
 import pandas as pd
 import pytest
 
+from hun.models import empaquetar
 from hun.models import optimizacion as opt
 
 
@@ -258,3 +260,176 @@ def test_cuello_excluye_otras_transiciones_y_correlacion_indefinida():
     assert r["espera_p90_horas"] == 2
     assert r["correlacion_censo_espera_p90"] is None
     json.dumps(r, allow_nan=False)
+
+
+@pytest.fixture(scope="module")
+def paquete_sintetico_v21():
+    return empaquetar.construir_paquete_sintetico_prueba()
+
+
+def test_perfiles_horarios_excluyen_futuro_e_incluyen_ceros():
+    # Lunes entre ene-mar 2025: la mitad con 12 llegadas en Mañana (08h), la otra mitad en 0.
+    lunes_antes = pd.date_range("2025-01-06", "2025-03-31", freq="W-MON")
+    filas = [
+        {
+            "hora": d + pd.Timedelta(hours=8),
+            "visit_concept_id": 9203,
+            "entradas": 12,
+        }
+        for i, d in enumerate(lunes_antes)
+        if i % 2 == 0
+    ]
+    # Lunes posteriores al corte 2025-04-01: todas las llegadas pasan a Noche (20h).
+    lunes_despues = pd.date_range("2025-04-07", "2025-04-28", freq="W-MON")
+    filas.extend(
+        {
+            "hora": d + pd.Timedelta(hours=20),
+            "visit_concept_id": 9203,
+            "entradas": 24,
+        }
+        for d in lunes_despues
+    )
+    entradas = pd.DataFrame(filas)
+    perfiles = opt.construir_perfiles_horarios_por_corte(
+        entradas,
+        cortes=["2025-04-01", "2025-05-01"],
+    )
+
+    perfil_corte, motivo = opt.seleccionar_perfil_horario(
+        perfiles,
+        "urgencias",
+        date(2025, 4, 7),
+        corte_maximo=date(2025, 4, 1),
+    )
+    assert motivo is None
+    assert perfil_corte is not None
+    assert perfil_corte["corte_perfil"] == "2025-04-01"
+    # Incluye los 13 lunes completos previos a 2025-04-01 (con ceros).
+    assert perfil_corte["dias_observados"] == len(lunes_antes)
+    assert sum(perfil_corte["proporciones"]) == pytest.approx(1.0)
+    assert perfil_corte["proporciones"] == pytest.approx([1.0, 0.0, 0.0, 0.0])
+
+    perfil_post, _ = opt.seleccionar_perfil_horario(
+        perfiles,
+        "urgencias",
+        date(2025, 5, 5),
+        corte_maximo=date(2025, 5, 1),
+    )
+    assert perfil_post is not None
+    assert perfil_post["proporciones"][2] > 0.0
+
+
+def test_erlang_pronostico_reconcilia_totales_y_convierte_a_hora():
+    sin_ref = opt.simular_erlang_c_pronostico(
+        400,
+        560,
+        [0.4, 0.3, 0.2, 0.1],
+        tiempo_servicio_min=20.0,
+        meta_espera_min=15.0,
+    )
+    filas = sin_ref["erlang_c_franjas"]
+    assert len(filas) == 4
+    assert sum(f["volumen_central"] for f in filas) == pytest.approx(400.0)
+    assert sum(f["volumen_alto"] for f in filas) == pytest.approx(560.0)
+    assert sin_ref["reconciliacion"]["suma_franjas_central"] == pytest.approx(400.0)
+    assert sin_ref["reconciliacion"]["suma_franjas_alto"] == pytest.approx(560.0)
+    for f in filas:
+        assert f["lambda_central_h"] == pytest.approx(f["volumen_central"] / 6.0)
+        assert f["lambda_alto_h"] == pytest.approx(f["volumen_alto"] / 6.0)
+        assert "dotacion_referencia" not in f
+
+    con_ref = opt.simular_erlang_c_pronostico(
+        400,
+        560,
+        [0.4, 0.3, 0.2, 0.1],
+        dotacion_referencia=10,
+    )
+    for f in con_ref["erlang_c_franjas"]:
+        assert f["dotacion_referencia"] == 10
+        assert f["brecha_central_vs_referencia"] == f["servidores_central"] - 10
+        assert f["brecha_alto_vs_referencia"] == f["servidores_alto"] - 10
+
+
+def test_simular_pronostico_cambia_con_fecha_y_evaluacion(monkeypatch, paquete_sintetico_v21):
+    from hun.models import predict
+
+    monkeypatch.setattr(predict, "_bundle_o_sintetico", lambda: paquete_sintetico_v21)
+    serie_reh = paquete_sintetico_v21["comparacion_real"]["rehabilitacion"]["serie"]
+    fecha_lun = next(
+        p["fecha"]
+        for p in serie_reh
+        if p.get("origen") and date.fromisoformat(p["fecha"]).weekday() == 0
+    )
+    fecha_dom = next(
+        p["fecha"]
+        for p in serie_reh
+        if p.get("origen") and date.fromisoformat(p["fecha"]).weekday() == 6
+    )
+
+    res_lun = predict.simular_optimizacion(
+        "rehabilitacion",
+        modo_demanda="pronostico",
+        fecha=fecha_lun,
+    )
+    res_dom = predict.simular_optimizacion(
+        "rehabilitacion",
+        modo_demanda="pronostico",
+        fecha=fecha_dom,
+    )
+    assert res_lun["disponible"] is True
+    assert res_dom["disponible"] is True
+    assert res_lun["tipo_evaluacion"] == "fuera_de_muestra"
+    assert res_dom["tipo_evaluacion"] == "fuera_de_muestra"
+    assert res_lun["perfil_horario"]["corte_perfil"] <= res_lun["origen_pronostico"]
+    assert res_dom["perfil_horario"]["corte_perfil"] <= res_dom["origen_pronostico"]
+    assert (
+        res_lun["demanda_diaria_pronosticada"]["p50"]
+        != res_dom["demanda_diaria_pronosticada"]["p50"]
+    )
+    assert (
+        res_lun["erlang_c_franjas"][0]["lambda_central_h"]
+        != res_dom["erlang_c_franjas"][0]["lambda_central_h"]
+    )
+
+    # Fecha previa al backtest walk-forward -> modo retrospectivo explícito.
+    res_retro = predict.simular_optimizacion(
+        "urgencias",
+        modo_demanda="pronostico",
+        fecha="2025-07-01",
+    )
+    assert res_retro["disponible"] is True
+    assert res_retro["tipo_evaluacion"] == "retrospectivo"
+    assert res_retro["origen_pronostico"] is None
+    assert res_retro["perfil_horario"]["corte_perfil"] <= "2025-07-01"
+    json.dumps(res_lun, allow_nan=False)
+    json.dumps(res_retro, allow_nan=False)
+
+
+def test_simular_pronostico_bundle_anterior_y_fecha_sin_perfil(monkeypatch, paquete_sintetico_v21):
+    from hun.models import predict
+
+    bundle_anterior = {k: v for k, v in paquete_sintetico_v21.items() if k != "perfiles_horarios"}
+    monkeypatch.setattr(predict, "_bundle_o_sintetico", lambda: bundle_anterior)
+
+    res_ant = predict.simular_optimizacion(
+        "urgencias",
+        modo_demanda="pronostico",
+        fecha="2026-07-10",
+    )
+    assert res_ant["disponible"] is False
+    assert "Pronóstico por franja no disponible" in res_ant["motivo_no_disponible"]
+    assert res_ant["erlang_c_franjas"] == []
+    # El modo histórico sigue funcionando con el mismo bundle anterior.
+    hist = predict.simular_optimizacion("urgencias")
+    assert len(hist["erlang_c_franjas"]) == 4
+
+    # Con paquete v2.1 pero fecha demasiado temprana (< 4 observaciones del mismo día).
+    monkeypatch.setattr(predict, "_bundle_o_sintetico", lambda: paquete_sintetico_v21)
+    res_sin_hist = predict.simular_optimizacion(
+        "urgencias",
+        modo_demanda="pronostico",
+        fecha="2025-01-06",
+    )
+    assert res_sin_hist["disponible"] is False
+    assert "Pronóstico por franja no disponible" in res_sin_hist["motivo_no_disponible"]
+    assert res_sin_hist["erlang_c_franjas"] == []

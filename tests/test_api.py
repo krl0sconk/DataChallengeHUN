@@ -478,3 +478,106 @@ def test_endpoint_pronostico_largo_plazo():
         for punto in d["serie"][:5]:
             assert {"fecha", "prediccion", "min", "max", "mes_horizonte"}.issubset(punto.keys())
             assert punto["min"] <= punto["prediccion"] <= punto["max"]
+
+
+def test_simular_optimizacion_pronostico_requiere_fecha():
+    """En modo pronóstico sin fecha la validación de Pydantic devuelve 422."""
+    resp = client.post(
+        "/api/optimizacion/simular",
+        json={"servicio": "urgencias", "modo_demanda": "pronostico"},
+    )
+    assert resp.status_code == 422
+
+
+def test_simular_optimizacion_pronostico_produccion_bundle_anterior_y_sintetico(
+    monkeypatch, tmp_path
+):
+    """Verifica modo producción con bundle anterior (degradación) y v2.1 sintético."""
+    from datetime import date
+
+    import joblib
+    import pandas as pd
+
+    from hun.models import empaquetar
+    from hun.models import predict as pred_mod
+
+    paquete_v21 = empaquetar.construir_paquete_sintetico_prueba()
+    paquete_v20 = {k: v for k, v in paquete_v21.items() if k != "perfiles_horarios"}
+
+    ruta_v20 = tmp_path / "bundle_v20.joblib"
+    ruta_v21 = tmp_path / "bundle_v21.joblib"
+    joblib.dump(paquete_v20, ruta_v20)
+    joblib.dump(paquete_v21, ruta_v21)
+
+    def _prohibido(*_args, **_kwargs):
+        raise AssertionError("En modo producción no se debe leer ningún parquet de data/")
+
+    monkeypatch.setattr(pd, "read_parquet", _prohibido)
+    monkeypatch.setenv("HUN_MODO_PRODUCCION", "1")
+
+    try:
+        # 1) Bundle anterior v2.0: histórico funciona y pronóstico degrada con aviso claro.
+        monkeypatch.setenv("HUN_BUNDLE_PATH", str(ruta_v20))
+        pred_mod.limpiar_cache_modelo()
+
+        r_hist = client.post("/api/optimizacion/simular", json={"servicio": "urgencias"})
+        assert r_hist.status_code == 200
+        assert len(r_hist.json()["erlang_c_franjas"]) == 4
+
+        r_v20 = client.post(
+            "/api/optimizacion/simular",
+            json={"servicio": "urgencias", "modo_demanda": "pronostico", "fecha": "2026-07-10"},
+        )
+        assert r_v20.status_code == 200
+        d_v20 = r_v20.json()
+        assert d_v20["disponible"] is False
+        assert "Pronóstico por franja no disponible" in d_v20["motivo_no_disponible"]
+        assert d_v20["erlang_c_franjas"] == []
+
+        # 2) Bundle v2.1 sintético: fuera de muestra, reconciliado y sensible a la fecha.
+        monkeypatch.setenv("HUN_BUNDLE_PATH", str(ruta_v21))
+        pred_mod.limpiar_cache_modelo()
+
+        serie_reh = paquete_v21["comparacion_real"]["rehabilitacion"]["serie"]
+        f_lun = next(
+            p["fecha"]
+            for p in serie_reh
+            if p.get("origen") and date.fromisoformat(p["fecha"]).weekday() == 0
+        )
+        f_dom = next(
+            p["fecha"]
+            for p in serie_reh
+            if p.get("origen") and date.fromisoformat(p["fecha"]).weekday() == 6
+        )
+
+        r_lun = client.post(
+            "/api/optimizacion/simular",
+            json={
+                "servicio": "rehabilitacion",
+                "modo_demanda": "pronostico",
+                "fecha": f_lun,
+                "tiempo_servicio_min": 30,
+                "meta_espera_min": 15,
+            },
+        )
+        r_dom = client.post(
+            "/api/optimizacion/simular",
+            json={
+                "servicio": "rehabilitacion",
+                "modo_demanda": "pronostico",
+                "fecha": f_dom,
+                "tiempo_servicio_min": 30,
+                "meta_espera_min": 15,
+            },
+        )
+        assert r_lun.status_code == 200 and r_dom.status_code == 200
+        d_lun, d_dom = r_lun.json(), r_dom.json()
+        assert d_lun["disponible"] is True and d_dom["disponible"] is True
+        assert d_lun["tipo_evaluacion"] == "fuera_de_muestra"
+        assert len(d_lun["erlang_c_franjas"]) == 4
+        assert (
+            d_lun["erlang_c_franjas"][0]["lambda_central_h"]
+            != d_dom["erlang_c_franjas"][0]["lambda_central_h"]
+        )
+    finally:
+        pred_mod.limpiar_cache_modelo()

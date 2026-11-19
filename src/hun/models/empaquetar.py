@@ -200,6 +200,8 @@ def calcular_comparacion_real(
                 "min": int(round(float(r["pred_p10"]))),
                 "max": int(round(float(r["pred_p90"]))),
                 "es_festivo": int(r.get("es_festivo", 0)),
+                "origen": pd.Timestamp(r["origen"]).strftime("%Y-%m-%d"),
+                "pliegue": int(r["pliegue"]),
             }
             for _, r in g.iterrows()
         ]
@@ -407,7 +409,10 @@ def construir_paquete(
     raw_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Construye el paquete completo de modelos y resultados precalculados para la web."""
-    from hun.models.optimizacion import construir_resumen_optimizacion
+    from hun.models.optimizacion import (
+        construir_perfiles_horarios_por_corte,
+        construir_resumen_optimizacion,
+    )
     from hun.models.predict import PARAMETROS_SERVICIO, _generar_ocupacion, _generar_turnos
 
     corte = fecha_corte(entradas)
@@ -444,6 +449,19 @@ def construir_paquete(
     ocupacion = _generar_ocupacion(serie)
     efectos = calcular_efectos_eventos(serie, externos_idx)
     comparacion = calcular_comparacion_real(serie, externos_idx, cols, pliegues=pliegues_corto)
+    origenes_wf = sorted(
+        {
+            pd.Timestamp(p["origen"]).normalize()
+            for srv in comparacion.values()
+            for p in srv.get("serie", [])
+            if p.get("origen")
+        }
+    )
+    perfiles_horarios = construir_perfiles_horarios_por_corte(
+        entradas_filt,
+        fecha_corte_datos=corte,
+        cortes_extra=origenes_wf,
+    )
 
     ext_lp = externos_idx if externos_idx is not None else _normalizar_externos(None, serie["ts"])
     largo_plazo = calcular_largo_plazo_bundle(
@@ -452,7 +470,7 @@ def construir_paquete(
     cuellos = calcular_cuellos_botella_bundle(raw_dir=raw_dir)
 
     return {
-        "version_paquete": "2.0",
+        "version_paquete": "2.1",
         "fecha_corte": pd.Timestamp(corte).strftime("%Y-%m-%d"),
         "modelos_q": modelos_q,
         "modelo_p50": modelos_q[0.50],
@@ -466,6 +484,7 @@ def construir_paquete(
         "efectos_eventos": efectos,
         "largo_plazo": largo_plazo,
         "cuellos_botella": cuellos,
+        "perfiles_horarios": perfiles_horarios,
         "optimizacion": construir_resumen_optimizacion(
             raw_dir=raw_dir,
             turnos=turnos,
@@ -478,9 +497,25 @@ def construir_paquete_sintetico_prueba(semilla: int = 11) -> dict[str, Any]:
     """Construye un paquete pequeño con datos sintéticos (para pruebas sin leer `data/`)."""
     rng = np.random.default_rng(semilla)
     horas = pd.date_range("2025-01-01", "2026-07-17", freq="6h")
+    co = holidays.Colombia(years=[2025, 2026])
+    pesos_hora = {
+        9203: {0: 0.45, 6: 1.45, 12: 1.25, 18: 0.85},
+        581479: {0: 0.05, 6: 1.95, 12: 1.65, 18: 0.35},
+        3045729: {0: 0.50, 6: 1.10, 12: 1.30, 18: 1.10},
+    }
+    pesos_dow = {
+        9203: [1.15, 1.05, 1.00, 1.00, 1.05, 0.85, 0.75],
+        581479: [1.15, 1.10, 1.05, 1.05, 1.00, 0.35, 0.15],
+        3045729: [1.10, 1.00, 1.00, 1.00, 1.05, 0.95, 0.90],
+    }
     filas = []
     for s_id, tasa in [(9203, 80.0), (581479, 140.0), (3045729, 4.0)]:
-        n = rng.poisson(tasa, size=len(horas))
+        mult_h = np.array([pesos_hora[s_id][h.hour] for h in horas], dtype=float)
+        mult_d = np.array([pesos_dow[s_id][h.day_of_week] for h in horas], dtype=float)
+        if s_id == 581479:
+            es_fest_h = np.array([h.date() in co for h in horas], dtype=bool)
+            mult_d = np.where(es_fest_h, 0.15, mult_d)
+        n = rng.poisson(np.maximum(0.05, tasa * mult_h * mult_d))
         filas.append(
             pd.DataFrame(
                 {
