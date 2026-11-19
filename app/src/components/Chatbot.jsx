@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Bot, Maximize2, Mic, Minimize2, Send, X } from 'lucide-react';
+import { Bot, Maximize2, MessageSquare, Mic, Minimize2, Send, X } from 'lucide-react';
 import { enviarMensajeChat } from '../lib/api';
 
 const PREGUNTAS_SUGERIDAS = {
@@ -30,11 +30,23 @@ const PREGUNTAS_SUGERIDAS = {
 };
 
 function resaltarNumeros(texto) {
-  return texto.split(/(\b\d+(?:[.,]\d+)?%?\b)/g).map((parte, index) => (
-    /^\d/.test(parte)
-      ? <strong key={`${parte}-${index}`} className="font-bold text-[#0F2942] dark:text-[#D8EFF7]">{parte}</strong>
-      : parte
-  ));
+  return texto.split(/(\*\*[^*]+\*\*|\b\d+(?:[.,]\d+)?%?\b)/g).map((parte, index) => {
+    if (parte.startsWith('**') && parte.endsWith('**') && parte.length > 4) {
+      return (
+        <strong key={`b-${index}`} className="font-semibold text-[var(--mf-ink)]">
+          {parte.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (/^\d/.test(parte)) {
+      return (
+        <strong key={`${parte}-${index}`} className="font-mono-num font-semibold text-[var(--mf-ink)]">
+          {parte}
+        </strong>
+      );
+    }
+    return parte;
+  });
 }
 
 export function Chatbot({ pantalla, servicio, fecha, prediccion, intervalo, alerta, factores = [] }) {
@@ -56,12 +68,26 @@ export function Chatbot({ pantalla, servicio, fecha, prediccion, intervalo, aler
     setMensaje('');
   }, [pantalla, servicio?.id]);
 
+  useEffect(() => {
+    if (!abierto) return;
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setAbierto(false);
+        setExpandido(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [abierto]);
+
   const estado = {
     pantalla,
     servicio: servicio?.id || servicio?.nombre,
     fecha,
     prediccion,
-    intervalo: Array.isArray(intervalo) ? intervalo : [intervalo?.min, intervalo?.max].filter((valor) => valor != null),
+    intervalo: Array.isArray(intervalo)
+      ? intervalo
+      : [intervalo?.min, intervalo?.max].filter((valor) => valor != null),
     alerta: alerta?.nivel || alerta?.etiqueta,
     factores: factores.map((factor) => ({ nombre: factor.nombre, aporte: factor.aporte })),
   };
@@ -74,9 +100,18 @@ export function Chatbot({ pantalla, servicio, fecha, prediccion, intervalo, aler
     setCargando(true);
     try {
       const data = await enviarMensajeChat({ mensaje: texto, estado_pantalla: estado });
-      setMensajes((actuales) => [...actuales, { rol: 'asistente', texto: data.respuesta || 'No pude interpretar esa pregunta.' }]);
+      setMensajes((actuales) => [
+        ...actuales,
+        { rol: 'asistente', texto: data.respuesta || 'No pude interpretar esa pregunta.' },
+      ]);
     } catch {
-      setMensajes((actuales) => [...actuales, { rol: 'asistente', texto: 'El asistente no está disponible ahora. Revisa el semáforo, el intervalo y los factores visibles en pantalla.' }]);
+      setMensajes((actuales) => [
+        ...actuales,
+        {
+          rol: 'asistente',
+          texto: 'El asistente no está disponible ahora. Revisa el semáforo, el intervalo y los factores visibles en pantalla.',
+        },
+      ]);
     } finally {
       setCargando(false);
     }
@@ -100,7 +135,7 @@ export function Chatbot({ pantalla, servicio, fecha, prediccion, intervalo, aler
         'service-not-allowed': 'El navegador bloqueó el servicio de reconocimiento de voz.',
         'no-speech': 'No detecté voz. Intenta hablar más cerca del micrófono.',
         'audio-capture': 'No se encontró un micrófono disponible.',
-        'network': 'El reconocimiento de voz necesita conexión a internet.',
+        network: 'El reconocimiento de voz necesita conexión a internet.',
       };
       setErrorVoz(errores[evento.error] || 'No se pudo reconocer la voz. Intenta de nuevo.');
     };
@@ -125,7 +160,7 @@ export function Chatbot({ pantalla, servicio, fecha, prediccion, intervalo, aler
     <>
       {abierto && expandido && (
         <div
-          className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs z-[65]"
+          className="fixed inset-0 bg-[#08151D]/60 z-[65]"
           onClick={() => setExpandido(false)}
           aria-hidden="true"
         />
@@ -135,37 +170,67 @@ export function Chatbot({ pantalla, servicio, fecha, prediccion, intervalo, aler
         <section
           className={
             expandido
-              ? 'fixed inset-2 sm:inset-4 md:inset-8 z-[70] flex flex-col rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 overflow-hidden'
-              : 'w-[min(24rem,calc(100vw-2rem))] h-[32rem] fixed bottom-5 right-5 z-[60] flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900'
+              ? 'fixed inset-3 sm:inset-6 md:inset-10 z-[70] flex flex-col overflow-hidden rounded-xl border border-[var(--mf-border)] bg-[var(--mf-surface)] text-[var(--mf-ink)] shadow-lg'
+              : 'fixed bottom-5 right-5 z-[60] flex h-[34rem] w-[min(25rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-[var(--mf-border)] bg-[var(--mf-surface)] text-[var(--mf-ink)] shadow-lg'
           }
-          aria-label="Asistente HUN"
+          aria-label="Asistente MediFlow"
         >
-          <header className="flex items-center justify-between bg-[#102A43] px-4 py-3 text-[#F7FAFC] shrink-0">
-            <div className="flex items-center gap-2"><Bot className="h-5 w-5 text-[#B9E2F0]" /><span className="font-bold">Asistente HUN</span></div>
-            <div className="flex items-center gap-1">
-              <button type="button" onClick={() => setExpandido((valor) => !valor)} aria-label={expandido ? 'Reducir asistente' : 'Expandir asistente'} className="rounded-md p-1 hover:bg-white/10">
-                {expandido ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--mf-rail-border)] bg-[var(--mf-rail)] px-4 py-3 text-[var(--mf-rail-ink)]">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <Bot className="h-5 w-5 shrink-0 text-[#4AD2C7]" aria-hidden="true" />
+              <div className="min-w-0">
+                <h2 className="truncate text-sm font-semibold text-white">Asistente MediFlow</h2>
+                <p className="truncate text-xs text-[var(--mf-rail-muted)]">
+                  {servicio?.nombre || 'Hospital Universidad del Norte'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setExpandido((valor) => !valor)}
+                aria-label={expandido ? 'Reducir asistente' : 'Expandir asistente'}
+                className="rounded-lg p-1.5 text-[var(--mf-rail-muted)] hover:bg-[var(--mf-rail-hover)] hover:text-white transition-colors cursor-pointer"
+              >
+                {expandido ? <Minimize2 className="h-4 w-4" aria-hidden="true" /> : <Maximize2 className="h-4 w-4" aria-hidden="true" />}
               </button>
-              <button type="button" onClick={() => { setAbierto(false); setExpandido(false); }} aria-label="Cerrar asistente" className="rounded-md p-1 hover:bg-white/10"><X className="h-4 w-4" /></button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAbierto(false);
+                  setExpandido(false);
+                }}
+                aria-label="Cerrar asistente"
+                className="rounded-lg p-1.5 text-[var(--mf-rail-muted)] hover:bg-[var(--mf-rail-hover)] hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
             </div>
           </header>
 
-          <div className={expandido ? 'flex-1 min-h-0 overflow-y-auto p-6 max-w-3xl mx-auto w-full space-y-4 text-sm' : 'flex-1 min-h-0 overflow-y-auto p-3.5 space-y-3 text-sm'}>
+          <div
+            className={
+              expandido
+                ? 'mx-auto flex-1 min-h-0 w-full max-w-3xl overflow-y-auto p-6 space-y-4 text-sm'
+                : 'flex-1 min-h-0 overflow-y-auto p-4 space-y-3 text-sm'
+            }
+          >
             {!mensajes.length && (
-              <div className="space-y-3">
-                <div className="flex flex-col items-center justify-center gap-1.5 pt-2 text-center text-slate-600 dark:text-slate-300">
-                  <Bot className="h-7 w-7 text-sky-600 dark:text-sky-400" />
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                    Preguntas sugeridas para esta vista:
+              <div className="space-y-4">
+                <div className="flex flex-col items-center justify-center gap-2 pt-2 text-center">
+                  <Bot className="h-7 w-7 text-[var(--mf-accent)]" aria-hidden="true" />
+                  <p className="text-xs font-medium text-[var(--mf-ink-2)]">
+                    Consultas contextuales sobre esta vista:
                   </p>
                 </div>
-                <div className="grid grid-cols-1 gap-2 p-3 bg-slate-50/70 dark:bg-slate-900/50 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                <div className="mf-subsurface divide-y divide-[var(--mf-border)] overflow-hidden">
                   {sugeridas.map((pregunta) => (
                     <button
                       key={pregunta}
                       type="button"
                       onClick={() => enviarPregunta(pregunta)}
-                      className="text-left text-xs font-medium p-2.5 rounded-lg border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-800/80 hover:border-sky-500 hover:bg-sky-50/50 dark:hover:bg-sky-950/40 text-slate-700 dark:text-slate-200 transition-all cursor-pointer"
+                      className="block w-full px-3.5 py-2.5 text-left text-xs font-medium text-[var(--mf-ink)] hover:bg-[var(--mf-accent-soft)] hover:text-[var(--mf-accent-ink)] transition-colors cursor-pointer"
                     >
                       {pregunta}
                     </button>
@@ -173,34 +238,80 @@ export function Chatbot({ pantalla, servicio, fecha, prediccion, intervalo, aler
                 </div>
               </div>
             )}
+
             {mensajes.map((item, index) => (
               <div
                 key={`${item.rol}-${index}`}
                 className={
                   item.rol === 'usuario'
-                    ? 'ml-6 rounded-lg bg-[#E8F6FA] p-2.5 text-[#0C4A62] dark:bg-[#0E3E5B] dark:text-[#D8EFF7]'
-                    : 'mr-3 rounded-lg bg-[#F7FAFC] p-2.5 text-[#294B63] ring-1 ring-inset ring-[#D1DEE7] dark:bg-[#071B2A] dark:text-[#D8EFF7] dark:ring-[#19506B]'
+                    ? 'ml-6 rounded-lg bg-[var(--mf-accent-soft)] px-3.5 py-2.5 text-sm text-[var(--mf-accent-ink)]'
+                    : 'mr-3 rounded-lg bg-[var(--mf-surface-2)] px-3.5 py-2.5 text-sm leading-relaxed text-[var(--mf-ink)]'
                 }
               >
                 {item.rol === 'asistente' ? resaltarNumeros(item.texto) : item.texto}
               </div>
             ))}
-            {cargando && <p className="text-xs text-slate-500 dark:text-slate-400">Analizando…</p>}
+
+            {cargando && (
+              <p role="status" className="text-xs text-[var(--mf-ink-3)]">
+                Analizando contexto clínico…
+              </p>
+            )}
           </div>
 
           <form
-            onSubmit={(evento) => { evento.preventDefault(); enviarPregunta(); }}
+            onSubmit={(evento) => {
+              evento.preventDefault();
+              enviarPregunta();
+            }}
             className={
               expandido
-                ? 'p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/80 flex items-center gap-3 max-w-3xl mx-auto w-full'
-                : 'flex items-center gap-2 border-t border-slate-200 dark:border-slate-800 p-3'
+                ? 'mx-auto flex w-full max-w-3xl items-center gap-2.5 border-t border-[var(--mf-border)] bg-[var(--mf-surface)] p-4'
+                : 'flex items-center gap-2 border-t border-[var(--mf-border)] bg-[var(--mf-surface)] p-3'
             }
           >
-            <input value={mensaje} onChange={(evento) => setMensaje(evento.target.value)} placeholder="Escribe una pregunta…" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-slate-400 dark:text-white" aria-label="Pregunta al asistente" />
-            {vozDisponible && <button type="button" onClick={escuchar} aria-label={escucha ? 'Escuchando' : 'Dictar pregunta'} title={escucha ? 'Escuchando… habla ahora' : 'Dictar pregunta'} className={`rounded-md p-2 ${escucha ? 'bg-[#F0C86A] text-[#102A43]' : 'text-[#14516B] dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><Mic className="h-4 w-4" /></button>}
-            <button type="submit" aria-label="Enviar pregunta" className="rounded-md bg-[#102A43] p-2 text-white hover:bg-[#14516B]"><Send className="h-4 w-4" /></button>
+            <input
+              value={mensaje}
+              onChange={(evento) => setMensaje(evento.target.value)}
+              placeholder="Escribe una pregunta…"
+              className="mf-input min-w-0 flex-1"
+              aria-label="Pregunta al asistente"
+            />
+            {vozDisponible && (
+              <button
+                type="button"
+                onClick={escuchar}
+                aria-label={escucha ? 'Escuchando' : 'Dictar pregunta'}
+                title={escucha ? 'Escuchando… habla ahora' : 'Dictar pregunta'}
+                className={
+                  escucha
+                    ? 'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border mf-badge-warn cursor-pointer'
+                    : 'mf-btn-secondary shrink-0 px-2.5'
+                }
+              >
+                <Mic className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
+            <button
+              type="submit"
+              aria-label="Enviar pregunta"
+              className="mf-btn-primary shrink-0 px-3"
+              disabled={cargando}
+            >
+              <Send className="h-4 w-4" aria-hidden="true" />
+            </button>
           </form>
-          {vozDisponible && (escucha || errorVoz) && <p role={errorVoz ? 'alert' : 'status'} className={`px-3 pb-2 text-xs ${errorVoz ? 'text-red-700 dark:text-red-300' : 'text-slate-500 dark:text-slate-400'}`}>{errorVoz || 'Escuchando… habla ahora.'}</p>}
+
+          {vozDisponible && (escucha || errorVoz) && (
+            <p
+              role={errorVoz ? 'alert' : 'status'}
+              className={`px-3.5 pb-2.5 text-xs ${
+                errorVoz ? 'text-[var(--mf-crit)]' : 'text-[var(--mf-ink-2)]'
+              }`}
+            >
+              {errorVoz || 'Escuchando… habla ahora.'}
+            </p>
+          )}
         </section>
       )}
 
@@ -208,10 +319,11 @@ export function Chatbot({ pantalla, servicio, fecha, prediccion, intervalo, aler
         <button
           type="button"
           onClick={() => setAbierto(true)}
-          aria-label="Abrir asistente HUN"
-          className="fixed bottom-5 right-5 z-[60] flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#102A43] p-2 shadow-xl ring-2 ring-[#71B5CC] transition-transform hover:scale-105 dark:border-[#0E3E5B]"
+          aria-label="Abrir Asistente MediFlow"
+          className="fixed bottom-5 right-5 z-[60] inline-flex items-center gap-2 rounded-full bg-[var(--mf-accent)] hover:bg-[var(--mf-accent-hover)] px-4 py-3 text-sm font-semibold text-white shadow-md transition-colors cursor-pointer"
         >
-          <img src="/logo-hospital-universidad-del-norte-light.png" alt="" className="h-full w-full object-contain" />
+          <MessageSquare className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>Asistente MediFlow</span>
         </button>
       )}
     </>
