@@ -1,35 +1,229 @@
-import { useEffect, useState } from 'react';
-import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  LabelList,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { getCuellosBotella } from '../lib/api';
+import { SectionPanel } from './SectionPanel';
 
-export function RadarPresionServicios() {
+function EtapasTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  const item = payload[0]?.payload;
+  if (!item) return null;
+
+  return (
+    <div className="rounded-lg border border-[var(--mf-border)] bg-[var(--mf-surface)] px-3 py-2.5 text-xs text-[var(--mf-ink)]">
+      <p className="font-semibold text-[var(--mf-ink)]">{item.etapa}</p>
+      <div className="mt-1.5 space-y-1 font-mono-num text-[var(--mf-ink-2)]">
+        <p>
+          p90: <strong className="font-semibold text-[var(--mf-ink)]">{item.p90_horas} h</strong>
+        </p>
+        {Number.isFinite(Number(item.mediana_horas)) && (
+          <p>
+            Mediana: <strong className="font-semibold text-[var(--mf-ink)]">{item.mediana_horas} h</strong>
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function RadarPresionServicios({ isDark = false }) {
   const [etapas, setEtapas] = useState([]);
+  const [etapaCritica, setEtapaCritica] = useState('');
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     let activo = true;
     getCuellosBotella()
-      .then((data) => { if (activo) { setEtapas(Array.isArray(data.etapas) ? data.etapas : []); setError(false); } })
-      .catch(() => activo && setError(true))
-      .finally(() => activo && setCargando(false));
-    return () => { activo = false; };
+      .then((data) => {
+        if (!activo) return;
+        setEtapas(Array.isArray(data?.etapas) ? data.etapas : []);
+        setEtapaCritica(typeof data?.etapa_critica === 'string' ? data.etapa_critica : '');
+        setError(false);
+      })
+      .catch(() => {
+        if (activo) setError(true);
+      })
+      .finally(() => {
+        if (activo) setCargando(false);
+      });
+    return () => {
+      activo = false;
+    };
   }, []);
 
-  return (
-    <section className="rounded-3xl border border-[#D1DEE7] bg-white p-6 transition-colors dark:border-[#19506B] dark:bg-[#0E3E5B]">
-      <header className="mb-5 flex flex-wrap items-start justify-between gap-3 border-b border-[#E8F0F5] pb-4 dark:border-[#0B3045]">
-        <div>
-          <h2 className="text-base font-bold font-heading text-[#102A43] dark:text-[#D8EFF7]">Etapas con mayor demora</h2>
-          <p className="mt-1 text-xs text-[#46657A] dark:text-[#B9D4DF]">Duración del 90% de los casos por etapa.</p>
-        </div>
-        <span className="text-xs font-bold text-[#704200] dark:text-[#FFD875]">p90 · horas</span>
-      </header>
+  const etapasOrdenadas = useMemo(() => {
+    if (!etapas.length) return [];
+    return [...etapas].sort((a, b) => (Number(b.p90_horas) || 0) - (Number(a.p90_horas) || 0));
+  }, [etapas]);
 
-      {cargando && <div className="flex h-56 items-center justify-center text-sm text-[#46657A] dark:text-[#B9D4DF]">Cargando etapas…</div>}
-      {error && <div className="border border-[#DFC264] bg-[#FEF9E2] p-4 text-sm text-[#704200] dark:border-[#7A5A00] dark:bg-[#201B0E] dark:text-[#FFDF80]">No se pudieron cargar las etapas.</div>}
-      {!cargando && !error && !etapas.length && <div className="flex h-56 items-center justify-center text-sm text-[#46657A] dark:text-[#B9D4DF]">La API no devolvió etapas para este análisis.</div>}
-      {!cargando && !error && etapas.length > 0 && <div className="h-64 w-full min-w-0"><ResponsiveContainer width="100%" height="100%"><BarChart data={etapas} layout="vertical" margin={{ top: 4, right: 52, left: 8, bottom: 4 }} barCategoryGap="28%"><CartesianGrid horizontal={false} stroke="#E8F0F5" /><XAxis type="number" tick={{ fill: '#46657A', fontSize: 11 }} tickLine={false} axisLine={{ stroke: '#B7C8D5' }} unit=" h" /><YAxis type="category" dataKey="etapa" width={190} tick={{ fill: '#102A43', fontSize: 11 }} tickLine={false} axisLine={false} /><Tooltip contentStyle={{ border: '1px solid #D1DEE7', borderRadius: 8, boxShadow: '0 8px 24px rgba(16,42,67,.12)' }} formatter={(value) => [`${value} h`, 'p90']} /><Bar dataKey="p90_horas" fill="#D98A00" radius={[0, 4, 4, 0]}><LabelList dataKey="p90_horas" position="right" formatter={(value) => `${value} h`} fill="#704200" fontSize={11} fontWeight={700} /></Bar></BarChart></ResponsiveContainer></div>}
-    </section>
+  const maxP90 = useMemo(() => {
+    if (!etapasOrdenadas.length) return 0;
+    return Math.max(...etapasOrdenadas.map((e) => Number(e.p90_horas) || 0));
+  }, [etapasOrdenadas]);
+
+  const colores = isDark
+    ? {
+        top: '#FCD34D',
+        primary: '#149A93',
+        secondary: '#5BA4D6',
+        grid: '#1B3545',
+        axis: '#8EB0C2',
+        axisLine: '#2F556B',
+        label: '#E8F2F6',
+      }
+    : {
+        top: '#9A4A06',
+        primary: '#0B7A75',
+        secondary: '#1D5F8A',
+        grid: '#DFE8EE',
+        axis: '#385262',
+        axisLine: '#B5C7D3',
+        label: '#0D222E',
+      };
+
+  const getBarColor = (item, idx) => {
+    if ((Number(item.p90_horas) || 0) === maxP90 && maxP90 > 0) return colores.top;
+    if (idx <= Math.ceil(etapasOrdenadas.length / 2)) return colores.primary;
+    return colores.secondary;
+  };
+
+  const chartHeight = Math.max(256, etapasOrdenadas.length * 46);
+
+  return (
+    <SectionPanel
+      id="radar-presion-etapas"
+      title="Etapas con mayor demora"
+      subtitle="Duración en el percentil 90 (p90) por etapa asistencial; el 90% de los episodios resuelve por debajo de este umbral."
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          {etapaCritica && (
+            <span className="mf-badge-warn inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold">
+              {etapaCritica}
+            </span>
+          )}
+          <span className="rounded-lg bg-[var(--mf-surface-2)] px-2.5 py-1 font-mono-num text-xs font-semibold text-[var(--mf-ink-2)]">
+            p90 · horas
+          </span>
+        </div>
+      }
+    >
+      {cargando && (
+        <div role="status" aria-busy="true" className="space-y-3">
+          <span className="sr-only">Cargando etapas…</span>
+          <div className="mf-skeleton h-8 w-3/4" />
+          <div className="mf-skeleton h-8 w-2/3" />
+          <div className="mf-skeleton h-8 w-1/2" />
+          <div className="mf-skeleton h-8 w-2/5" />
+        </div>
+      )}
+
+      {error && (
+        <div
+          role="alert"
+          className="rounded-lg border border-[var(--mf-warn-border)] bg-[var(--mf-warn-soft)] p-4 text-sm text-[var(--mf-warn)]"
+        >
+          No se pudieron cargar las etapas de permanencia.
+        </div>
+      )}
+
+      {!cargando && !error && !etapasOrdenadas.length && (
+        <div
+          role="status"
+          className="flex h-48 items-center justify-center text-sm text-[var(--mf-ink-2)]"
+        >
+          La API no devolvió etapas para este análisis.
+        </div>
+      )}
+
+      {!cargando && !error && etapasOrdenadas.length > 0 && (
+        <>
+          <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-[var(--mf-ink-2)]">
+            <span className="inline-flex items-center gap-2 font-medium">
+              <span
+                aria-hidden="true"
+                className="inline-block h-3 w-3 rounded-sm"
+                style={{ backgroundColor: colores.top }}
+              />
+              <span>Mayor cuello de botella (p90 máx.)</span>
+            </span>
+            <span className="inline-flex items-center gap-2 font-medium">
+              <span
+                aria-hidden="true"
+                className="inline-block h-3 w-3 rounded-sm"
+                style={{ backgroundColor: colores.primary }}
+              />
+              <span>Permanencia elevada</span>
+            </span>
+            <span className="inline-flex items-center gap-2 font-medium">
+              <span
+                aria-hidden="true"
+                className="inline-block h-3 w-3 rounded-sm"
+                style={{ backgroundColor: colores.secondary }}
+              />
+              <span>Permanencia moderada</span>
+            </span>
+          </div>
+
+          <div
+            className="w-full min-w-0"
+            style={{ height: `${chartHeight}px` }}
+            aria-label="Gráfico de barras horizontales con duración p90 en horas por etapa clínica"
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={etapasOrdenadas}
+                layout="vertical"
+                margin={{ top: 4, right: 64, left: 8, bottom: 4 }}
+                barCategoryGap="26%"
+              >
+                <CartesianGrid horizontal={false} stroke={colores.grid} />
+                <XAxis
+                  type="number"
+                  tick={{ fill: colores.axis, fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={{ stroke: colores.axisLine }}
+                  unit=" h"
+                />
+                <YAxis
+                  type="category"
+                  dataKey="etapa"
+                  width={196}
+                  tick={{ fill: colores.label, fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <Tooltip content={<EtapasTooltip />} cursor={{ fill: isDark ? '#152D3B' : '#EBF1F4', opacity: 0.5 }} />
+                <Bar dataKey="p90_horas" radius={[0, 4, 4, 0]}>
+                  {etapasOrdenadas.map((entry, idx) => (
+                    <Cell
+                      key={entry.concept_id ?? entry.etapa ?? idx}
+                      fill={getBarColor(entry, idx)}
+                    />
+                  ))}
+                  <LabelList
+                    dataKey="p90_horas"
+                    position="right"
+                    formatter={(value) => `${value} h`}
+                    fill={colores.label}
+                    fontSize={12}
+                    fontWeight={600}
+                  />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
+    </SectionPanel>
   );
 }
