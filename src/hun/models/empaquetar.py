@@ -407,7 +407,8 @@ def construir_paquete(
     raw_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Construye el paquete completo de modelos y resultados precalculados para la web."""
-    from hun.models.predict import _generar_ocupacion, _generar_turnos
+    from hun.models.optimizacion import construir_resumen_optimizacion
+    from hun.models.predict import PARAMETROS_SERVICIO, _generar_ocupacion, _generar_turnos
 
     corte = fecha_corte(entradas)
     entradas_filt = entradas[pd.to_datetime(entradas["hora"]) < corte].copy()
@@ -465,6 +466,11 @@ def construir_paquete(
         "efectos_eventos": efectos,
         "largo_plazo": largo_plazo,
         "cuellos_botella": cuellos,
+        "optimizacion": construir_resumen_optimizacion(
+            raw_dir=raw_dir,
+            turnos=turnos,
+            parametros_servicio=PARAMETROS_SERVICIO,
+        ),
     }
 
 

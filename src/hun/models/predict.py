@@ -348,6 +348,56 @@ def _bundle_o_sintetico() -> dict[str, Any]:
     return _BUNDLE_CACHE
 
 
+def obtener_optimizacion() -> dict[str, Any]:
+    """Obtiene el resumen; un paquete antiguo en producción no accede a datos raw."""
+    from hun.models.optimizacion import (
+        _little_no_disponible,
+        analizar_cuello_urgencias_hospitalizacion,
+        calcular_erlang_c_servicios,
+        construir_resumen_optimizacion,
+        generar_recomendaciones_cuantificadas,
+    )
+
+    bundle = _bundle_o_sintetico()
+    if "optimizacion" in bundle:
+        return bundle["optimizacion"]
+    if not es_modo_produccion():
+        return construir_resumen_optimizacion(
+            turnos=bundle.get("turnos"),
+            parametros_servicio=PARAMETROS_SERVICIO,
+        )
+    base = {
+        "erlang_c": calcular_erlang_c_servicios(
+            turnos=bundle.get("turnos"),
+            parametros_servicio=PARAMETROS_SERVICIO,
+        ),
+        "ley_little_camas": _little_no_disponible(),
+        "cuello_urgencias_hospitalizacion": analizar_cuello_urgencias_hospitalizacion(None, None),
+    }
+    base["recomendaciones"] = generar_recomendaciones_cuantificadas(base)
+    return base
+
+
+def simular_optimizacion(
+    servicio: str,
+    tiempo_servicio_min: float = 20.0,
+    meta_espera_min: float = 15.0,
+    reduccion_estancia_horas: float = 4.0,
+    pct_altas_tempranas: float = 30,
+) -> dict[str, Any]:
+    """Simula equipos y camas equivalentes, sin atribuir dotación actual."""
+    from hun.models.optimizacion import simular_escenario_optimizacion
+
+    return simular_escenario_optimizacion(
+        obtener_optimizacion(),
+        servicio,
+        tiempo_servicio_min,
+        meta_espera_min,
+        reduccion_estancia_horas,
+        pct_altas_tempranas,
+    )
+
+
 def _construir_fila_fecha(f: date, s_id: int, bundle: dict[str, Any]) -> pd.DataFrame:
     """Construye un DataFrame de 1 fila con los features requeridos para (serie_id, fecha)."""
     lookup_y = bundle["lookup_y"]

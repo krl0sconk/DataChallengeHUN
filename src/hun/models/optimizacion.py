@@ -1,0 +1,696 @@
+"""Optimización operacional paramétrica. Ejecutar: python -m hun.models.optimizacion.
+
+No estima la dotación existente. Un servidor representa un equipo activo equivalente,
+no una persona ni una categoría profesional. Las duraciones de atención son supuestos.
+"""
+
+from __future__ import annotations
+
+import argparse
+import math
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+import pandas as pd
+
+from hun import config
+from hun.data.agregados import serie_censo_etapas, serie_llegadas
+from hun.models.saturacion import calcular_calentamiento, calcular_umbrales_censo
+
+FRANJAS = [
+    "Mañana (06-12h)",
+    "Tarde (12-18h)",
+    "Noche (18-24h)",
+    "Madrugada (00-06h)",
+]
+SERVICIOS = {"urgencias": 9203, "rehabilitacion": 581479, "tratamiento_urgencia": 3045729}
+NOTA_ERLANG = (
+    "1/mu es un supuesto operativo paramétrico (15, 20 o 30 min), no una duración "
+    "clínica observada. OMOP no contiene tabla de dotación (AI.md). Servidores = equipos "
+    "activos equivalentes; no se conoce la plantilla actual. M/M/c supone llegadas Poisson, "
+    "servicios exponenciales, cola única, estacionariedad y ausencia de abandono."
+)
+NOTA_TRANSICIONES = (
+    "espera_h mide start_siguiente - end_anterior en OMOP; puede incluir solapamientos "
+    "negativos, no equivale necesariamente a boarding clínico. El p90 conjunto es un "
+    "promedio de p90 mensuales ponderado por pasos, no un percentil agrupado exacto. "
+    "El mes corresponde al inicio de la visita; correlación ecológica, no causal."
+)
+
+
+def _validar_tasa(llegadas_h: float, mu_h: float, servidores: int) -> None:
+    if (
+        not math.isfinite(llegadas_h)
+        or llegadas_h < 0
+        or not math.isfinite(mu_h)
+        or mu_h <= 0
+        or not isinstance(servidores, int)
+        or servidores < 1
+    ):
+        raise ValueError("Tasas finitas no negativas, mu > 0 y servidores enteros >= 1.")
+
+
+def probabilidad_espera_erlang_c(llegadas_h: float, mu_h: float, servidores: int) -> float:
+    """Probabilidad de esperar en M/M/c, por recurrencia estable de Erlang B."""
+    _validar_tasa(llegadas_h, mu_h, servidores)
+    a = llegadas_h / mu_h
+    rho = a / servidores
+    if rho >= 1:
+        return 1.0
+    b = 1.0
+    for k in range(1, servidores + 1):
+        b = a * b / (k + a * b)
+    return b / (1 - rho + rho * b)
+
+
+def tiempo_espera_erlang_c_min(llegadas_h: float, mu_h: float, servidores: int) -> float:
+    """Espera media en minutos; infinito cuando la cola no es estable."""
+    p = probabilidad_espera_erlang_c(llegadas_h, mu_h, servidores)
+    margen = servidores * mu_h - llegadas_h
+    return 60 * p / margen if margen > 0 else math.inf
+
+
+def dimensionar_erlang_c(
+    llegadas_h: float,
+    tiempo_servicio_min: float = 20.0,
+    meta_espera_min: float = 15.0,
+    nivel_servicio_objetivo: float = 0.80,
+) -> dict[str, Any]:
+    """Mínimo c estable que satisface ambas restricciones de espera."""
+    if (
+        not math.isfinite(tiempo_servicio_min)
+        or tiempo_servicio_min <= 0
+        or not math.isfinite(meta_espera_min)
+        or meta_espera_min <= 0
+        or not 0 < nivel_servicio_objetivo < 1
+    ):
+        raise ValueError("Servicio y meta deben ser positivos; nivel objetivo entre 0 y 1.")
+    mu = 60 / tiempo_servicio_min
+    _validar_tasa(llegadas_h, mu, 1)
+    c = max(1, math.floor(llegadas_h / mu) + 1)
+    while True:
+        p = probabilidad_espera_erlang_c(llegadas_h, mu, c)
+        espera = tiempo_espera_erlang_c_min(llegadas_h, mu, c)
+        nivel = 1 - p * math.exp(-(c * mu - llegadas_h) * meta_espera_min / 60)
+        if nivel >= nivel_servicio_objetivo and espera < meta_espera_min:
+            return {
+                "servidores": c,
+                "espera_esperada_min": espera,
+                "nivel_servicio": nivel,
+                "ocupacion_pct": 100 * llegadas_h / (c * mu),
+            }
+        c += 1
+
+
+def _fila_erlang(
+    franja: str,
+    tasas: list[float],
+    tiempo: float,
+    meta: float,
+    nivel: float,
+) -> dict[str, Any]:
+    resultados = [dimensionar_erlang_c(t, tiempo, meta, nivel) for t in tasas]
+    fila: dict[str, Any] = {"franja": franja}
+    for regimen, tasa, r in zip(("normal", "p75", "p90"), tasas, resultados, strict=True):
+        fila[f"lambda_{regimen}_h"] = tasa
+        fila[f"servidores_{regimen}"] = r["servidores"]
+    fila.update(
+        {
+            "delta_p90_vs_normal": resultados[2]["servidores"] - resultados[0]["servidores"],
+            "espera_esperada_normal_min": resultados[0]["espera_esperada_min"],
+            "espera_esperada_p90_min": resultados[2]["espera_esperada_min"],
+            "ocupacion_p90_pct": resultados[2]["ocupacion_pct"],
+        }
+    )
+    return fila
+
+
+def calcular_erlang_c_servicios(
+    entradas: pd.DataFrame | None = None,
+    turnos: dict | None = None,
+    parametros_servicio: dict | None = None,
+    meta_espera_min: float = 15.0,
+    nivel_servicio_objetivo: float = 0.80,
+) -> dict[str, Any]:
+    """Tasas por día y franja de seis horas, incluyendo ceros de la grilla regular."""
+    parametros_servicio = parametros_servicio or {}
+    servicios = {}
+    regular = serie_llegadas(entradas) if entradas is not None and not entradas.empty else None
+    for sid, cid in SERVICIOS.items():
+        tasas = []
+        fuente = "parámetros históricos diarios / 24; sin perfil horario disponible"
+        for indice, _franja in enumerate(FRANJAS):
+            if regular is not None and cid in regular["serie"].values:
+                sub = regular[regular["serie"] == cid].copy()
+                sub["dia"] = pd.to_datetime(sub["ts"]).dt.normalize()
+                sub["franja"] = (pd.to_datetime(sub["ts"]).dt.hour // 6).astype(int)
+                # Orden de presentación: mañana, tarde, noche, madrugada.
+                x = sub[sub["franja"] == ((indice + 1) % 4)].groupby("dia")["y"].sum() / 6
+                t = [float(x.mean()), float(x.quantile(0.75)), float(x.quantile(0.90))]
+                fuente = "llegadas observadas por día y franja / 6 h (grilla con ceros)"
+            elif turnos and sid in turnos:
+                x = pd.Series([float(c["estimado"]) / 6 for c in turnos[sid]["matriz"][indice]])
+                t = [float(x.mean()), float(x.quantile(0.75)), float(x.quantile(0.90))]
+                fuente = "perfil de turnos; percentiles de medias por día semanal, no diarios"
+            else:
+                p = parametros_servicio.get(sid, {})
+                t = [float(p.get(k, 0)) / 24 for k in ("media_diaria", "umbral_p75", "umbral_p90")]
+            tasas.append(t)
+        tiempo = 30.0 if sid == "rehabilitacion" else 20.0
+        filas = [
+            _fila_erlang(f, t, tiempo, meta_espera_min, nivel_servicio_objetivo)
+            for f, t in zip(FRANJAS, tasas, strict=True)
+        ]
+        pico = max(range(4), key=lambda i: tasas[i][2])
+        sensibilidad = []
+        for minutos in (15, 20, 30):
+            f = _fila_erlang(
+                FRANJAS[pico],
+                tasas[pico],
+                minutos,
+                meta_espera_min,
+                nivel_servicio_objetivo,
+            )
+            sensibilidad.append(
+                {
+                    "tiempo_servicio_min": minutos,
+                    "franja_pico": FRANJAS[pico],
+                    **{k: f[k] for k in ("servidores_normal", "servidores_p75", "servidores_p90")},
+                    "delta_p90": f["delta_p90_vs_normal"],
+                }
+            )
+        servicios[sid] = {
+            "nombre": sid.replace("_", " ").capitalize(),
+            "tiempo_servicio_base_min": tiempo,
+            "franjas": filas,
+            "sensibilidad": sensibilidad,
+            "fuente": fuente,
+        }
+    return {
+        "meta_espera_min": meta_espera_min,
+        "nivel_servicio_objetivo": nivel_servicio_objetivo,
+        "tiempos_servicio_min": [15, 20, 30],
+        "servicios": servicios,
+        "nota_metodologica": NOTA_ERLANG,
+    }
+
+
+def _hospital(df: pd.DataFrame) -> pd.DataFrame:
+    return df[df["visit_detail_concept_id"] == 9201].copy()
+
+
+def _escenario_estancia(llegadas: float, estancia: float, reduccion: float) -> dict:
+    efectiva = min(reduccion, estancia)
+    return {
+        "reduccion_horas": reduccion,
+        "nueva_estancia_media_horas": estancia - efectiva,
+        "camas_liberadas": llegadas * efectiva / 24,
+        "reduccion_pct_censo": 100 * efectiva / estancia if estancia else 0.0,
+    }
+
+
+def _desplazar_altas(salidas: pd.DataFrame, pct: float) -> pd.DataFrame:
+    """Redistribuye masa fraccional por día; conserva exactamente las altas diarias."""
+    s = salidas.copy()
+    s["hora"] = pd.to_datetime(s["hora"])
+    valores = s.groupby("hora")["salidas"].sum()
+    indice = pd.date_range(
+        valores.index.min().normalize(),
+        valores.index.max().normalize() + pd.Timedelta(hours=23),
+        freq="h",
+    )
+    valores = valores.reindex(indice, fill_value=0.0).astype(float)
+    origen = (indice.hour >= 14) & (indice.hour < 20)
+    movidas = valores.where(origen, 0.0) * pct / 100
+    por_dia = movidas.groupby(indice.normalize()).sum()
+    valores -= movidas
+    destino = (indice.hour >= 8) & (indice.hour < 12)
+    valores.loc[destino] += por_dia.reindex(indice[destino].normalize()).to_numpy() / 4
+    return pd.DataFrame(
+        {
+            "hora": indice,
+            "visit_detail_concept_id": 9201,
+            "salidas": valores.to_numpy(),
+        }
+    )
+
+
+def calcular_ley_little_y_altas_tempranas(
+    entradas: pd.DataFrame,
+    salidas: pd.DataFrame,
+    duraciones_diarias: pd.DataFrame,
+    percentiles: pd.DataFrame,
+) -> dict[str, Any]:
+    """Ley de Little estacionaria y redistribución intradía sobre el mismo censo horario."""
+    e, s, d, p = map(_hospital, (entradas, salidas, duraciones_diarias, percentiles))
+    if any(x.empty for x in (e, s, d, p)):
+        return _little_no_disponible()
+    calentamiento = calcular_calentamiento(percentiles)
+    censo = serie_censo_etapas(e, s, calentamiento)
+    if censo.empty or d["etapas"].sum() <= 0:
+        return _little_no_disponible()
+    umbral = calcular_umbrales_censo(censo, como_dict=True)[9201]
+    horas = pd.to_datetime(e["hora"])
+    dias = pd.date_range(horas.min().normalize(), horas.max().normalize(), freq="D")
+    ingresos = e.assign(dia=horas.dt.normalize()).groupby("dia")["entradas_con_salida"].sum()
+    llegadas = float(ingresos.reindex(dias, fill_value=0).mean())
+    estancia = float(np.average(d["horas_media"], weights=d["etapas"]))
+    rojo = float(100 * (censo["y"] > umbral["p90"]).mean())
+    escenarios = []
+    # 0 y 100 son anclas explícitas para interpolar el simulador sin extrapolar.
+    for pct in (0, 20, 35, 50, 100):
+        sim = serie_censo_etapas(e, _desplazar_altas(s, pct), calentamiento)
+        sim = sim[sim["ts"].isin(censo["ts"])]
+        pico, pico_sim = float(censo["y"].max()), float(sim["y"].max())
+        rojo_sim = float(100 * (sim["y"] > umbral["p90"]).mean())
+        escenarios.append(
+            {
+                "pct_altas_adelantadas": pct,
+                "ventana_origen": "14:00–20:00",
+                "ventana_destino": "08:00–12:00",
+                "censo_pico_base": pico,
+                "censo_pico_simulado": pico_sim,
+                "camas_pico_liberadas": pico - pico_sim,
+                "pct_horas_rojo_base": rojo,
+                "pct_horas_rojo_simulado": rojo_sim,
+                "reduccion_horas_rojo_pct": 100 * (rojo - rojo_sim) / rojo if rojo else 0.0,
+            }
+        )
+    return {
+        "etapa": "Hospitalización",
+        "concept_id": 9201,
+        "ingresos_dia_promedio": llegadas,
+        "estancia_media_horas": estancia,
+        "estancia_mediana_horas": float(p["horas_p50"].iloc[0]),
+        "censo_teorico_little": llegadas * estancia / 24,
+        "censo_mediana_observada": umbral["p50"],
+        "umbral_p75": umbral["p75"],
+        "umbral_p90": umbral["p90"],
+        "pct_horas_rojo_base": rojo,
+        "escenarios_estancia": [_escenario_estancia(llegadas, estancia, h) for h in (2, 4, 6, 8)],
+        "escenarios_altas_tempranas": [
+            x for x in escenarios if x["pct_altas_adelantadas"] in (20, 35, 50)
+        ],
+        "anclas_altas_tempranas": escenarios,
+        "calentamiento": calentamiento,
+        "nota_metodologica": (
+            "Ingresos cerrados, consistentes con el censo reconstruido; media de estancia "
+            "ponderada por etapas. Ventanas semiabiertas [14,20) y [08,12), mismo día. "
+            "Altas fraccionales distribuidas uniformemente: escenario agregado, no agenda "
+            "individual; no garantiza factibilidad clínica ni causalidad. Umbral p90 fijo. "
+            "Censo neto reconstruido sin corrección adicional de estancias extremas."
+        ),
+    }
+
+
+def _little_no_disponible() -> dict:
+    return {
+        "etapa": "Hospitalización",
+        "concept_id": 9201,
+        **dict.fromkeys(
+            (
+                "ingresos_dia_promedio",
+                "estancia_media_horas",
+                "estancia_mediana_horas",
+                "censo_teorico_little",
+                "censo_mediana_observada",
+                "umbral_p75",
+                "umbral_p90",
+                "pct_horas_rojo_base",
+            )
+        ),
+        "escenarios_estancia": [],
+        "escenarios_altas_tempranas": [],
+        "nota_metodologica": "No disponible: faltan agregados reales; no se inventan cifras.",
+    }
+
+
+def analizar_cuello_urgencias_hospitalizacion(
+    transiciones: pd.DataFrame | None,
+    censo: pd.DataFrame | None,
+) -> dict[str, Any]:
+    """Relaciona las transiciones mensuales con el censo mensual medio y p90."""
+    r = {
+        "origen": "Treatment urgency (3045729)",
+        "destino": "Inpatient Visit (9201)",
+        "pasos_totales": 0,
+        "espera_p50_horas": None,
+        "espera_p90_horas": None,
+        "correlacion_censo_espera_p90": None,
+        "espera_p90_censo_normal_horas": None,
+        "espera_p90_censo_alto_horas": None,
+        "nota_metodologica": NOTA_TRANSICIONES,
+    }
+    if transiciones is None or transiciones.empty:
+        return r
+    t = transiciones[
+        (transiciones["visit_concept_id"] == 9203)
+        & (transiciones["etapa"] == 3045729)
+        & (transiciones["etapa_siguiente"] == 9201)
+    ].copy()
+    if t.empty or t["pasos"].sum() <= 0:
+        return r
+    r["pasos_totales"] = int(t["pasos"].sum())
+    for q in ("50", "90"):
+        validos = t.dropna(subset=[f"espera_h_p{q}"])
+        if not validos.empty:
+            r[f"espera_p{q}_horas"] = float(
+                np.average(
+                    validos[f"espera_h_p{q}"],
+                    weights=validos["pasos"],
+                )
+            )
+    if censo is None or censo.empty:
+        return r
+    c = censo[censo["serie"] == 9201].copy()
+    c["mes"] = pd.to_datetime(c["ts"]).dt.to_period("M").dt.to_timestamp()
+    mensual = c.groupby("mes")["y"].agg(censo_media="mean", censo_p90=lambda x: x.quantile(0.9))
+    t["mes"] = pd.to_datetime(t["mes"]).dt.to_period("M").dt.to_timestamp()
+    unido = t.merge(mensual, on="mes").dropna(subset=["espera_h_p90", "censo_media"])
+    if (
+        len(unido) >= 2
+        and unido["censo_media"].nunique() > 1
+        and unido["espera_h_p90"].nunique() > 1
+    ):
+        r["correlacion_censo_espera_p90"] = float(unido["censo_media"].corr(unido["espera_h_p90"]))
+    mediana = mensual["censo_media"].median()
+    for nombre, mascara in (
+        ("normal", unido["censo_media"] <= mediana),
+        ("alto", unido["censo_media"] > mediana),
+    ):
+        grupo = unido[mascara]
+        if not grupo.empty and grupo["pasos"].sum() > 0:
+            r[f"espera_p90_censo_{nombre}_horas"] = float(
+                np.average(
+                    grupo["espera_h_p90"],
+                    weights=grupo["pasos"],
+                )
+            )
+    r["mensual"] = [
+        {
+            "mes": str(f["mes"].date()),
+            "censo_media": float(f["censo_media"]),
+            "censo_p90": float(f["censo_p90"]),
+            "espera_p90_horas": float(f["espera_h_p90"]),
+        }
+        for _, f in unido.iterrows()
+    ]
+    return r
+
+
+def generar_recomendaciones_cuantificadas(base: dict) -> list[dict]:
+    """Acciones derivadas exclusivamente de los resultados disponibles."""
+    recomendaciones = []
+
+    def agregar(area, palanca, titulo, accion, impacto, horizonte):
+        recomendaciones.append(
+            {
+                "id": f"REC-{len(recomendaciones) + 1:02d}",
+                "area": area,
+                "palanca": palanca,
+                "titulo": titulo,
+                "accion": accion,
+                "impacto_cuantificado": impacto,
+                "horizonte": horizonte,
+            }
+        )
+
+    for sid in ("urgencias", "rehabilitacion"):
+        servicio = base["erlang_c"]["servicios"][sid]
+        pico = max(servicio["franjas"], key=lambda f: f["lambda_p90_h"])
+        agregar(
+            servicio["nombre"],
+            "equipos activos equivalentes",
+            f"Planificar {pico['franja']}",
+            "Validar tiempos de atención y disponibilidad real antes de asignar equipos.",
+            f"Demanda p90 {pico['lambda_p90_h']:.2f}/h: {pico['servidores_p90']} equipos "
+            f"frente a {pico['servidores_normal']} en régimen normal; espera media "
+            f"{pico['espera_esperada_p90_min']:.2f} min. No es dotación adicional observada.",
+            "Planificación de turnos",
+        )
+    little = base["ley_little_camas"]
+    if little["escenarios_estancia"]:
+        e = little["escenarios_estancia"][1]
+        agregar(
+            "Hospitalización",
+            "estancia",
+            "Evaluar reducción segura de estancia",
+            "Revisar demoras evitables, sin modificar criterios clínicos.",
+            f"Reducir {e['reduccion_horas']:.0f} h libera teóricamente "
+            f"{e['camas_liberadas']:.2f} camas medias ({e['reduccion_pct_censo']:.2f}%).",
+            "Piloto y seguimiento",
+        )
+    if little["escenarios_altas_tempranas"]:
+        e = little["escenarios_altas_tempranas"][1]
+        agregar(
+            "Hospitalización",
+            "horario de alta",
+            "Pilotar altas matutinas",
+            "Adelantar a 08–12 h el 35% de altas de 14–20 h clínicamente elegibles.",
+            f"Pico {e['censo_pico_base']:.2f} → {e['censo_pico_simulado']:.2f}; "
+            f"horas rojas {e['pct_horas_rojo_base']:.2f}% → "
+            f"{e['pct_horas_rojo_simulado']:.2f}% (umbral fijo).",
+            "Piloto intradía",
+        )
+    cuello = base["cuello_urgencias_hospitalizacion"]
+    if cuello.get("espera_p90_horas") is not None:
+        agregar(
+            "Urgencias → Hospitalización",
+            "transferencia",
+            "Auditar transiciones demoradas",
+            "Coordinar disponibilidad de cama y revisar marcas temporales OMOP.",
+            f"{cuello['pasos_totales']} pasos; p90 mensual ponderado "
+            f"{cuello['espera_p90_horas']:.2f} h. No se atribuye una reducción causal.",
+            "Seguimiento mensual",
+        )
+    return recomendaciones
+
+
+def construir_resumen_optimizacion(
+    raw_dir: Path | None = None,
+    turnos: dict | None = None,
+    parametros_servicio: dict | None = None,
+) -> dict[str, Any]:
+    """Construye el resumen; los datos ausentes quedan explícitamente no disponibles."""
+    raw = raw_dir if raw_dir is not None else config.RAW_DIR
+
+    def leer(nombre):
+        ruta = raw / f"{nombre}.parquet"
+        return pd.read_parquet(ruta) if ruta.exists() else None
+
+    entradas = leer("entradas_por_hora")
+    e, s = leer("etapas_entradas_por_hora"), leer("etapas_salidas_por_hora")
+    d, p = leer("duracion_etapas_diaria"), leer("duracion_etapas_percentiles")
+    little, censo = _little_no_disponible(), None
+    if all(x is not None for x in (e, s, d, p)):
+        little = calcular_ley_little_y_altas_tempranas(e, s, d, p)
+        censo = serie_censo_etapas(_hospital(e), _hospital(s), calcular_calentamiento(p))
+    base = {
+        "erlang_c": calcular_erlang_c_servicios(entradas, turnos, parametros_servicio),
+        "ley_little_camas": little,
+        "cuello_urgencias_hospitalizacion": analizar_cuello_urgencias_hospitalizacion(
+            leer("transiciones_etapas"),
+            censo,
+        ),
+    }
+    base["recomendaciones"] = generar_recomendaciones_cuantificadas(base)
+    return base
+
+
+def simular_escenario_optimizacion(
+    optimizacion_base: dict,
+    servicio: str,
+    tiempo_servicio_min: float = 20.0,
+    meta_espera_min: float = 15.0,
+    reduccion_estancia_horas: float = 4.0,
+    pct_altas_tempranas: float = 30,
+) -> dict[str, Any]:
+    """Erlang exacto; Little estacionario; altas interpoladas, no nueva simulación causal."""
+    erlang = optimizacion_base["erlang_c"]
+    if servicio not in erlang["servicios"]:
+        raise ValueError("Servicio no disponible para optimización.")
+    if (
+        not math.isfinite(reduccion_estancia_horas)
+        or reduccion_estancia_horas < 0
+        or not math.isfinite(pct_altas_tempranas)
+        or not 0 <= pct_altas_tempranas <= 100
+    ):
+        raise ValueError("Reducción de estancia >= 0 y porcentaje de altas entre 0 y 100.")
+    filas = [
+        _fila_erlang(
+            f["franja"],
+            [f[f"lambda_{r}_h"] for r in ("normal", "p75", "p90")],
+            tiempo_servicio_min,
+            meta_espera_min,
+            erlang["nivel_servicio_objetivo"],
+        )
+        for f in erlang["servicios"][servicio]["franjas"]
+    ]
+    little = optimizacion_base["ley_little_camas"]
+    camas = None
+    if little["ingresos_dia_promedio"] is not None:
+        camas = _escenario_estancia(
+            little["ingresos_dia_promedio"],
+            little["estancia_media_horas"],
+            reduccion_estancia_horas,
+        )["camas_liberadas"]
+    anclas = little.get("anclas_altas_tempranas", little["escenarios_altas_tempranas"])
+    escenario = None
+    if anclas:
+        anclas = sorted(anclas, key=lambda x: x["pct_altas_adelantadas"])
+        xs = [x["pct_altas_adelantadas"] for x in anclas]
+        if not xs[0] <= pct_altas_tempranas <= xs[-1]:
+            raise ValueError("Porcentaje fuera del intervalo de escenarios precalculados.")
+        escenario = {
+            k: float(np.interp(pct_altas_tempranas, xs, [a[k] for a in anclas]))
+            if isinstance(v, (float, int))
+            else v
+            for k, v in anclas[0].items()
+        }
+        escenario["pct_altas_adelantadas"] = pct_altas_tempranas
+        escenario["metodo"] = (
+            "exacto precalculado"
+            if pct_altas_tempranas in xs
+            else "interpolación lineal de escenarios; horas rojas aproximadas"
+        )
+    return {
+        "servicio": servicio,
+        "erlang_c_franjas": filas,
+        "camas_liberadas_estancia": camas,
+        "escenario_altas_tempranas": escenario,
+    }
+
+
+def reporte_markdown(base: dict) -> str:
+    """Reporte reproducible de resultados y limitaciones, con tablas de sensibilidad."""
+    lineas = ["# Optimización operacional", "", "## Erlang C", "", NOTA_ERLANG, ""]
+    for servicio in base["erlang_c"]["servicios"].values():
+        lineas += [
+            f"### {servicio['nombre']}",
+            "",
+            f"Fuente: {servicio['fuente']}.",
+            "",
+            "| Franja | λ normal/h | λ p75/h | λ p90/h | c normal | c p75 | c p90 "
+            "| Espera p90 (min) |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|",
+        ]
+        for f in servicio["franjas"]:
+            lineas.append(
+                f"| {f['franja']} | {f['lambda_normal_h']:.3f} | {f['lambda_p75_h']:.3f} | "
+                f"{f['lambda_p90_h']:.3f} | {f['servidores_normal']} | {f['servidores_p75']} | "
+                f"{f['servidores_p90']} | {f['espera_esperada_p90_min']:.3f} |"
+            )
+        lineas += [
+            "",
+            "| 1/mu (min) | Franja pico | c normal | c p75 | c p90 | Δ p90 |",
+            "|---:|---|---:|---:|---:|---:|",
+        ]
+        for f in servicio["sensibilidad"]:
+            lineas.append(
+                f"| {f['tiempo_servicio_min']} | {f['franja_pico']} | "
+                f"{f['servidores_normal']} | {f['servidores_p75']} | "
+                f"{f['servidores_p90']} | {f['delta_p90']} |"
+            )
+        lineas.append("")
+    little = base["ley_little_camas"]
+    lineas += ["## Ley de Little y altas matutinas", "", little["nota_metodologica"], ""]
+    for k in (
+        "ingresos_dia_promedio",
+        "estancia_media_horas",
+        "estancia_mediana_horas",
+        "censo_teorico_little",
+        "censo_mediana_observada",
+        "umbral_p75",
+        "umbral_p90",
+        "pct_horas_rojo_base",
+    ):
+        v = little[k]
+        lineas.append(f"- {k}: {v:.4f}" if v is not None else f"- {k}: no disponible")
+    lineas += [
+        "",
+        "L = ingresos/día × estancia media (horas) / 24. No equivale a camas "
+        "físicas ni a capacidad instalada.",
+        "",
+        "| Reducción (h) | Nueva media (h) | Camas medias liberadas | Reducción (%) |",
+        "|---:|---:|---:|---:|",
+    ]
+    for e in little["escenarios_estancia"]:
+        lineas.append(
+            f"| {e['reduccion_horas']:.0f} | {e['nueva_estancia_media_horas']:.3f} | "
+            f"{e['camas_liberadas']:.3f} | {e['reduccion_pct_censo']:.3f} |"
+        )
+    lineas += [
+        "",
+        "| Altas adelantadas (%) | Pico base | Pico simulado | Camas pico liberadas "
+        "| Horas rojas base (%) | Horas rojas simuladas (%) | Reducción roja relativa (%) |",
+        "|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for e in little["escenarios_altas_tempranas"]:
+        lineas.append(
+            "| "
+            + " | ".join(
+                f"{e[k]:.3f}"
+                for k in (
+                    "pct_altas_adelantadas",
+                    "censo_pico_base",
+                    "censo_pico_simulado",
+                    "camas_pico_liberadas",
+                    "pct_horas_rojo_base",
+                    "pct_horas_rojo_simulado",
+                    "reduccion_horas_rojo_pct",
+                )
+            )
+            + " |"
+        )
+    lineas += ["", "## Urgencias → Hospitalización", "", NOTA_TRANSICIONES, ""]
+    for k, v in base["cuello_urgencias_hospitalizacion"].items():
+        if k not in ("nota_metodologica", "mensual"):
+            lineas.append(f"- {k}: {v}")
+    lineas += ["", "## Recomendaciones cuantificadas", ""]
+    for r in base["recomendaciones"]:
+        lineas += [
+            f"### {r['id']}: {r['titulo']}",
+            "",
+            r["accion"],
+            "",
+            r["impacto_cuantificado"],
+            "",
+            f"Horizonte: {r['horizonte']}.",
+            "",
+        ]
+    lineas += [
+        "## Alcance",
+        "",
+        "Resultados históricos agregados, no promesas de impacto. "
+        "El simulador mantiene tasas fijas y usa interpolación explícita para porcentajes "
+        "de altas no precalculados. Las estancias extremas del extracto vigente no se "
+        "eliminan silenciosamente; pueden sesgar el censo. Validar con datos clínicos "
+        "y la nueva extracción depurada antes de decidir dotaciones.",
+        "",
+    ]
+    return "\n".join(lineas)
+
+
+def main() -> None:
+    """Genera el informe únicamente cuando existen los agregados reales requeridos."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.parse_args()
+    requeridos = (
+        "entradas_por_hora",
+        "etapas_entradas_por_hora",
+        "etapas_salidas_por_hora",
+        "duracion_etapas_diaria",
+        "duracion_etapas_percentiles",
+        "transiciones_etapas",
+    )
+    if not all((config.RAW_DIR / f"{n}.parquet").exists() for n in requeridos):
+        parser.error("Faltan agregados reales en data/raw; no se genera un informe ficticio.")
+    base = construir_resumen_optimizacion()
+    ruta = config.ROOT_DIR / "docs/resultados/optimizacion.md"
+    ruta.write_text(reporte_markdown(base), encoding="utf-8")
+    print(f"Informe real generado: {ruta}")
+
+
+if __name__ == "__main__":
+    main()
