@@ -1,0 +1,379 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.8.0/schema.json",
+  "name": "metodologiav03",
+  "position": {
+    "x": 645,
+    "y": 70,
+    "z": 3,
+    "height": 640,
+    "width": 625,
+    "tabOrder": 3
+  },
+  "visual": {
+    "visualType": "textbox",
+    "objects": {
+      "general": [
+        {
+          "properties": {
+            "paragraphs": [
+              {
+                "textRuns": [
+                  {
+                    "value": "Glosario de indicadores",
+                    "textStyle": {
+                      "fontSize": "11.5pt",
+                      "color": "#1F4E79",
+                      "fontFamily": "Segoe UI",
+                      "fontWeight": "bold"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "• Censo:",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI",
+                      "fontWeight": "bold"
+                    }
+                  },
+                  {
+                    "value": " pacientes presentes en el área en una hora dada.",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "• Umbral preventivo (p75) / crítico (p90):",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI",
+                      "fontWeight": "bold"
+                    }
+                  },
+                  {
+                    "value": " censo que solo se supera el 25 % / 10 % de las horas históricas.",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "• Índice de saturación:",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI",
+                      "fontWeight": "bold"
+                    }
+                  },
+                  {
+                    "value": " censo promedio ÷ umbral crítico. 100 % = estar en el p90 todo el tiempo.",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "• % horas en alerta:",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI",
+                      "fontWeight": "bold"
+                    }
+                  },
+                  {
+                    "value": " horas en amarillo o rojo sobre el total de horas observadas.",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "• Días con alerta roja:",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI",
+                      "fontWeight": "bold"
+                    }
+                  },
+                  {
+                    "value": " días con al menos una hora por encima del p90.",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "• Duración p90:",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI",
+                      "fontWeight": "bold"
+                    }
+                  },
+                  {
+                    "value": " tiempo en la etapa que supera solo el 10 % de los pacientes.",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "• Espera entre etapas:",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI",
+                      "fontWeight": "bold"
+                    }
+                  },
+                  {
+                    "value": " tiempo entre salir de un área y entrar a la siguiente.",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "• Puntaje cuello de botella:",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI",
+                      "fontWeight": "bold"
+                    }
+                  },
+                  {
+                    "value": " 0-100 = 50 % saturación + 30 % horas en alerta + 20 % alargamiento de la estancia.",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": ""
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "Limitaciones",
+                    "textStyle": {
+                      "fontSize": "11.5pt",
+                      "color": "#1F4E79",
+                      "fontFamily": "Segoe UI",
+                      "fontWeight": "bold"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "De mayo a agosto de 2026 la extracción viene incompleta; por eso se excluye (parámetro FechaCorte).",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "Los nombres de las áreas son traducciones de los conceptos OMOP de visita.",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "Rehabilitación ambulatoria no registra hora de salida, por eso no tiene censo ni duración.",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": ""
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "Cómo actualizar",
+                    "textStyle": {
+                      "fontSize": "11.5pt",
+                      "color": "#1F4E79",
+                      "fontFamily": "Segoe UI",
+                      "fontWeight": "bold"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "Correr la extracción y preparar_modelo.py; en Power BI, Inicio → Actualizar.",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": ""
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "visualContainerObjects": {
+      "background": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#FFFFFF'"
+                    }
+                  }
+                }
+              }
+            },
+            "transparency": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "border": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#E4E7EB'"
+                    }
+                  }
+                }
+              }
+            },
+            "radius": {
+              "expr": {
+                "Literal": {
+                  "Value": "6D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

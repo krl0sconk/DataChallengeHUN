@@ -1,0 +1,100 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.8.0/schema.json",
+  "name": "demandav12",
+  "position": {
+    "x": 676,
+    "y": 230,
+    "z": 12,
+    "height": 226,
+    "width": 264,
+    "tabOrder": 12
+  },
+  "visual": {
+    "visualType": "clusteredColumnChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_llegadas_perfil"
+                    }
+                  },
+                  "Property": "grupo_edad"
+                }
+              },
+              "queryRef": "fact_llegadas_perfil.grupo_edad",
+              "nativeQueryRef": "grupo_edad",
+              "displayName": "Edad",
+              "active": true
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Medidas"
+                    }
+                  },
+                  "Property": "Visitas (perfil)"
+                }
+              },
+              "queryRef": "_Medidas.Visitas (perfil)",
+              "nativeQueryRef": "Visitas (perfil)",
+              "displayName": "Pacientes"
+            }
+          ]
+        },
+        "Series": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_sexo"
+                    }
+                  },
+                  "Property": "sexo"
+                }
+              },
+              "queryRef": "dim_sexo.sexo",
+              "nativeQueryRef": "sexo",
+              "displayName": "Sexo"
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Pacientes por grupo de edad y sexo'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

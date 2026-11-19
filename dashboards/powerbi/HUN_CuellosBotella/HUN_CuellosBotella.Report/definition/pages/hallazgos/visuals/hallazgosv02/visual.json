@@ -1,0 +1,241 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.8.0/schema.json",
+  "name": "hallazgosv02",
+  "position": {
+    "x": 10,
+    "y": 70,
+    "z": 2,
+    "height": 410,
+    "width": 625,
+    "tabOrder": 2
+  },
+  "visual": {
+    "visualType": "textbox",
+    "objects": {
+      "general": [
+        {
+          "properties": {
+            "paragraphs": [
+              {
+                "textRuns": [
+                  {
+                    "value": "Hallazgos",
+                    "textStyle": {
+                      "fontSize": "13pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI",
+                      "fontWeight": "bold"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "1. Hospitalización es el principal cuello de botella (puntaje 52/100).",
+                    "textStyle": {
+                      "fontSize": "10.5pt",
+                      "color": "#1F4E79",
+                      "fontFamily": "Segoe UI",
+                      "fontWeight": "bold"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "Opera en promedio al 91 % de su umbral crítico y su estancia p90 ronda 186 h (7,7 días).",
+                    "textStyle": {
+                      "fontSize": "9.5pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "2. La congestión se multiplicó desde 2023.",
+                    "textStyle": {
+                      "fontSize": "10.5pt",
+                      "color": "#1F4E79",
+                      "fontFamily": "Segoe UI",
+                      "fontWeight": "bold"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "Horas en alerta en Hospitalización: 3 % (2023) → 22 % (2024) → 50 % (2025). En Urgencias · atención: 16 % → 23 % → 40 %. En 2026 sigue alta (37 % y 27 %).",
+                    "textStyle": {
+                      "fontSize": "9.5pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "3. No llegan muchos más pacientes: los pacientes se quedan más tiempo.",
+                    "textStyle": {
+                      "fontSize": "10.5pt",
+                      "color": "#1F4E79",
+                      "fontFamily": "Segoe UI",
+                      "fontWeight": "bold"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "Llegadas por día: 1.187 (2023), 1.178 (2024), 1.240 (2025). En cambio, la estancia p90 de Hospitalización pasó de 171 h a 207 h y la de Urgencias · atención de 11 h a 17 h.",
+                    "textStyle": {
+                      "fontSize": "9.5pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "4. La espera de cama desde urgencias es el paso más lento del flujo.",
+                    "textStyle": {
+                      "fontSize": "10.5pt",
+                      "color": "#1F4E79",
+                      "fontFamily": "Segoe UI",
+                      "fontWeight": "bold"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "El 10 % de los pacientes que suben de urgencias a hospitalización espera más de 26 horas.",
+                    "textStyle": {
+                      "fontSize": "9.5pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "5. La saturación es predecible.",
+                    "textStyle": {
+                      "fontSize": "10.5pt",
+                      "color": "#1F4E79",
+                      "fontFamily": "Segoe UI",
+                      "fontWeight": "bold"
+                    }
+                  }
+                ]
+              },
+              {
+                "textRuns": [
+                  {
+                    "value": "Se concentra entre semana de 10:00 a 17:00 (pico el martes por la tarde), unas horas después del pico de llegadas de las 9:00.",
+                    "textStyle": {
+                      "fontSize": "9.5pt",
+                      "color": "#1F2933",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "visualContainerObjects": {
+      "background": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#FFFFFF'"
+                    }
+                  }
+                }
+              }
+            },
+            "transparency": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "border": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#E4E7EB'"
+                    }
+                  }
+                }
+              }
+            },
+            "radius": {
+              "expr": {
+                "Literal": {
+                  "Value": "6D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

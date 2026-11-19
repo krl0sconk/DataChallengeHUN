@@ -1,0 +1,138 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.8.0/schema.json",
+  "name": "esperasv09",
+  "position": {
+    "x": 10,
+    "y": 230,
+    "z": 9,
+    "height": 226,
+    "width": 470,
+    "tabOrder": 9
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_etapa"
+                    }
+                  },
+                  "Property": "etapa"
+                }
+              },
+              "queryRef": "dim_etapa.etapa",
+              "nativeQueryRef": "etapa",
+              "displayName": "Área"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "fact_transiciones"
+                    }
+                  },
+                  "Property": "etapa_siguiente"
+                }
+              },
+              "queryRef": "fact_transiciones.etapa_siguiente",
+              "nativeQueryRef": "etapa_siguiente",
+              "displayName": "Pasa a"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Medidas"
+                    }
+                  },
+                  "Property": "Pasos entre etapas"
+                }
+              },
+              "queryRef": "_Medidas.Pasos entre etapas",
+              "nativeQueryRef": "Pasos entre etapas"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Medidas"
+                    }
+                  },
+                  "Property": "Espera p50 entre etapas (h)"
+                }
+              },
+              "queryRef": "_Medidas.Espera p50 entre etapas (h)",
+              "nativeQueryRef": "Espera p50 entre etapas (h)",
+              "displayName": "Espera típica (h)"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Medidas"
+                    }
+                  },
+                  "Property": "Espera p90 entre etapas (h)"
+                }
+              },
+              "queryRef": "_Medidas.Espera p90 entre etapas (h)",
+              "nativeQueryRef": "Espera p90 entre etapas (h)",
+              "displayName": "Espera de los más demorados (h)"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "_Medidas"
+                  }
+                },
+                "Property": "Pasos entre etapas"
+              }
+            },
+            "direction": "Descending"
+          }
+        ],
+        "isDefaultSort": false
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'De qué área a qué área pasan los pacientes'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

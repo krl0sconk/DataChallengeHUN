@@ -1,0 +1,1251 @@
+{
+  "name": "HUN_CuellosBotella",
+  "compatibilityLevel": 1567,
+  "model": {
+    "culture": "es-ES",
+    "defaultPowerBIDataSourceVersion": "powerBI_V3",
+    "sourceQueryCulture": "es-CO",
+    "dataAccessOptions": {
+      "legacyRedirects": true,
+      "returnErrorValuesAsNull": true
+    },
+    "tables": [
+      {
+        "name": "_Medidas",
+        "columns": [
+          {
+            "name": "Columna",
+            "dataType": "string",
+            "isHidden": true,
+            "type": "calculatedTableColumn",
+            "sourceColumn": "[Columna]"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "_Medidas",
+            "mode": "import",
+            "source": {
+              "type": "calculated",
+              "expression": "ROW(\"Columna\", BLANK())"
+            }
+          }
+        ],
+        "measures": [
+          {
+            "name": "Censo promedio",
+            "expression": [
+              "CALCULATE(AVERAGE(fact_censo_etapa_hora[censo]), fact_censo_etapa_hora[p90] > 0, fact_censo_etapa_hora[etapa_id] <> 9203)"
+            ],
+            "displayFolder": "1 Censo y saturación",
+            "formatString": "#,0.0"
+          },
+          {
+            "name": "Censo máximo",
+            "expression": [
+              "CALCULATE(MAX(fact_censo_etapa_hora[censo]), fact_censo_etapa_hora[p90] > 0, fact_censo_etapa_hora[etapa_id] <> 9203)"
+            ],
+            "displayFolder": "1 Censo y saturación",
+            "formatString": "#,0"
+          },
+          {
+            "name": "Censo p90",
+            "expression": [
+              "CALCULATE(PERCENTILE.INC(fact_censo_etapa_hora[censo], 0.9), fact_censo_etapa_hora[p90] > 0, fact_censo_etapa_hora[etapa_id] <> 9203)"
+            ],
+            "displayFolder": "1 Censo y saturación",
+            "formatString": "#,0.0"
+          },
+          {
+            "name": "Umbral preventivo (p75)",
+            "expression": [
+              "CALCULATE(MAX(fact_censo_etapa_hora[p75]), fact_censo_etapa_hora[p90] > 0, fact_censo_etapa_hora[etapa_id] <> 9203)"
+            ],
+            "displayFolder": "1 Censo y saturación",
+            "formatString": "#,0"
+          },
+          {
+            "name": "Umbral crítico (p90)",
+            "expression": [
+              "CALCULATE(MAX(fact_censo_etapa_hora[p90]), fact_censo_etapa_hora[p90] > 0, fact_censo_etapa_hora[etapa_id] <> 9203)"
+            ],
+            "displayFolder": "1 Censo y saturación",
+            "formatString": "#,0"
+          },
+          {
+            "name": "Censo última hora",
+            "expression": [
+              "VAR u = CALCULATE(MAX(fact_censo_etapa_hora[fecha_hora]), ALLSELECTED(dim_fecha), ALLSELECTED(dim_hora))",
+              "RETURN CALCULATE(SUM(fact_censo_etapa_hora[censo]), fact_censo_etapa_hora[fecha_hora] = u, ALLSELECTED(dim_fecha), ALLSELECTED(dim_hora))"
+            ],
+            "displayFolder": "1 Censo y saturación",
+            "formatString": "#,0"
+          },
+          {
+            "name": "Índice de saturación",
+            "expression": [
+              "DIVIDE(SUMX(VALUES(dim_etapa[etapa]), [Censo promedio]), SUMX(VALUES(dim_etapa[etapa]), [Umbral crítico (p90)]))"
+            ],
+            "displayFolder": "1 Censo y saturación",
+            "formatString": "0.0%",
+            "description": "Censo promedio / umbral crítico p90. >100 % = el área está sobre su p90 histórico."
+          },
+          {
+            "name": "Horas observadas",
+            "expression": [
+              "CALCULATE(COUNTROWS(fact_censo_etapa_hora), fact_censo_etapa_hora[p90] > 0, fact_censo_etapa_hora[etapa_id] <> 9203)"
+            ],
+            "displayFolder": "1 Censo y saturación",
+            "formatString": "#,0"
+          },
+          {
+            "name": "Horas en rojo",
+            "expression": [
+              "CALCULATE(COUNTROWS(fact_censo_etapa_hora), fact_censo_etapa_hora[semaforo] = \"3 Rojo\", fact_censo_etapa_hora[p90] > 0, fact_censo_etapa_hora[etapa_id] <> 9203)"
+            ],
+            "displayFolder": "1 Censo y saturación",
+            "formatString": "#,0"
+          },
+          {
+            "name": "Horas en amarillo",
+            "expression": [
+              "CALCULATE(COUNTROWS(fact_censo_etapa_hora), fact_censo_etapa_hora[semaforo] = \"2 Amarillo\", fact_censo_etapa_hora[p90] > 0, fact_censo_etapa_hora[etapa_id] <> 9203)"
+            ],
+            "displayFolder": "1 Censo y saturación",
+            "formatString": "#,0"
+          },
+          {
+            "name": "% horas en rojo",
+            "expression": [
+              "DIVIDE([Horas en rojo], [Horas observadas])"
+            ],
+            "displayFolder": "1 Censo y saturación",
+            "formatString": "0.0%"
+          },
+          {
+            "name": "% horas en alerta",
+            "expression": [
+              "DIVIDE([Horas en rojo] + [Horas en amarillo], [Horas observadas])"
+            ],
+            "displayFolder": "1 Censo y saturación",
+            "formatString": "0.0%"
+          },
+          {
+            "name": "Días con alerta roja",
+            "expression": [
+              "COUNTROWS(FILTER(VALUES(fact_censo_etapa_hora[fecha]), CALCULATE(COUNTROWS(fact_censo_etapa_hora), fact_censo_etapa_hora[semaforo] = \"3 Rojo\") > 0))"
+            ],
+            "displayFolder": "1 Censo y saturación",
+            "formatString": "#,0"
+          },
+          {
+            "name": "% días con alerta roja",
+            "expression": [
+              "DIVIDE([Días con alerta roja], DISTINCTCOUNT(fact_censo_etapa_hora[fecha]))"
+            ],
+            "displayFolder": "1 Censo y saturación",
+            "formatString": "0.0%"
+          },
+          {
+            "name": "Horas en rojo por día",
+            "expression": [
+              "DIVIDE([Horas en rojo], DISTINCTCOUNT(fact_censo_etapa_hora[fecha]))"
+            ],
+            "displayFolder": "1 Censo y saturación",
+            "formatString": "#,0.0"
+          },
+          {
+            "name": "Estado semáforo",
+            "expression": [
+              "SWITCH(TRUE(), ISBLANK([Horas observadas]), BLANK(), [% horas en rojo] > 0.10, \"Rojo · peor que su historia\", [% horas en alerta] > 0.25, \"Amarillo · en vigilancia\", \"Verde · normal\")"
+            ],
+            "displayFolder": "1 Censo y saturación"
+          },
+          {
+            "name": "Color semáforo",
+            "expression": [
+              "SWITCH(TRUE(), ISBLANK([Horas observadas]), BLANK(), [% horas en rojo] > 0.10, \"#D64550\", [% horas en alerta] > 0.25, \"#F2B134\", \"#2E9E6A\")"
+            ],
+            "displayFolder": "1 Censo y saturación",
+            "isHidden": true
+          },
+          {
+            "name": "Entradas a etapa",
+            "expression": [
+              "SUM(fact_censo_etapa_hora[entradas])"
+            ],
+            "displayFolder": "1 Censo y saturación",
+            "formatString": "#,0"
+          },
+          {
+            "name": "Salidas de etapa",
+            "expression": [
+              "SUM(fact_censo_etapa_hora[salidas])"
+            ],
+            "displayFolder": "1 Censo y saturación",
+            "formatString": "#,0"
+          },
+          {
+            "name": "Flujo neto",
+            "expression": [
+              "[Entradas a etapa] - [Salidas de etapa]"
+            ],
+            "displayFolder": "1 Censo y saturación",
+            "formatString": "#,0"
+          },
+          {
+            "name": "Llegadas",
+            "expression": [
+              "SUM(fact_llegadas_hora[llegadas])"
+            ],
+            "displayFolder": "2 Demanda",
+            "formatString": "#,0"
+          },
+          {
+            "name": "Llegadas por día",
+            "expression": [
+              "DIVIDE([Llegadas], COUNTROWS(dim_fecha))"
+            ],
+            "displayFolder": "2 Demanda",
+            "formatString": "#,0.0"
+          },
+          {
+            "name": "Llegadas promedio por hora",
+            "expression": [
+              "DIVIDE([Llegadas], COUNTROWS(dim_fecha) * COUNTROWS(dim_hora))"
+            ],
+            "displayFolder": "2 Demanda",
+            "formatString": "#,0"
+          },
+          {
+            "name": "Llegadas año anterior",
+            "expression": [
+              "CALCULATE([Llegadas], SAMEPERIODLASTYEAR(dim_fecha[fecha]))"
+            ],
+            "displayFolder": "2 Demanda",
+            "formatString": "#,0"
+          },
+          {
+            "name": "Var. % interanual",
+            "expression": [
+              "DIVIDE([Llegadas] - [Llegadas año anterior], [Llegadas año anterior])"
+            ],
+            "displayFolder": "2 Demanda",
+            "formatString": "0.0%"
+          },
+          {
+            "name": "Llegadas 7 días (media móvil)",
+            "expression": [
+              "AVERAGEX(DATESINPERIOD(dim_fecha[fecha], MAX(dim_fecha[fecha]), -7, DAY), [Llegadas])"
+            ],
+            "displayFolder": "2 Demanda",
+            "formatString": "#,0.0"
+          },
+          {
+            "name": "Visitas (perfil)",
+            "expression": [
+              "SUM(fact_llegadas_perfil[visitas])"
+            ],
+            "displayFolder": "2 Demanda",
+            "formatString": "#,0"
+          },
+          {
+            "name": "% visitas 65+",
+            "expression": [
+              "DIVIDE(CALCULATE([Visitas (perfil)], fact_llegadas_perfil[grupo_edad] = \"65+\"), [Visitas (perfil)])"
+            ],
+            "displayFolder": "2 Demanda",
+            "formatString": "0.0%"
+          },
+          {
+            "name": "Etapas atendidas",
+            "expression": [
+              "SUM(fact_duracion_diaria[etapas])"
+            ],
+            "displayFolder": "3 Duración y espera",
+            "formatString": "#,0"
+          },
+          {
+            "name": "Duración media (h)",
+            "expression": [
+              "DIVIDE(SUM(fact_duracion_diaria[horas_total]), SUM(fact_duracion_diaria[etapas]))"
+            ],
+            "displayFolder": "3 Duración y espera",
+            "formatString": "#,0.0"
+          },
+          {
+            "name": "Duración p50 (h)",
+            "expression": [
+              "DIVIDE(SUMX(fact_duracion_diaria, fact_duracion_diaria[horas_p50] * fact_duracion_diaria[etapas]), SUM(fact_duracion_diaria[etapas]))"
+            ],
+            "displayFolder": "3 Duración y espera",
+            "formatString": "#,0.0"
+          },
+          {
+            "name": "Duración p90 (h)",
+            "expression": [
+              "DIVIDE(SUMX(fact_duracion_diaria, fact_duracion_diaria[horas_p90] * fact_duracion_diaria[etapas]), SUM(fact_duracion_diaria[etapas]))"
+            ],
+            "displayFolder": "3 Duración y espera",
+            "formatString": "#,0.0",
+            "description": "Promedio ponderado por volumen de los p90 diarios (aproximación del p90 del periodo)."
+          },
+          {
+            "name": "Duración p90 por franja (h)",
+            "expression": [
+              "DIVIDE(SUMX(fact_duracion_franja, fact_duracion_franja[horas_p90] * fact_duracion_franja[etapas]), SUM(fact_duracion_franja[etapas]))"
+            ],
+            "displayFolder": "3 Duración y espera",
+            "formatString": "#,0.0"
+          },
+          {
+            "name": "Duración p90 histórica (h)",
+            "expression": [
+              "MAX(dim_etapa[horas_p90])"
+            ],
+            "displayFolder": "3 Duración y espera",
+            "formatString": "#,0.0"
+          },
+          {
+            "name": "Pasos entre etapas",
+            "expression": [
+              "SUM(fact_transiciones[pasos])"
+            ],
+            "displayFolder": "3 Duración y espera",
+            "formatString": "#,0"
+          },
+          {
+            "name": "Espera p90 entre etapas (h)",
+            "expression": [
+              "VAR t = FILTER(fact_transiciones, NOT ISBLANK(fact_transiciones[espera_h_p90]) && fact_transiciones[etapa_siguiente_id] <> -1 && fact_transiciones[etapa_id] <> 581479 && fact_transiciones[etapa_siguiente_id] <> 581479 && fact_transiciones[etapa_siguiente_id] <> 9203)",
+              "RETURN DIVIDE(SUMX(t, fact_transiciones[espera_h_p90] * fact_transiciones[pasos]), SUMX(t, fact_transiciones[pasos]))"
+            ],
+            "displayFolder": "3 Duración y espera",
+            "formatString": "#,0.00",
+            "description": "Promedio ponderado por pasos del p90 mensual de espera entre etapas."
+          },
+          {
+            "name": "Espera p50 entre etapas (h)",
+            "expression": [
+              "VAR t = FILTER(fact_transiciones, NOT ISBLANK(fact_transiciones[espera_h_p50]) && fact_transiciones[etapa_siguiente_id] <> -1 && fact_transiciones[etapa_id] <> 581479 && fact_transiciones[etapa_siguiente_id] <> 581479 && fact_transiciones[etapa_siguiente_id] <> 9203)",
+              "RETURN DIVIDE(SUMX(t, fact_transiciones[espera_h_p50] * fact_transiciones[pasos]), SUMX(t, fact_transiciones[pasos]))"
+            ],
+            "displayFolder": "3 Duración y espera",
+            "formatString": "#,0.00"
+          },
+          {
+            "name": "% pasos solapados",
+            "expression": [
+              "DIVIDE(SUM(fact_transiciones[solapadas]), [Pasos entre etapas])"
+            ],
+            "displayFolder": "3 Duración y espera",
+            "formatString": "0.0%"
+          },
+          {
+            "name": "_Puntaje base",
+            "expression": [
+              "VAR s = [Índice de saturación]",
+              "VAR sat = MIN(s, 1.5) / 1.5",
+              "VAR alerta = [% horas en alerta]",
+              "VAR dur = DIVIDE([Duración p90 (h)], [Duración p90 histórica (h)])",
+              "RETURN IF(ISBLANK(s), BLANK(), 100 * (0.5 * sat + 0.3 * alerta + 0.2 * MIN(COALESCE(dur, 0), 1.5) / 1.5))"
+            ],
+            "displayFolder": "4 Cuello de botella",
+            "formatString": "#,0",
+            "isHidden": true
+          },
+          {
+            "name": "Puntaje cuello de botella",
+            "expression": [
+              "IF(HASONEVALUE(dim_etapa[etapa]), [_Puntaje base], MAXX(VALUES(dim_etapa[etapa]), [_Puntaje base]))"
+            ],
+            "displayFolder": "4 Cuello de botella",
+            "formatString": "#,0",
+            "description": "0-100. 50 % saturación vs p90, 30 % horas en alerta, 20 % duración p90 vs su histórico."
+          },
+          {
+            "name": "Área más crítica",
+            "expression": [
+              "VAR t = TOPN(1, FILTER(VALUES(dim_etapa[etapa]), NOT ISBLANK([_Puntaje base])), [_Puntaje base], DESC)",
+              "RETURN CONCATENATEX(t, dim_etapa[etapa], \", \")"
+            ],
+            "displayFolder": "4 Cuello de botella"
+          },
+          {
+            "name": "Hora pico de llegadas",
+            "expression": [
+              "VAR t = TOPN(1, VALUES(dim_hora[hora]), [Llegadas], DESC)",
+              "RETURN CONCATENATEX(t, FORMAT(dim_hora[hora], \"00\") & \":00 h\", \", \")"
+            ],
+            "displayFolder": "2 Demanda"
+          },
+          {
+            "name": "Crecimiento 2025 vs 2024",
+            "expression": [
+              "VAR a = CALCULATE([Llegadas por día], REMOVEFILTERS(dim_fecha), dim_fecha[anio] = 2025)",
+              "VAR b = CALCULATE([Llegadas por día], REMOVEFILTERS(dim_fecha), dim_fecha[anio] = 2024)",
+              "RETURN DIVIDE(a - b, b)"
+            ],
+            "displayFolder": "2 Demanda",
+            "formatString": "+0.0%;-0.0%;0.0%"
+          }
+        ]
+      },
+      {
+        "name": "dim_etapa",
+        "columns": [
+          {
+            "name": "etapa_id",
+            "dataType": "int64",
+            "sourceColumn": "etapa_id",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "etapas",
+            "dataType": "int64",
+            "sourceColumn": "etapas",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "horas_p50",
+            "dataType": "double",
+            "sourceColumn": "horas_p50",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "horas_p90",
+            "dataType": "double",
+            "sourceColumn": "horas_p90",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "horas_p99",
+            "dataType": "double",
+            "sourceColumn": "horas_p99",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "horas_p999",
+            "dataType": "double",
+            "sourceColumn": "horas_p999",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "horas_max",
+            "dataType": "double",
+            "sourceColumn": "horas_max",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "censo_p50",
+            "dataType": "double",
+            "sourceColumn": "censo_p50",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "censo_p75",
+            "dataType": "double",
+            "sourceColumn": "censo_p75",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "censo_p90",
+            "dataType": "double",
+            "sourceColumn": "censo_p90",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "censo_max",
+            "dataType": "double",
+            "sourceColumn": "censo_max",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "etapa",
+            "dataType": "string",
+            "sourceColumn": "etapa"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "dim_etapa",
+            "mode": "import",
+            "source": {
+              "type": "m",
+              "expression": [
+                "let",
+                "    Origen = Parquet.Document(File.Contents(RutaDatos & \"dim_etapa.parquet\")),",
+                "    Nombres = [#\"Inpatient Visit\" = \"Hospitalización\", #\"Emergency Room Visit\" = \"Urgencias · admisión\", #\"Treatment urgency {Diagnosis}\" = \"Urgencias · atención\", #\"Ambulatory Rehabilitation Visit\" = \"Rehabilitación ambulatoria\", #\"No matching concept\" = \"Sin clasificar\"],",
+                "    Traducido = Table.TransformColumns(Origen, {{\"etapa\", each Record.FieldOrDefault(Nombres, _, _), type text}})",
+                "in",
+                "    Traducido"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "dim_fecha",
+        "columns": [
+          {
+            "name": "fecha",
+            "dataType": "dateTime",
+            "sourceColumn": "fecha",
+            "formatString": "dd/mm/yyyy",
+            "isKey": true
+          },
+          {
+            "name": "anio",
+            "dataType": "int64",
+            "sourceColumn": "anio",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "mes_num",
+            "dataType": "int64",
+            "sourceColumn": "mes_num",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "mes",
+            "dataType": "string",
+            "sourceColumn": "mes",
+            "sortByColumn": "mes_num"
+          },
+          {
+            "name": "anio_mes",
+            "dataType": "string",
+            "sourceColumn": "anio_mes"
+          },
+          {
+            "name": "trimestre",
+            "dataType": "string",
+            "sourceColumn": "trimestre"
+          },
+          {
+            "name": "dia_semana_num",
+            "dataType": "int64",
+            "sourceColumn": "dia_semana_num",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "dia_semana",
+            "dataType": "string",
+            "sourceColumn": "dia_semana",
+            "sortByColumn": "dia_semana_num"
+          },
+          {
+            "name": "es_fin_de_semana",
+            "dataType": "boolean",
+            "sourceColumn": "es_fin_de_semana"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "dim_fecha",
+            "mode": "import",
+            "source": {
+              "type": "m",
+              "expression": [
+                "let",
+                "    Origen = Parquet.Document(File.Contents(RutaDatos & \"dim_fecha.parquet\")),",
+                "    Recortado = Table.SelectRows(Origen, each Date.From([fecha]) <= FechaCorte)",
+                "in",
+                "    Recortado"
+              ]
+            }
+          }
+        ],
+        "dataCategory": "Time"
+      },
+      {
+        "name": "dim_hora",
+        "columns": [
+          {
+            "name": "hora",
+            "dataType": "int64",
+            "sourceColumn": "hora",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "hora_texto",
+            "dataType": "string",
+            "sourceColumn": "hora_texto"
+          },
+          {
+            "name": "franja",
+            "dataType": "string",
+            "sourceColumn": "franja"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "dim_hora",
+            "mode": "import",
+            "source": {
+              "type": "m",
+              "expression": [
+                "let",
+                "    Origen = Parquet.Document(File.Contents(RutaDatos & \"dim_hora.parquet\"))",
+                "in",
+                "    Origen"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "dim_servicio",
+        "columns": [
+          {
+            "name": "servicio_id",
+            "dataType": "int64",
+            "sourceColumn": "servicio_id",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "servicio",
+            "dataType": "string",
+            "sourceColumn": "servicio"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "dim_servicio",
+            "mode": "import",
+            "source": {
+              "type": "m",
+              "expression": [
+                "let",
+                "    Origen = Parquet.Document(File.Contents(RutaDatos & \"dim_servicio.parquet\")),",
+                "    Nombres = [#\"Inpatient Visit\" = \"Hospitalización\", #\"Emergency Room Visit\" = \"Urgencias · admisión\", #\"Treatment urgency {Diagnosis}\" = \"Urgencias · atención\", #\"Ambulatory Rehabilitation Visit\" = \"Rehabilitación ambulatoria\", #\"No matching concept\" = \"Sin clasificar\"],",
+                "    Traducido = Table.TransformColumns(Origen, {{\"servicio\", each Record.FieldOrDefault(Nombres, _, _), type text}})",
+                "in",
+                "    Traducido"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "dim_sexo",
+        "columns": [
+          {
+            "name": "sexo_id",
+            "dataType": "int64",
+            "sourceColumn": "sexo_id",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "sexo",
+            "dataType": "string",
+            "sourceColumn": "sexo"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "dim_sexo",
+            "mode": "import",
+            "source": {
+              "type": "m",
+              "expression": [
+                "let",
+                "    Origen = Parquet.Document(File.Contents(RutaDatos & \"dim_sexo.parquet\"))",
+                "in",
+                "    Origen"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "fact_censo_etapa_hora",
+        "columns": [
+          {
+            "name": "fecha_hora",
+            "dataType": "dateTime",
+            "sourceColumn": "fecha_hora",
+            "formatString": "dd/mm/yyyy hh:mm"
+          },
+          {
+            "name": "fecha",
+            "dataType": "dateTime",
+            "sourceColumn": "fecha",
+            "formatString": "dd/mm/yyyy",
+            "isHidden": true
+          },
+          {
+            "name": "hora",
+            "dataType": "int64",
+            "sourceColumn": "hora",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "etapa_id",
+            "dataType": "int64",
+            "sourceColumn": "etapa_id",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "entradas",
+            "dataType": "double",
+            "sourceColumn": "entradas",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "salidas",
+            "dataType": "double",
+            "sourceColumn": "salidas",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "censo",
+            "dataType": "int64",
+            "sourceColumn": "censo",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "p75",
+            "dataType": "double",
+            "sourceColumn": "p75",
+            "summarizeBy": "sum",
+            "isHidden": true
+          },
+          {
+            "name": "p90",
+            "dataType": "double",
+            "sourceColumn": "p90",
+            "summarizeBy": "sum",
+            "isHidden": true
+          },
+          {
+            "name": "semaforo",
+            "dataType": "string",
+            "sourceColumn": "semaforo"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "fact_censo_etapa_hora",
+            "mode": "import",
+            "source": {
+              "type": "m",
+              "expression": [
+                "let",
+                "    Origen = Parquet.Document(File.Contents(RutaDatos & \"fact_censo_etapa_hora.parquet\")),",
+                "    Recortado = Table.SelectRows(Origen, each Date.From([fecha]) <= FechaCorte)",
+                "in",
+                "    Recortado"
+              ]
+            }
+          }
+        ],
+        "isHidden": false
+      },
+      {
+        "name": "fact_duracion_diaria",
+        "columns": [
+          {
+            "name": "fecha",
+            "dataType": "dateTime",
+            "sourceColumn": "fecha",
+            "formatString": "dd/mm/yyyy",
+            "isHidden": true
+          },
+          {
+            "name": "etapa_id",
+            "dataType": "int64",
+            "sourceColumn": "etapa_id",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "servicio_id",
+            "dataType": "int64",
+            "sourceColumn": "servicio_id",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "etapas",
+            "dataType": "int64",
+            "sourceColumn": "etapas",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "horas_media",
+            "dataType": "double",
+            "sourceColumn": "horas_media",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "horas_p50",
+            "dataType": "double",
+            "sourceColumn": "horas_p50",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "horas_p90",
+            "dataType": "double",
+            "sourceColumn": "horas_p90",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "horas_total",
+            "dataType": "double",
+            "sourceColumn": "horas_total",
+            "summarizeBy": "sum",
+            "isHidden": true
+          }
+        ],
+        "partitions": [
+          {
+            "name": "fact_duracion_diaria",
+            "mode": "import",
+            "source": {
+              "type": "m",
+              "expression": [
+                "let",
+                "    Origen = Parquet.Document(File.Contents(RutaDatos & \"fact_duracion_diaria.parquet\")),",
+                "    SinRehab = Table.SelectRows(Origen, each [etapa_id] <> 581479),",
+                "    Recortado = Table.SelectRows(SinRehab, each Date.From([fecha]) <= FechaCorte)",
+                "in",
+                "    Recortado"
+              ]
+            }
+          }
+        ],
+        "isHidden": false
+      },
+      {
+        "name": "fact_duracion_franja",
+        "columns": [
+          {
+            "name": "etapa_id",
+            "dataType": "int64",
+            "sourceColumn": "etapa_id",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "servicio_id",
+            "dataType": "int64",
+            "sourceColumn": "servicio_id",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "dia_semana",
+            "dataType": "int64",
+            "sourceColumn": "dia_semana",
+            "summarizeBy": "none"
+          },
+          {
+            "name": "hora",
+            "dataType": "int64",
+            "sourceColumn": "hora",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "etapas",
+            "dataType": "int64",
+            "sourceColumn": "etapas",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "horas_p50",
+            "dataType": "double",
+            "sourceColumn": "horas_p50",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "horas_p90",
+            "dataType": "double",
+            "sourceColumn": "horas_p90",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "dia_nombre",
+            "dataType": "string",
+            "sourceColumn": "dia_nombre"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "fact_duracion_franja",
+            "mode": "import",
+            "source": {
+              "type": "m",
+              "expression": [
+                "let",
+                "    Origen = Parquet.Document(File.Contents(RutaDatos & \"fact_duracion_franja.parquet\")),",
+                "    SinRehab = Table.SelectRows(Origen, each [etapa_id] <> 581479)",
+                "in",
+                "    SinRehab"
+              ]
+            }
+          }
+        ],
+        "isHidden": false
+      },
+      {
+        "name": "fact_llegadas_hora",
+        "columns": [
+          {
+            "name": "fecha_hora",
+            "dataType": "dateTime",
+            "sourceColumn": "fecha_hora",
+            "formatString": "dd/mm/yyyy hh:mm"
+          },
+          {
+            "name": "fecha",
+            "dataType": "dateTime",
+            "sourceColumn": "fecha",
+            "formatString": "dd/mm/yyyy",
+            "isHidden": true
+          },
+          {
+            "name": "hora",
+            "dataType": "int64",
+            "sourceColumn": "hora",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "servicio_id",
+            "dataType": "int64",
+            "sourceColumn": "servicio_id",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "llegadas",
+            "dataType": "int64",
+            "sourceColumn": "llegadas",
+            "summarizeBy": "sum"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "fact_llegadas_hora",
+            "mode": "import",
+            "source": {
+              "type": "m",
+              "expression": [
+                "let",
+                "    Origen = Parquet.Document(File.Contents(RutaDatos & \"fact_llegadas_hora.parquet\")),",
+                "    Recortado = Table.SelectRows(Origen, each Date.From([fecha]) <= FechaCorte)",
+                "in",
+                "    Recortado"
+              ]
+            }
+          }
+        ],
+        "isHidden": false
+      },
+      {
+        "name": "fact_llegadas_perfil",
+        "columns": [
+          {
+            "name": "fecha",
+            "dataType": "dateTime",
+            "sourceColumn": "fecha",
+            "formatString": "dd/mm/yyyy",
+            "isHidden": true
+          },
+          {
+            "name": "servicio_id",
+            "dataType": "int64",
+            "sourceColumn": "servicio_id",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "sexo_id",
+            "dataType": "int64",
+            "sourceColumn": "sexo_id",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "grupo_edad",
+            "dataType": "string",
+            "sourceColumn": "grupo_edad"
+          },
+          {
+            "name": "visitas",
+            "dataType": "int64",
+            "sourceColumn": "visitas",
+            "summarizeBy": "sum"
+          }
+        ],
+        "partitions": [
+          {
+            "name": "fact_llegadas_perfil",
+            "mode": "import",
+            "source": {
+              "type": "m",
+              "expression": [
+                "let",
+                "    Origen = Parquet.Document(File.Contents(RutaDatos & \"fact_llegadas_perfil.parquet\")),",
+                "    Recortado = Table.SelectRows(Origen, each Date.From([fecha]) <= FechaCorte)",
+                "in",
+                "    Recortado"
+              ]
+            }
+          }
+        ],
+        "isHidden": false
+      },
+      {
+        "name": "fact_transiciones",
+        "columns": [
+          {
+            "name": "mes",
+            "dataType": "dateTime",
+            "sourceColumn": "mes",
+            "formatString": "dd/mm/yyyy",
+            "isHidden": true
+          },
+          {
+            "name": "servicio_id",
+            "dataType": "int64",
+            "sourceColumn": "servicio_id",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "etapa_id",
+            "dataType": "int64",
+            "sourceColumn": "etapa_id",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "etapa_siguiente_id",
+            "dataType": "int64",
+            "sourceColumn": "etapa_siguiente_id",
+            "summarizeBy": "none",
+            "isHidden": true
+          },
+          {
+            "name": "pasos",
+            "dataType": "int64",
+            "sourceColumn": "pasos",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "solapadas",
+            "dataType": "int64",
+            "sourceColumn": "solapadas",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "espera_h_p50",
+            "dataType": "double",
+            "sourceColumn": "espera_h_p50",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "espera_h_p90",
+            "dataType": "double",
+            "sourceColumn": "espera_h_p90",
+            "summarizeBy": "sum"
+          },
+          {
+            "name": "etapa_siguiente",
+            "dataType": "string",
+            "sourceColumn": "etapa_siguiente"
+          },
+          {
+            "name": "espera_h_p90_x_pasos",
+            "dataType": "double",
+            "sourceColumn": "espera_h_p90_x_pasos",
+            "summarizeBy": "sum",
+            "isHidden": true
+          },
+          {
+            "name": "espera_h_p50_x_pasos",
+            "dataType": "double",
+            "sourceColumn": "espera_h_p50_x_pasos",
+            "summarizeBy": "sum",
+            "isHidden": true
+          }
+        ],
+        "partitions": [
+          {
+            "name": "fact_transiciones",
+            "mode": "import",
+            "source": {
+              "type": "m",
+              "expression": [
+                "let",
+                "    Origen = Parquet.Document(File.Contents(RutaDatos & \"fact_transiciones.parquet\")),",
+                "    Nombres = [#\"Inpatient Visit\" = \"Hospitalización\", #\"Emergency Room Visit\" = \"Urgencias · admisión\", #\"Treatment urgency {Diagnosis}\" = \"Urgencias · atención\", #\"Ambulatory Rehabilitation Visit\" = \"Rehabilitación ambulatoria\", #\"No matching concept\" = \"Sin clasificar\"],",
+                "    Traducido = Table.TransformColumns(Origen, {{\"etapa_siguiente\", each Record.FieldOrDefault(Nombres, _, _), type text}}),",
+                "    Recortado = Table.SelectRows(Traducido, each Date.From([mes]) <= FechaCorte)",
+                "in",
+                "    Recortado"
+              ]
+            }
+          }
+        ],
+        "isHidden": false
+      }
+    ],
+    "relationships": [
+      {
+        "name": "fact_censo_etapa_hora_fecha_dim_fecha",
+        "fromTable": "fact_censo_etapa_hora",
+        "fromColumn": "fecha",
+        "toTable": "dim_fecha",
+        "toColumn": "fecha"
+      },
+      {
+        "name": "fact_censo_etapa_hora_hora_dim_hora",
+        "fromTable": "fact_censo_etapa_hora",
+        "fromColumn": "hora",
+        "toTable": "dim_hora",
+        "toColumn": "hora"
+      },
+      {
+        "name": "fact_censo_etapa_hora_etapa_id_dim_etapa",
+        "fromTable": "fact_censo_etapa_hora",
+        "fromColumn": "etapa_id",
+        "toTable": "dim_etapa",
+        "toColumn": "etapa_id"
+      },
+      {
+        "name": "fact_llegadas_hora_fecha_dim_fecha",
+        "fromTable": "fact_llegadas_hora",
+        "fromColumn": "fecha",
+        "toTable": "dim_fecha",
+        "toColumn": "fecha"
+      },
+      {
+        "name": "fact_llegadas_hora_hora_dim_hora",
+        "fromTable": "fact_llegadas_hora",
+        "fromColumn": "hora",
+        "toTable": "dim_hora",
+        "toColumn": "hora"
+      },
+      {
+        "name": "fact_llegadas_hora_servicio_id_dim_servicio",
+        "fromTable": "fact_llegadas_hora",
+        "fromColumn": "servicio_id",
+        "toTable": "dim_servicio",
+        "toColumn": "servicio_id"
+      },
+      {
+        "name": "fact_llegadas_perfil_fecha_dim_fecha",
+        "fromTable": "fact_llegadas_perfil",
+        "fromColumn": "fecha",
+        "toTable": "dim_fecha",
+        "toColumn": "fecha"
+      },
+      {
+        "name": "fact_llegadas_perfil_servicio_id_dim_servicio",
+        "fromTable": "fact_llegadas_perfil",
+        "fromColumn": "servicio_id",
+        "toTable": "dim_servicio",
+        "toColumn": "servicio_id"
+      },
+      {
+        "name": "fact_llegadas_perfil_sexo_id_dim_sexo",
+        "fromTable": "fact_llegadas_perfil",
+        "fromColumn": "sexo_id",
+        "toTable": "dim_sexo",
+        "toColumn": "sexo_id"
+      },
+      {
+        "name": "fact_duracion_diaria_fecha_dim_fecha",
+        "fromTable": "fact_duracion_diaria",
+        "fromColumn": "fecha",
+        "toTable": "dim_fecha",
+        "toColumn": "fecha"
+      },
+      {
+        "name": "fact_duracion_diaria_etapa_id_dim_etapa",
+        "fromTable": "fact_duracion_diaria",
+        "fromColumn": "etapa_id",
+        "toTable": "dim_etapa",
+        "toColumn": "etapa_id"
+      },
+      {
+        "name": "fact_duracion_diaria_servicio_id_dim_servicio",
+        "fromTable": "fact_duracion_diaria",
+        "fromColumn": "servicio_id",
+        "toTable": "dim_servicio",
+        "toColumn": "servicio_id"
+      },
+      {
+        "name": "fact_duracion_franja_etapa_id_dim_etapa",
+        "fromTable": "fact_duracion_franja",
+        "fromColumn": "etapa_id",
+        "toTable": "dim_etapa",
+        "toColumn": "etapa_id"
+      },
+      {
+        "name": "fact_duracion_franja_servicio_id_dim_servicio",
+        "fromTable": "fact_duracion_franja",
+        "fromColumn": "servicio_id",
+        "toTable": "dim_servicio",
+        "toColumn": "servicio_id"
+      },
+      {
+        "name": "fact_duracion_franja_hora_dim_hora",
+        "fromTable": "fact_duracion_franja",
+        "fromColumn": "hora",
+        "toTable": "dim_hora",
+        "toColumn": "hora"
+      },
+      {
+        "name": "fact_transiciones_mes_dim_fecha",
+        "fromTable": "fact_transiciones",
+        "fromColumn": "mes",
+        "toTable": "dim_fecha",
+        "toColumn": "fecha"
+      },
+      {
+        "name": "fact_transiciones_etapa_id_dim_etapa",
+        "fromTable": "fact_transiciones",
+        "fromColumn": "etapa_id",
+        "toTable": "dim_etapa",
+        "toColumn": "etapa_id"
+      },
+      {
+        "name": "fact_transiciones_servicio_id_dim_servicio",
+        "fromTable": "fact_transiciones",
+        "fromColumn": "servicio_id",
+        "toTable": "dim_servicio",
+        "toColumn": "servicio_id"
+      }
+    ],
+    "expressions": [
+      {
+        "name": "RutaDatos",
+        "kind": "m",
+        "expression": "\"C:\\RUTA\\AL\\REPO\\data\\processed\\powerbi\\\" meta [IsParameterQuery=true, Type=\"Text\", IsParameterQueryRequired=true]",
+        "description": "Carpeta local con las tablas agregadas (data/processed/powerbi/)."
+      },
+      {
+        "name": "FechaCorte",
+        "kind": "m",
+        "expression": "#date(2026, 4, 30) meta [IsParameterQuery=true, Type=\"Date\", IsParameterQueryRequired=true]",
+        "description": "Último día con datos completos. Desde mayo 2026 la extracción está incompleta."
+      }
+    ],
+    "annotations": [
+      {
+        "name": "__PBI_TimeIntelligenceEnabled",
+        "value": "0"
+      }
+    ]
+  }
+}

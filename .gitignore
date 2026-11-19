@@ -86,8 +86,11 @@ models/*
 *.onnx
 
 # ---------- Power BI ----------
-# Solo se permiten plantillas .pbit (sin datos)
+# Solo se permiten plantillas .pbit o proyectos PBIP sin caché (sin datos)
 *.pbix
+# La carpeta .pbi de un proyecto PBIP guarda la caché con datos (cache.abf) y ajustes locales
+.pbi/
+*.abf
 
 # ---------- IDEs y sistema operativo ----------
 .vscode/

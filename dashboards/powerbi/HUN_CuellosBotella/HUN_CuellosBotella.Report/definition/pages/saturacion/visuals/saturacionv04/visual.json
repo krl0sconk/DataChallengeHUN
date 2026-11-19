@@ -1,0 +1,126 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/1.8.0/schema.json",
+  "name": "saturacionv04",
+  "position": {
+    "x": 10,
+    "y": 130,
+    "z": 4,
+    "height": 280,
+    "width": 560,
+    "tabOrder": 4
+  },
+  "visual": {
+    "visualType": "lineChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "dim_fecha"
+                    }
+                  },
+                  "Property": "anio_mes"
+                }
+              },
+              "queryRef": "dim_fecha.anio_mes",
+              "nativeQueryRef": "anio_mes",
+              "displayName": "Mes",
+              "active": true
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Medidas"
+                    }
+                  },
+                  "Property": "Censo promedio"
+                }
+              },
+              "queryRef": "_Medidas.Censo promedio",
+              "nativeQueryRef": "Censo promedio",
+              "displayName": "Pacientes presentes (promedio)"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Medidas"
+                    }
+                  },
+                  "Property": "Censo máximo"
+                }
+              },
+              "queryRef": "_Medidas.Censo máximo",
+              "nativeQueryRef": "Censo máximo",
+              "displayName": "Pacientes presentes (máximo)"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Medidas"
+                    }
+                  },
+                  "Property": "Umbral preventivo (p75)"
+                }
+              },
+              "queryRef": "_Medidas.Umbral preventivo (p75)",
+              "nativeQueryRef": "Umbral preventivo (p75)",
+              "displayName": "Umbral de alerta (p75)"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Medidas"
+                    }
+                  },
+                  "Property": "Umbral crítico (p90)"
+                }
+              },
+              "queryRef": "_Medidas.Umbral crítico (p90)",
+              "nativeQueryRef": "Umbral crítico (p90)",
+              "displayName": "Tope habitual (p90)"
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Pacientes presentes vs umbral de alerta (p75) y de saturación (p90)'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "drillFilterOtherVisuals": true
+  }
+}
