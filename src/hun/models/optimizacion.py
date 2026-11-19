@@ -299,7 +299,8 @@ def calcular_ley_little_y_altas_tempranas(
             "ponderada por etapas. Ventanas semiabiertas [14,20) y [08,12), mismo día. "
             "Altas fraccionales distribuidas uniformemente: escenario agregado, no agenda "
             "individual; no garantiza factibilidad clínica ni causalidad. Umbral p90 fijo. "
-            "Censo neto reconstruido sin corrección adicional de estancias extremas."
+            "Las series etapas_entradas_por_hora y etapas_salidas_por_hora ya excluyen "
+            "estancias superiores al percentil p99.9 por etapa (14/15_etapas_*.sql)."
         ),
     }
 
@@ -664,9 +665,10 @@ def reporte_markdown(base: dict) -> str:
         "",
         "Resultados históricos agregados, no promesas de impacto. "
         "El simulador mantiene tasas fijas y usa interpolación explícita para porcentajes "
-        "de altas no precalculados. Las estancias extremas del extracto vigente no se "
-        "eliminan silenciosamente; pueden sesgar el censo. Validar con datos clínicos "
-        "y la nueva extracción depurada antes de decidir dotaciones.",
+        "de altas no precalculados. Las series horarias etapas_entradas_por_hora y "
+        "etapas_salidas_por_hora ya excluyen estancias superiores al percentil p99.9 por "
+        "etapa (14/15_etapas_*.sql). Validar con datos clínicos y capacidad real antes de "
+        "decidir dotaciones.",
         "",
     ]
     return "\n".join(lineas)

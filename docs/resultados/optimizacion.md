@@ -59,29 +59,29 @@ Fuente: llegadas observadas por día y franja / 6 h (grilla con ceros).
 
 Ingresos cerrados, consistentes con el censo reconstruido; media de estancia ponderada por etapas. Ventanas semiabiertas [14,20) y [08,12), mismo día. Altas fraccionales distribuidas uniformemente: escenario agregado, no agenda individual; no garantiza factibilidad clínica ni causalidad. Umbral p90 fijo. Censo neto reconstruido sin corrección adicional de estancias extremas.
 
-- ingresos_dia_promedio: 83.9266
+- ingresos_dia_promedio: 83.8439
 - estancia_media_horas: 81.2971
 - estancia_mediana_horas: 45.9611
-- censo_teorico_little: 284.2912
-- censo_mediana_observada: 288.0000
-- umbral_p75: 306.0000
-- umbral_p90: 319.0000
-- pct_horas_rojo_base: 9.7858
+- censo_teorico_little: 284.0111
+- censo_mediana_observada: 283.0000
+- umbral_p75: 297.0000
+- umbral_p90: 309.0000
+- pct_horas_rojo_base: 9.3199
 
 L = ingresos/día × estancia media (horas) / 24. No equivale a camas físicas ni a capacidad instalada.
 
 | Reducción (h) | Nueva media (h) | Camas medias liberadas | Reducción (%) |
 |---:|---:|---:|---:|
-| 2 | 79.297 | 6.994 | 2.460 |
-| 4 | 77.297 | 13.988 | 4.920 |
-| 6 | 75.297 | 20.982 | 7.380 |
-| 8 | 73.297 | 27.976 | 9.840 |
+| 2 | 79.297 | 6.987 | 2.460 |
+| 4 | 77.297 | 13.974 | 4.920 |
+| 6 | 75.297 | 20.961 | 7.380 |
+| 8 | 73.297 | 27.948 | 9.840 |
 
 | Altas adelantadas (%) | Pico base | Pico simulado | Camas pico liberadas | Horas rojas base (%) | Horas rojas simuladas (%) | Reducción roja relativa (%) |
 |---:|---:|---:|---:|---:|---:|---:|
-| 20.000 | 378.000 | 378.000 | 0.000 | 9.786 | 7.854 | 19.745 |
-| 35.000 | 378.000 | 378.000 | 0.000 | 9.786 | 6.892 | 29.568 |
-| 50.000 | 378.000 | 378.000 | 0.000 | 9.786 | 6.505 | 33.523 |
+| 20.000 | 359.000 | 359.000 | 0.000 | 9.320 | 7.119 | 23.618 |
+| 35.000 | 359.000 | 359.000 | 0.000 | 9.320 | 6.259 | 32.841 |
+| 50.000 | 359.000 | 359.000 | 0.000 | 9.320 | 5.902 | 36.677 |
 
 ## Urgencias → Hospitalización
 
@@ -92,9 +92,9 @@ espera_h mide start_siguiente - end_anterior en OMOP; puede incluir solapamiento
 - pasos_totales: 47670
 - espera_p50_horas: 0.0
 - espera_p90_horas: 24.445646390695302
-- correlacion_censo_espera_p90: -0.2951824786844128
-- espera_p90_censo_normal_horas: 24.533427590186445
-- espera_p90_censo_alto_horas: 24.349362763066598
+- correlacion_censo_espera_p90: -0.48144688358007354
+- espera_p90_censo_normal_horas: 25.132693036302754
+- espera_p90_censo_alto_horas: 23.699617268555
 
 ## Recomendaciones cuantificadas
 
@@ -118,7 +118,7 @@ Horizonte: Planificación de turnos.
 
 Revisar demoras evitables, sin modificar criterios clínicos.
 
-Reducir 4 h libera teóricamente 13.99 camas medias (4.92%).
+Reducir 4 h libera teóricamente 13.97 camas medias (4.92%).
 
 Horizonte: Piloto y seguimiento.
 
@@ -126,7 +126,7 @@ Horizonte: Piloto y seguimiento.
 
 Adelantar a 08–12 h el 35% de altas de 14–20 h clínicamente elegibles.
 
-Pico 378.00 → 378.00; horas rojas 9.79% → 6.89% (umbral fijo).
+Pico 359.00 → 359.00; horas rojas 9.32% → 6.26% (umbral fijo).
 
 Horizonte: Piloto intradía.
 
