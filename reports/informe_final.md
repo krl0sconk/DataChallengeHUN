@@ -6,6 +6,30 @@ MediFlow convierte agregados hospitalarios OMOP en una solución para comprender
 
 **Equipo:** Krlos (modelos, integración y documentación), Daniel (web y validación) y Juan (preparación, análisis y Power BI). El trabajo se organiza iterativamente por sprints y revisiones de entregables, sin atribuir una duración semanal fija.
 
+
+## Estado verificable del artefacto servido (cierre local, 19 de noviembre de 2026)
+
+Esta sección distingue la documentación experimental de lo que contiene el archivo entregado. No se regeneró el bundle ni se consultó PostgreSQL en este cierre.
+
+- Bundle **v2.0**, corte exclusivo **2026-07-17**; SHA-256 `be8252b056377f8820808a518095235c1215b6ad5c3466a781bad6a0f0ad1e28`.
+- Modelo servido: **LightGBM cuantílico**, diferente del experimento Poisson `lgbm_final` con WAPE global 10.5%.
+
+| Servicio | WAPE archivado del bundle | Cobertura archivada p10–p90 | Días evaluados |
+|---|---:|---:|---:|
+| Urgencias | 8.91% | 78.57% | 182 |
+| Rehabilitación | 11.08% | 64.29% | 182 |
+| Tratamiento Urgencias | 42.18% | 73.08% | 182 |
+
+La cobertura usa predicciones antes del redondeo de los puntos para la web. Recalcular sobre enteros puede cambiarla. Estas cifras son resultados archivados, no una reejecución del entrenamiento. La auditoría de intervalos del 3 de noviembre es otro corte y no certifica este bundle.
+
+El selector de optimización distingue **histórico retrospectivo** de **pronóstico con perfil anterior al corte**. El primero permite una prueba funcional; puede usar información posterior a la jornada histórica y no demuestra ausencia de fuga. El segundo valida perfiles por corte, pero el v2.0 carece de `perfiles_horarios`: muestra indisponibilidad explícita. Solo las pruebas sintéticas comprueban el recorrido completo del formato v2.1. La API `/api/modelo` permite consultar versión, huella, capacidades y métricas archivadas.
+
+Little mantiene **284.01** en el v2.0, con poblaciones distintas. El valor **277.52** es una reconciliación hospitalaria documentada, no reejecutada en este cierre ni aplicada al bundle. El frontend muestra esa diferencia.
+
+Power BI conserva un corte **2026-04-30**, distinto del corte de demanda. Se corrigieron localmente los textos que equiparaban la transición OMOP a espera de cama o prometían una reducción causal. **El enlace público no incorpora esas correcciones hasta su republicación autorizada.**
+
+El simulador del recorrido con capacidad real y tres marcas HIS continúa en diseño. El piloto prospectivo continúa pendiente. El documento histórico de validación no constituye aprobación clínica. La entrega y la sustentación deben comprobarse con la organización; disponer de archivos locales no prueba su recepción.
+
 ## 1. Resumen ejecutivo
 
 El problema no es únicamente anticipar cuántos pacientes llegan: es conectar esa demanda con la permanencia en cada etapa y las posibilidades reales de atención y egreso. OMOP no incluye capacidad instalada ni una tabla de dotación; por ello distinguimos presión histórica, requerimientos paramétricos y capacidad física.
@@ -232,7 +256,7 @@ El simulador operacional (`OptimizationPanel.jsx` y `POST /api/optimizacion/simu
 - **Alcance estadístico e interpretativo:** Repartir el `p90` diario mediante el perfil histórico construye un **escenario horario de demanda alta**; no estima el `p90` marginal independiente de cada franja. Los equipos equivalentes resultantes representan un requerimiento teórico bajo los supuestos elegidos (`1/μ` y meta de espera), nunca una comparación contra dotación real salvo que el operador ingrese una referencia explícita. Asimismo, los umbrales históricos del servicio (`p75` y `p90` de demanda observada) se mantienen separados de los cuantiles del pronóstico, y el WAPE de **10,5 %** del experimento LightGBM Poisson (`lgbm_final`) se mantiene separado de las métricas del LightGBM cuantílico que sirve la web.
 - **Evaluación fuera de muestra vs. retrospectiva y estado del bundle:** Cuando el bundle incluye predicciones archivadas del backtest walk-forward con `origen` y perfiles construidos antes del origen del pliegue, la vista se etiqueta como **fuera de muestra**; de lo contrario, si faltan dichos perfiles u orígenes, se etiqueta como **retrospectiva** (prueba funcional) o degrada limpiamente a **«Pronóstico por franja no disponible»** conservando el modo histórico. El motor v2.1 admite perfiles históricos por corte, pero el archivo publicado `models/modelos_web_bundle.joblib` corresponde al formato v2.0 y no los contiene. En las pruebas del modo de producción, **la ruta completa del modo pronóstico se verificó únicamente con datos sintéticos explícitos** (`construir_paquete_sintetico_prueba()` en archivo temporal), mientras que sobre el bundle v2.0 real se comprobó la degradación segura y la continuidad del modo histórico.
 - **Cómo reproducir una jornada de ejemplo:** Con un paquete v2.1 (generado desde datos autorizados con `python -m hun.models.empaquetar` o con el constructor sintético de prueba) y `HUN_MODO_PRODUCCION=1`, consultar `POST /api/optimizacion/simular` con `{"servicio": "rehabilitacion", "modo_demanda": "pronostico", "fecha": "<YYYY-MM-DD>", "tiempo_servicio_min": 30, "meta_espera_min": 15}` (o alternar el selector en la pestaña *Eventos y escenarios de optimización*).
-- **Qué puede concluir el jurado:** El acoplamiento permite traducir un pronóstico diario en requerimientos teóricos por turno sin fuga temporal ni dotaciones inventadas, explicando en todo momento sus supuestos, su fuente (`fuera_de_muestra` vs. `retrospectivo`) y el motivo cuando el historial o artefacto no respalda el cálculo.
+- **Qué puede concluir el jurado:** El acoplamiento permite traducir un pronóstico diario en requerimientos teóricos por turno con trazabilidad temporal cuando existe un perfil anterior al origen y sin dotaciones observadas inventadas, explicando en todo momento sus supuestos, su fuente (`fuera_de_muestra` vs. `retrospectivo`) y el motivo cuando el historial o artefacto no respalda el cálculo.
 
 ### 5.2 Ley de Little: reducir permanencia de forma segura
 
@@ -265,7 +289,9 @@ La prioridad empírica es revisar las **47.670 transiciones** y el **p90 mensual
 
 Se propone ejecutar REC-01 y REC-02 en planificación de turnos, REC-03 en un piloto de revisión de demoras evitables, REC-04 en un piloto intradía de egreso seguro y REC-05 en seguimiento mensual. La tabla ejecutiva conserva la trazabilidad individual de las cinco recomendaciones y sus condiciones.
 
-### 5.5 Demostración de decisión de principio a fin con pronóstico acoplado (Etapa 1)
+### 5.5 Ejemplo archivado de decisión paramétrica (Etapa 1)
+
+**Este ejemplo pertenece al reporte archivado y no es una reproducción del bundle actual.** El modo histórico de la API puede devolver otros pesos y esperas. No constituye un backtest del acoplamiento; el modo por corte requiere perfiles ausentes del v2.0.
 
 Para responder **«Con la demanda prevista y los recursos disponibles, ¿qué acción conviene tomar hoy?»**, MediFlow acopla el pronóstico diario por cuantiles de llegadas con los perfiles horarios del día de la semana (`turnos`) y el motor Erlang C (`dimensionar_jornada_con_pronostico`).
 
@@ -314,7 +340,7 @@ El [dashboard público oficial de MediFlow en Power BI](https://app.powerbi.com/
 
 `src/hun/data/` concentra extracción y auditoría; `features/`, variables y rezagos; `models/`, validación, demanda, saturación, intervalos, largo plazo, empaquetado y optimización. `app/api/` adapta las salidas a HTTP y `app/src/` contiene la interfaz. Los notebooks exploran y comunican; no duplican la lógica compartida.
 
-La suite actual cuenta con **176 pruebas automatizadas con `pytest`**. Los hooks `pre-commit` y `ruff` controlan calidad, formato y protección de archivos; los notebooks se mantienen sin salidas que revelen información clínica. La entrega documental no cambia lógica ni dependencias.
+El cierre local verificó **180 pruebas automatizadas con `pytest` y 3 pruebas del contrato frontend**. Los hooks `pre-commit` y `ruff` controlan calidad, formato y protección de archivos; los notebooks se mantienen sin salidas que revelen información clínica. Las correcciones de auditoría incluyen cambios de interfaz, trazabilidad y manejo de fallos; no reentrenan modelos ni cambian las dependencias.
 
 La privacidad se protege con conexión de solo lectura, agregación en origen y exclusión de datos crudos, credenciales y archivos hospitalarios de Git. No se publican PHI/PII ni identificadores individuales en este informe o la aplicación. La anonimización OMOP no sustituye la revisión de riesgo de reidentificación por celdas pequeñas antes de publicar agregados o Power BI.
 
@@ -380,7 +406,7 @@ Hoy, la diferencia entre marcas OMOP de dos etapas (`start_siguiente - end_anter
 
 | Etapa | Qué construir | Qué demostrar | Estado actual |
 |---|---|---|---|
-| **1. Pronóstico que alimenta decisiones** | Reutilizar el LightGBM existente. Repartir la demanda diaria prevista por franjas con perfiles históricos y pasar escenarios de demanda típica (`p50`) y alta (`p90`) al dimensionamiento Erlang C. | Cuándo cambia el requerimiento de equipos, cómo responde la espera frente a la dotación habitual/alternativa y qué tan sensible es a la incertidumbre del pronóstico. | **Implementado** en motor (`dimensionar_jornada_con_pronostico`), API (`POST /api/optimizacion/simular`), interfaz y chatbot. |
+| **1. Pronóstico que alimenta decisiones** | Reutilizar el LightGBM existente. Repartir la demanda diaria prevista por franjas con perfiles históricos y pasar escenarios de demanda típica (`p50`) y alta (`p90`) al dimensionamiento Erlang C. | Cuándo cambia el requerimiento de equipos, cómo responde la espera frente a la dotación habitual/alternativa y qué tan sensible es a la incertidumbre del pronóstico. | **Parcial**: comparación retrospectiva implementada. Motor y API por corte probados con fixtures sintéticos; bundle real sin perfiles v2.1. La interfaz informa la indisponibilidad. |
 | **2. Simulador del recorrido** | Incorporar capacidad habilitada, dotación real, tiempos de atención medidos y tres marcas del HIS (`hora_decision_hospitalizar`, `hora_asignacion_cama`, `hora_traslado_efectivo`). Reconstruir el censo con stock inicial y comparar escenarios con restricciones reales. | Qué alternativa reduce la espera efectiva de traslado o las horas de presión, a qué costo y bajo qué supuestos verificados. | **Diseñado**; sujeto a instrumentación de las tres marcas temporales en el HIS del HUN. |
 | **3. Piloto prospectivo** | Ejecutar MediFlow en paralelo con la operación habitual (modo sombra). Registrar alertas, recomendaciones y resultados observados antes de probar una intervención supervisada. | Si las alertas llegan con suficiente anticipación, si el equipo puede actuar y si el beneficio estimado se sostiene en la práctica. | **Hoja de ruta institucional** con coordinación asistencial del HUN. |
 

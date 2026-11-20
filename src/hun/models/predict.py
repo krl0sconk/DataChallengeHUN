@@ -112,6 +112,8 @@ _BUNDLE_CARGADO: bool = False
 
 def _obtener_externos_cache() -> pd.DataFrame | None:
     """Carga perezosamente los factores externos desde `data/externos.parquet`."""
+    if es_modo_produccion():
+        return None
     global _EXTERNOS_DF, _EXTERNOS_CARGADO
     if not _EXTERNOS_CARGADO:
         _EXTERNOS_CARGADO = True
@@ -380,6 +382,47 @@ def _optimizacion_desde_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
 def obtener_optimizacion() -> dict[str, Any]:
     """Obtiene el resumen; un paquete antiguo en producción no accede a datos raw."""
     return _optimizacion_desde_bundle(_bundle_o_sintetico())
+
+
+def obtener_estado_modelo() -> dict[str, Any]:
+    """Describe el artefacto cargado sin entrenar, escribir ni leer agregados Parquet."""
+    import hashlib
+
+    ruta = ruta_paquete_modelo()
+    if not ruta.is_file():
+        raise FileNotFoundError("No hay bundle para verificar la versión del modelo servido.")
+    try:
+        bundle = joblib.load(ruta)
+    except Exception as exc:
+        raise FileNotFoundError("El bundle no se puede inspeccionar.") from exc
+    if not isinstance(bundle, dict):
+        raise FileNotFoundError("No se pudo cargar el bundle del modelo servido.")
+    comparacion = bundle.get("comparacion_real", {})
+    return {
+        "version_paquete": bundle.get("version_paquete"),
+        "sha256": hashlib.sha256(ruta.read_bytes()).hexdigest(),
+        "fecha_corte_exclusiva": bundle.get("fecha_corte"),
+        "modelo_servido": "LightGBM cuantílico p10/p50/p90",
+        "metricas_archivadas": {
+            servicio: _metricas_cuantilicas_servicio(datos)
+            for servicio, datos in comparacion.items()
+        },
+        "perfiles_por_corte_presentes": bool(bundle.get("perfiles_horarios")),
+        "nota_perfiles": (
+            "La disponibilidad para cada fecha exige un perfil válido anterior al corte."
+        ),
+        "referencia_little": (
+            "Híbrida v2.0: flujos p99.9 y duración de otra población; pendiente regeneración."
+            if str(bundle.get("version_paquete")) == "2.0"
+            else "Verificar poblaciones y método del artefacto antes de interpretar Little."
+        ),
+        "alcance": (
+            "Métricas archivadas, no un backtest reejecutado ni autorización clínica. "
+            "El WAPE 10,5 % del informe es un experimento Poisson distinto. "
+            "La inferencia con rezagos sustituidos por medianas históricas no hereda "
+            "la validación operativa de 1–7 días."
+        ),
+    }
 
 
 def _metricas_cuantilicas_servicio(comp_srv: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -891,6 +934,11 @@ def predecir(
                 "factores": factores_shap,
             }
         except Exception as exc:
+            if es_modo_produccion():
+                raise FileNotFoundError(
+                    "El modelo del bundle no pudo predecir; no se permite una estimación "
+                    "de respaldo en producción. Verifique el artefacto y sus columnas."
+                ) from exc
             log.warning("Fallo en predicción con bundle real: %s. Aplicando Modo 2...", exc)
 
     # Modo 2 Fallback: Estimación enriquecida con calendario y factores externos

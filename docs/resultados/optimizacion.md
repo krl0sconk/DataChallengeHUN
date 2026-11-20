@@ -138,7 +138,9 @@ Coordinar disponibilidad de cama y revisar marcas temporales OMOP.
 
 Horizonte: Seguimiento mensual.
 
-## Decisión de principio a fin con pronóstico acoplado (Etapa 1)
+## Ejemplo archivado de decisión con pronóstico acoplado (Etapa 1)
+
+**Trazabilidad:** los pesos de este ejemplo no se han reconciliado con el bundle v2.0 actual. No es una evaluación fuera de muestra. El modo por corte requiere perfiles v2.1 y solo tiene recorrido completo comprobado con fixtures sintéticos.
 
 Comparación paramétrica: la dotación habitual y la alternativa son supuestos del usuario o derivados del régimen histórico base, no plantilla real observada en OMOP. La demanda diaria (p10/p50/p90) se reparte entre las 4 franjas de 6 h según pesos históricos del día de semana (suma = 1.0) y se convierte a tasa horaria (λ = Demanda × peso / 6). Cuando ρ ≥ 1 la espera se reporta como None (cola inestable). Cualquier valor en llegadas_reales_observadas es solo contraste retrospectivo y no alimenta el pronóstico.
 
@@ -162,7 +164,7 @@ Comparación paramétrica: la dotación habitual y la alternativa son supuestos 
 
 | Etapa | Qué construir | Qué demostrar | Estado en MediFlow |
 |---|---|---|---|
-| 1. Pronóstico que alimenta decisiones | Reutilizar el LightGBM existente. Repartir la demanda diaria prevista por franjas con perfiles históricos y pasar escenarios de demanda típica y alta al dimensionamiento. | Cuándo cambia el requerimiento de equipos y qué tan sensible es a la incertidumbre del pronóstico. | Implementado (`dimensionar_jornada_con_pronostico`, `POST /api/optimizacion/simular`, UI y chat) |
+| 1. Pronóstico que alimenta decisiones | Reutilizar el LightGBM existente. Repartir la demanda diaria prevista por franjas con perfiles históricos y pasar escenarios de demanda típica y alta al dimensionamiento. | Cuándo cambia el requerimiento de equipos y qué tan sensible es a la incertidumbre del pronóstico. | Parcial: histórico funcional; motor/API por corte probados con datos sintéticos, bundle real sin perfiles |
 | 2. Simulador del recorrido | Incorporar capacidad habilitada, dotación, tiempos de atención y marcas de decisión y traslado. Reconstruir el censo con stock inicial y comparar escenarios con restricciones reales. | Qué alternativa reduce la espera de traslado o las horas de presión, a qué costo y bajo qué supuestos. | Diseño paramétrico; requiere 3 marcas HIS (`hora_decision_hospitalizar`, `hora_asignacion_cama`, `hora_traslado_efectivo`) |
 | 3. Piloto prospectivo | Ejecutar MediFlow en paralelo con la operación habitual. Registrar alertas, recomendaciones y resultados observados antes de probar una intervención supervisada. | Si las alertas llegan con suficiente anticipación, si el equipo puede actuar y si el beneficio estimado se sostiene en la práctica. | Propuesto para validación operativa en sombra en el HUN |
 

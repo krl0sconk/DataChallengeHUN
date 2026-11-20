@@ -199,6 +199,15 @@ def obtener_servicios() -> list[dict[str, Any]]:
     return servicios
 
 
+@app.get("/api/modelo")
+def estado_modelo() -> dict[str, Any]:
+    """Versión, capacidades y métricas archivadas del artefacto servido."""
+    try:
+        return _predict_mod.obtener_estado_modelo()
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
 @app.get("/api/turnos/{servicio}")
 def obtener_turnos(servicio: str) -> dict[str, Any]:
     """Calcula la matriz de afluencia estimada por franja horaria y día de la semana."""

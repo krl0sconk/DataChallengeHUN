@@ -6,8 +6,8 @@
 
 **Pronóstico de demanda y planificación de turnos para el Hospital Universidad del Norte.**
 
-[![176 pruebas aprobadas](https://img.shields.io/badge/pytest-176%20pruebas%20aprobadas-006A63?style=flat-square)](tests/README.md)
-[![Backtest de Urgencias: 91,6 % de exactitud, WAPE 8,4 %](https://img.shields.io/badge/Backtest%20Urgencias-91.6%25%20exactitud%20%7C%20WAPE%208.4%25-006A63?style=flat-square)](docs/resultados/modelo_demanda.md)
+[![180 pruebas aprobadas](https://img.shields.io/badge/pytest-180%20pruebas%20aprobadas-006A63?style=flat-square)](tests/README.md)
+[![Experimento Poisson de Urgencias: WAPE 8,4 %](https://img.shields.io/badge/Experimento%20Poisson%20Urgencias-WAPE%208.4%25-006A63?style=flat-square)](docs/resultados/modelo_demanda.md)
 ![Python y LightGBM](https://img.shields.io/badge/ML-Python%20%2B%20LightGBM-163D50?style=flat-square)
 ![FastAPI y React](https://img.shields.io/badge/Web-FastAPI%20%2B%20React-163D50?style=flat-square)
 ![Power BI](https://img.shields.io/badge/BI-Power%20BI-163D50?style=flat-square)
@@ -33,7 +33,7 @@ MediFlow ayuda al personal del hospital a anticipar la afluencia de pacientes, i
 
 ![Recorrido animado por el pronóstico, el simulador, los cuellos de botella y la precisión histórica en MediFlow](docs/img/app/mediflow_demo.gif)
 
-Capturas de la app. La imagen del simulador reúne tres secciones de la misma vista.
+Capturas archivadas de la app. La imagen del simulador reúne tres secciones de la misma vista. Las capturas y el GIF se conservan y pueden mostrar textos anteriores a las correcciones de auditoría.
 
 | Pronóstico de demanda | Simulador y optimización |
 |---|---|
@@ -44,6 +44,25 @@ Capturas de la app. La imagen del simulador reúne tres secciones de la misma vi
 ### Resultados del proyecto
 
 [![Error de pronóstico diario: 18,0 % → 15,6 % → 10,5 %. Horas rojas en la simulación de altas tempranas: 9,32 % → 6,26 %.](docs/img/resumen_escalera_optimizacion.png)](reports/informe_final.md)
+
+<details>
+<summary><strong>Versión del modelo y alcance de los resultados</strong></summary>
+
+La web sirve un **LightGBM cuantílico** del bundle **v2.0**, con corte exclusivo
+**2026-07-17**. Sus métricas archivadas difieren del experimento Poisson de la figura:
+Urgencias tiene **WAPE 8,91% y cobertura p10–p90 78,57%**. Consulta `/api/modelo`
+para identificar versión, huella, corte y métricas por servicio.
+
+El selector de optimización separa el **escenario histórico retrospectivo** del
+**pronóstico con perfil anterior al corte**. El v2.0 no contiene los perfiles por corte
+requeridos por este último: la interfaz informa la indisponibilidad. La referencia de
+Little sigue siendo híbrida (**284,01**) y requiere regeneración autorizada.
+
+Las correcciones del PBIP son locales hasta su republicación. No se acredita un piloto
+hospitalario ni una validación clínica. Ver el [registro de cierre](docs/cierre_auditoria.md)
+y el [guion de sustentación](reports/guion_sustentacion.md).
+
+</details>
 
 ## Instalación y uso
 
@@ -58,6 +77,9 @@ pip install -r requirements.txt
 pip install -e .
 pytest -q
 ```
+
+Las correcciones se verifican con **180 pruebas Python y 3 pruebas del contrato frontend**.
+Para estas últimas: `node --test app/src/lib/optimizationPayload.test.js`.
 
 ### Aplicación web
 

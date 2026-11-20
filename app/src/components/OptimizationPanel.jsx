@@ -14,7 +14,8 @@ import {
   FECHA_FIN_DATOS,
   FECHA_INICIO_DATOS,
 } from '../constants/servicios';
-import { getOptimizacion, simularOptimizacion } from '../lib/api';
+import { getEstadoModelo, getOptimizacion, simularOptimizacion } from '../lib/api';
+import { optimizationPayload } from '../lib/optimizationPayload';
 import { FlowBandBar } from './FlowBandBar';
 import { SectionPanel } from './SectionPanel';
 
@@ -22,6 +23,10 @@ const formato = (valor, decimales = 1) => (
   typeof valor === 'number' && Number.isFinite(valor)
     ? valor.toLocaleString('es-CO', { maximumFractionDigits: decimales })
     : 'No disponible'
+);
+
+const porcentaje = (valor) => (
+  typeof valor === 'number' && Number.isFinite(valor) ? `${formato(valor * 100)}%` : 'No disponible'
 );
 
 const palancas = {
@@ -77,12 +82,14 @@ export function OptimizationPanel({
   const dotacionBase = DOTACION_POR_DEFECTO[servicio.id] ?? 12;
 
   const [datos, setDatos] = useState(null);
+  const [estadoModelo, setEstadoModelo] = useState(null);
   const [error, setError] = useState(null);
   const [intento, setIntento] = useState(0);
   const [tiempo, setTiempo] = useState(20);
   const [meta, setMeta] = useState(15);
   const [reduccion, setReduccion] = useState(4);
   const [altas, setAltas] = useState(30);
+  const [modoDemanda, setModoDemanda] = useState('historico');
   const [fechaJornada, setFechaJornada] = useState(() => fechaSimulacion || '2026-07-06');
   const [usarDotacionManual, setUsarDotacionManual] = useState(true);
   const [dotacionHabitual, setDotacionHabitual] = useState(dotacionBase);
@@ -108,6 +115,11 @@ export function OptimizationPanel({
   useEffect(() => {
     let activo = true;
     setError(null);
+    getEstadoModelo().then((estado) => {
+      if (activo) setEstadoModelo(estado);
+    }).catch(() => {
+      if (activo) setEstadoModelo(null);
+    });
     getOptimizacion()
       .then((data) => {
         if (activo) setDatos(data);
@@ -120,16 +132,17 @@ export function OptimizationPanel({
     };
   }, [intento]);
 
-  const clave = JSON.stringify({
+  const clave = JSON.stringify(optimizationPayload({
     servicio: servicio.id,
+    modoDemanda,
     tiempo_servicio_min: tiempo,
     meta_espera_min: meta,
     reduccion_estancia_horas: reduccion,
     pct_altas_tempranas: altas,
     fecha: fechaJornada || null,
-    dotacion_habitual: usarDotacionManual ? clampDotacion(dotacionHabitual) : null,
-    dotacion_alternativa: usarAlternativaManual ? clampDotacion(dotacionAlternativa) : null,
-  });
+    dotacionHabitual: usarDotacionManual ? clampDotacion(dotacionHabitual) : null,
+    dotacionAlternativa: usarAlternativaManual ? clampDotacion(dotacionAlternativa) : null,
+  }));
 
   useEffect(() => {
     if (!datos) return;
@@ -209,6 +222,13 @@ export function OptimizationPanel({
 
   return (
     <section className="space-y-6" aria-label="Optimización operacional">
+      <div className="mf-subsurface p-4 text-xs space-y-2" role="status">
+        {estadoModelo ? <>
+          <p>Paquete {estadoModelo.version_paquete} · Corte exclusivo {estadoModelo.fecha_corte_exclusiva} · {estadoModelo.modelo_servido}</p>
+          <p>{estadoModelo.referencia_little}</p>
+          <p>{estadoModelo.alcance}</p>
+        </> : <p>Versión del paquete pendiente de verificación. No atribuya a esta vista las métricas de otro experimento.</p>}
+      </div>
       {/* Bloque 1: Decisión del turno con pronóstico acoplado */}
       <SectionPanel
         id="decision-jornada"
@@ -217,7 +237,7 @@ export function OptimizationPanel({
         actions={
           <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--mf-border)] bg-[var(--mf-surface-2)] px-3 py-1 text-xs font-medium text-[var(--mf-ink-2)]">
             <ShieldCheck className="h-3.5 w-3.5 text-[var(--mf-accent)] shrink-0" aria-hidden="true" />
-            <span>Comparación paramétrica · Sin fuga de datos</span>
+            <span>Comparación paramétrica · Validación según fuente</span>
           </span>
         }
       >
@@ -225,6 +245,19 @@ export function OptimizationPanel({
           <p className="text-xs text-[var(--mf-ink-2)] max-w-[75ch]">
             Escenarios de planificación, no órdenes clínicas ni mediciones de personal disponible. Los efectos de estancia y altas se evalúan por separado y no deben sumarse.
           </p>
+          <label className="block space-y-2 text-sm" htmlFor="modo-demanda">
+            <span className="font-semibold">Fuente de demanda</span>
+            <select id="modo-demanda" value={modoDemanda} onChange={(event) => setModoDemanda(event.target.value)} className="mf-input w-full">
+              <option value="historico">Escenario histórico retrospectivo</option>
+              <option value="pronostico">Pronóstico con perfil anterior al corte</option>
+            </select>
+          </label>
+          {modoDemanda === 'historico' && (
+            <p className="text-xs text-[var(--mf-ink-2)]">El perfil y el modelo históricos pueden incluir información posterior a la jornada seleccionada. Esta comparación funcional no demuestra anticipación fuera de muestra.</p>
+          )}
+          {modoDemanda === 'pronostico' && (
+            <p className="text-xs text-[var(--mf-ink-2)]">Se compara el requerimiento con la dotación habitual de referencia. La dotación alternativa manual solo se aplica al modo histórico. Si faltan perfiles válidos, se informa indisponibilidad sin sustituirlos por perfiles globales.</p>
+          )}
 
           {/* Barra de controles agrupados en subsuperficies limpias */}
           <div className="grid gap-4 lg:grid-cols-3">
@@ -318,6 +351,7 @@ export function OptimizationPanel({
                   <input
                     type="checkbox"
                     checked={usarAlternativaManual}
+                    disabled={modoDemanda === 'pronostico'}
                     onChange={(event) => setUsarAlternativaManual(event.target.checked)}
                     className="accent-[var(--mf-accent)]"
                   />
@@ -333,6 +367,7 @@ export function OptimizationPanel({
                       max={100}
                       value={Math.min(100, dotacionAlternativa)}
                       onChange={(event) => setDotacionAlternativa(clampDotacion(event.target.value))}
+                      disabled={modoDemanda === 'pronostico'}
                       aria-label="Deslizador de dotación alternativa"
                       className="w-full cursor-pointer accent-[var(--mf-accent)]"
                     />
@@ -342,6 +377,7 @@ export function OptimizationPanel({
                       max={200}
                       value={dotacionAlternativa}
                       onChange={(event) => setDotacionAlternativa(clampDotacion(event.target.value))}
+                      disabled={modoDemanda === 'pronostico'}
                       aria-label="Dotación alternativa en equipos equivalentes"
                       className="mf-input w-20 font-mono-num font-semibold text-right"
                     />
@@ -368,7 +404,29 @@ export function OptimizationPanel({
             </div>
           )}
 
-          {simulacion && !decision && (
+          {modoDemanda === 'pronostico' && simulacion && (
+            <div className="mf-subsurface p-4 space-y-3" role="status">
+              <p className="font-semibold">{simulacion.disponible ? 'Pronóstico por franja disponible' : 'Pronóstico por franja no disponible'}</p>
+              <p className="text-sm">{simulacion.motivo_no_disponible || simulacion.fuente_pronostico}</p>
+              <p className="text-xs">Evaluación: {simulacion.tipo_evaluacion === 'fuera_de_muestra' ? 'fuera de muestra' : 'retrospectiva funcional'} · Origen: {simulacion.origen_pronostico || 'sin origen fuera de muestra'} · Corte del perfil: {simulacion.perfil_horario?.corte_perfil || 'sin perfil válido'}</p>
+              {simulacion.metricas_modelo_cuantilico && (
+                <p className="text-xs">Modelo cuantílico servido: WAPE {porcentaje(simulacion.metricas_modelo_cuantilico.wape)} · Cobertura p10–p90 {porcentaje(simulacion.metricas_modelo_cuantilico.cobertura_p10_p90)}. Métricas archivadas, distintas del experimento Poisson del informe.</p>
+              )}
+              {simulacion.disponible && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <caption className="text-left py-2">Requerimientos teóricos por turno; la demanda alta reparte el p90 diario, no el p90 independiente de cada franja.</caption>
+                    <thead><tr><th>Franja</th><th>Llegadas/h central</th><th>Llegadas/h alta</th><th>Equipos central</th><th>Equipos alta</th></tr></thead>
+                    <tbody>{(simulacion.erlang_c_franjas || []).map((fila) => (
+                      <tr key={fila.franja}><td>{fila.franja}</td><td>{formato(fila.lambda_central_h)}</td><td>{formato(fila.lambda_alto_h)}</td><td>{fila.servidores_central}</td><td>{fila.servidores_alto}</td></tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              )}
+              {!simulacion.disponible && <button type="button" className="mf-input" onClick={() => setModoDemanda('historico')}>Volver al escenario histórico</button>}
+            </div>
+          )}
+          {modoDemanda === 'historico' && simulacion && !decision && (
             <div
               role="status"
               className="rounded-lg border border-[var(--mf-warn-border)] bg-[var(--mf-warn-soft)] p-3.5 text-xs space-y-1 text-[var(--mf-warn)]"
@@ -603,8 +661,8 @@ export function OptimizationPanel({
                 </h3>
                 <div className="grid gap-3 sm:grid-cols-3 text-xs">
                   <div className="rounded-lg bg-[var(--mf-accent-soft)] p-3 text-[var(--mf-ink)]">
-                    <strong className="text-[var(--mf-accent-ink)]">Etapa 1 [Activa]:</strong>{' '}
-                    Pronóstico → decisión por franja con perfiles históricos e incertidumbre p10–p90.
+                    <strong className="text-[var(--mf-accent-ink)]">Etapa 1 [Parcial]:</strong>{' '}
+                    Comparación retrospectiva activa. El modo por corte depende de perfiles válidos en el paquete.
                   </div>
                   <div className="mf-subsurface p-3 text-[var(--mf-ink-2)]">
                     <strong className="text-[var(--mf-ink)]">Etapa 2:</strong> Simulador del recorrido con marcas de decisión, asignación y traslado.

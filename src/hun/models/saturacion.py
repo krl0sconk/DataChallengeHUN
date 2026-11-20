@@ -2,7 +2,8 @@
 
 Reconstruye la ocupación (censo horario) de cada área/etapa a partir de las entradas
 y salidas registradas en `visit_detail`, define umbrales históricos de saturación (p75 y p90)
-sin fuga de información, y clasifica el estado operativo en un semáforo (verde, amarillo, rojo).
+con corte de entrenamiento cuando se indica un origen, y clasifica el estado operativo
+en un semáforo (verde, amarillo, rojo).
 
 Uso:
     python -m hun.models.saturacion
@@ -37,10 +38,10 @@ def calcular_calentamiento(
     Al reconstruir el censo como entradas acumuladas menos salidas acumuladas desde t0,
     las etapas iniciadas antes de t0 no tienen entrada registrada en la ventana;
     aparecen únicamente como salidas sin entrada previa, produciendo una subestimación del censo
-    o incluso valores negativos al inicio de la serie. Tras superar el percentil 99 de duración
-    (horas_p99) de las etapas, más del 99 % de los pacientes que estaban activos al inicio
-    ya salieron y todas las estancias activas iniciaron dentro de la ventana de observación,
-    por lo que el sesgo inicial desaparece y la serie converge a la ocupación real.
+    o incluso valores negativos. El calentamiento descarta un tramo inicial, pero no
+    restaura un stock inicial omitido: ese déficit permanece en la suma acumulada.
+    El p99 de las estancias no prueba que el 99 % de la cohorte prevalente haya egresado.
+    Se debe aportar el stock inicial o demostrar que era cero antes de interpretar el censo.
 
     Args:
         duraciones_df: DataFrame con estadísticas de duración que contenga la columna 'horas_p99'.
@@ -288,11 +289,10 @@ def reporte_markdown(
         "subestimación del censo o incluso valores negativos durante los primeros días de la "
         "serie.",
         "",
-        "Tras superar el percentil 99 de duración ($p_{99}$) de las etapas, más del 99 % de los "
-        "pacientes hospitalizados al inicio de la ventana ya han egresado, y la totalidad de los "
-        "pacientes activos ingresaron dentro del periodo observado. En consecuencia, el sesgo "
-        "inicial desaparece por completo y el censo reconstruido converge a la ocupación real "
-        "del hospital.",
+        "El calentamiento basado en p99 descarta un tramo inicial, pero no restaura un stock "
+        "inicial omitido en la suma acumulada. El p99 de las estancias no describe necesariamente "
+        "las duraciones residuales de la cohorte prevalente. Se debe aportar el stock inicial "
+        "o demostrar que era cero; el descarte no demuestra convergencia a la ocupación real.",
         "",
         "## 2. Duración de etapas y calentamiento determinado",
         "",
@@ -403,7 +403,11 @@ def reporte_markdown(
                 f"{horas_amarillo_prom} | {horas_rojo_prom} | {pct_rojo} |"
             )
 
-    if duraciones_df is not None and not duraciones_df.empty and "horas_p999" in duraciones_df.columns:
+    if (
+        duraciones_df is not None
+        and not duraciones_df.empty
+        and "horas_p999" in duraciones_df.columns
+    ):
         lineas.extend(
             [
                 "",

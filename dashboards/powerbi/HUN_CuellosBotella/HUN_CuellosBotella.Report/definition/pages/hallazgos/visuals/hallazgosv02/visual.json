@@ -107,7 +107,7 @@
               {
                 "textRuns": [
                   {
-                    "value": "4. La espera de cama desde urgencias es el paso más lento del flujo.",
+                    "value": "4. La transición entre urgencias y hospitalización requiere auditar los sellos temporales.",
                     "textStyle": {
                       "fontSize": "10.5pt",
                       "color": "#1F4E79",
@@ -120,7 +120,7 @@
               {
                 "textRuns": [
                   {
-                    "value": "El 10 % de los pacientes que suben de urgencias a hospitalización espera más de 26 horas.",
+                    "value": "Marcas OMOP entre etapas; no miden espera por cama ni prueban boarding clínico.",
                     "textStyle": {
                       "fontSize": "9.5pt",
                       "color": "#1F2933",
@@ -132,7 +132,7 @@
               {
                 "textRuns": [
                   {
-                    "value": "5. La saturación es predecible.",
+                    "value": "5. La presión presenta patrones horarios históricos.",
                     "textStyle": {
                       "fontSize": "10.5pt",
                       "color": "#1F4E79",

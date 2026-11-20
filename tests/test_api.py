@@ -15,6 +15,26 @@ from app.api import app
 client = TestClient(app)
 
 
+def test_estado_modelo_no_confunde_experimentos(monkeypatch):
+    from hun.models import predict
+
+    estado = {"version_paquete": "2.0", "perfiles_por_corte_presentes": False}
+    monkeypatch.setattr(predict, "obtener_estado_modelo", lambda: estado)
+    response = client.get("/api/modelo")
+    assert response.status_code == 200
+    assert response.json() == estado
+
+
+def test_estado_modelo_sin_bundle_es_indisponible(monkeypatch):
+    from hun.models import predict
+
+    def falta_bundle():
+        raise FileNotFoundError("No hay bundle")
+
+    monkeypatch.setattr(predict, "obtener_estado_modelo", falta_bundle)
+    assert client.get("/api/modelo").status_code == 503
+
+
 def test_optimizacion_endpoint(monkeypatch):
     from hun.models import predict
 

@@ -192,7 +192,7 @@
               {
                 "textRuns": [
                   {
-                    "value": "Las tablas se cargan en Power BI en un modelo estrella: 5 dimensiones (fecha, hora, área, tipo de visita, sexo) y 6 tablas de hechos.",
+                    "value": "Las tablas se cargan en Power BI en un modelo estrella: 5 dimensiones, 6 tablas de hechos y una tabla de medidas (12 tablas).",
                     "textStyle": {
                       "fontSize": "10pt",
                       "color": "#1F2933",
