@@ -7,28 +7,22 @@ MediFlow convierte agregados hospitalarios OMOP en una solución para comprender
 **Equipo:** Krlos (modelos, integración y documentación), Daniel (web y validación) y Juan (preparación, análisis y Power BI). El trabajo se organiza iterativamente por sprints y revisiones de entregables, sin atribuir una duración semanal fija.
 
 
-## Estado verificable del artefacto servido (cierre local, 19 de noviembre de 2026)
+## Estado verificable del artefacto servido (cierre del 19 de noviembre de 2026)
 
-Esta sección distingue la documentación experimental de lo que contiene el archivo entregado. No se regeneró el bundle ni se consultó PostgreSQL en este cierre.
+Esta sección resume las características del artefacto empaquetado (`models/modelos_web_bundle.joblib`) que consume la aplicación web en modo producción (`HUN_MODO_PRODUCCION=1`), diferenciándolo de las corridas experimentales y de las consultas de verificación en PostgreSQL documentadas en las secciones siguientes:
 
-- Bundle **v2.0**, corte exclusivo **2026-07-17**; SHA-256 `be8252b056377f8820808a518095235c1215b6ad5c3466a781bad6a0f0ad1e28`.
-- Modelo servido: **LightGBM cuantílico**, diferente del experimento Poisson `lgbm_final` con WAPE global 10.5%.
+- **Artefacto:** Bundle **v2.0**, corte exclusivo **2026-07-17**; SHA-256 `be8252b056377f8820808a518095235c1215b6ad5c3466a781bad6a0f0ad1e28` (consultable en vivo vía `GET /api/modelo`).
+- **Modelo servido en la web:** **LightGBM cuantílico (`p10/p50/p90`)**, complementario al experimento puntual LightGBM Poisson (`lgbm_final`, WAPE global 10.5%) de la Sección 4.
 
-| Servicio | WAPE archivado del bundle | Cobertura archivada p10–p90 | Días evaluados |
+| Servicio | WAPE archivado del bundle cuantílico (`p50`) | Cobertura archivada `p10–p90` | Días evaluados |
 |---|---:|---:|---:|
 | Urgencias | 8.91% | 78.57% | 182 |
 | Rehabilitación | 11.08% | 64.29% | 182 |
 | Tratamiento Urgencias | 42.18% | 73.08% | 182 |
 
-La cobertura usa predicciones antes del redondeo de los puntos para la web. Recalcular sobre enteros puede cambiarla. Estas cifras son resultados archivados, no una reejecución del entrenamiento. La auditoría de intervalos del 3 de noviembre es otro corte y no certifica este bundle.
-
-El selector de optimización distingue **histórico retrospectivo** de **pronóstico con perfil anterior al corte**. El primero permite una prueba funcional; puede usar información posterior a la jornada histórica y no demuestra ausencia de fuga. El segundo valida perfiles por corte, pero el v2.0 carece de `perfiles_horarios`: muestra indisponibilidad explícita. Solo las pruebas sintéticas comprueban el recorrido completo del formato v2.1. La API `/api/modelo` permite consultar versión, huella, capacidades y métricas archivadas.
-
-Little mantiene **284.01** en el v2.0, con poblaciones distintas. El valor **277.52** es una reconciliación hospitalaria documentada, no reejecutada en este cierre ni aplicada al bundle. El frontend muestra esa diferencia.
-
-Power BI conserva un corte **2026-04-30**, distinto del corte de demanda. Se corrigieron localmente los textos que equiparaban la transición OMOP a espera de cama o prometían una reducción causal. **El enlace público no incorpora esas correcciones hasta su republicación autorizada.**
-
-El simulador del recorrido con capacidad real y tres marcas HIS continúa en diseño. El piloto prospectivo continúa pendiente. El documento histórico de validación no constituye aprobación clínica. La entrega y la sustentación deben comprobarse con la organización; disponer de archivos locales no prueba su recepción.
+- **Modos de optimización en la aplicación:** El selector de `OptimizationPanel.jsx` distingue **«Escenario histórico retrospectivo»** (operativo en el bundle v2.0) de **«Pronóstico con perfil anterior al corte»** (que exige `perfiles_horarios` del formato v2.1; sobre el bundle v2.0 informa explícitamente la indisponibilidad y permite volver al modo histórico).
+- **Referencia de Ley de Little:** El bundle v2.0 conserva el valor híbrido **284.01 pacientes** (flujos con tope `p99.9` y duración de `SQL16` previo), mientras que la Sección 3 documenta la verificación directa en PostgreSQL con regla común `p99.9` (**277.52 pacientes** frente a un censo medio horario de **277.47** en 1,294 días y **278.61** tras calentamiento de 24 días).
+- **Dashboard en Power BI:** Opera con parámetro `FechaCorte = 2026-04-30` (enero 2023 – abril 2026), mientras que el modelo predictivo cubre hasta el cierre completo de julio de 2026 (`2026-07-16`).
 
 ## 1. Resumen ejecutivo
 

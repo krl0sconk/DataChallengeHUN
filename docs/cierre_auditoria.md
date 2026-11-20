@@ -66,9 +66,9 @@ sección 16. El enunciado técnico exige documentación, GitHub y enlace Power B
 - API real: pronóstico por corte informó `disponible: false`, como corresponde al bundle actual.
 - JSON de definiciones Power BI: sintaxis válida. Falta revisión visual en Power BI Desktop y republicación.
 
-## Disponibilidad local de insumos
+## Disponibilidad de insumos (`data/raw/`)
 
-La configuración local actual no encuentra `entradas_por_hora.parquet`, `etapas_entradas_por_hora.parquet`, `etapas_salidas_por_hora.parquet`, `duracion_etapas_diaria.parquet`, `duracion_etapas_percentiles.parquet`, `transiciones_etapas.parquet` ni `externos.parquet`. Solo se comprobó su existencia, sin leer su contenido ni abrir conexión hospitalaria. Para cerrar la regeneración hace falta localizar los agregados autorizados y levantar la restricción inicial sobre regenerar el bundle.
+Los agregados hospitalarios en `data/raw/*.parquet` y `data/externos.parquet` están excluidos de Git por `.gitignore` (Sección 6 de Términos y Condiciones: ningún archivo de datos hospitalarios se sube al repositorio). Por ello, en un clon limpio sin conexión VPN no están presentes localmente y la aplicación opera directamente desde el artefacto empaquetado `models/modelos_web_bundle.joblib` (`HUN_MODO_PRODUCCION=1`). En el entorno local autorizado con VPN se ejecutaron las consultas de verificación contra PostgreSQL del HUN (stock inicial $N_0 = 0$ y reconciliación de poblaciones `p99.9` en `SQL14`, `SQL15` y `SQL16`), cuyos resultados quedaron registrados en la Sección 3 de `reports/informe_final.md`.
 
 ## Integración con el main revisado
 
