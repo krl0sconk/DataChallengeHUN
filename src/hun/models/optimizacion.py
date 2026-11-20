@@ -1393,6 +1393,7 @@ def main() -> None:
         parser.error("Faltan agregados reales en data/raw; no se genera un informe ficticio.")
     base = construir_resumen_optimizacion()
     ruta = config.ROOT_DIR / "docs/resultados/optimizacion.md"
+    ruta.parent.mkdir(parents=True, exist_ok=True)
     ruta.write_text(reporte_markdown(base), encoding="utf-8")
     print(f"Informe real generado: {ruta}")
 

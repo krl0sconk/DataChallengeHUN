@@ -2,3 +2,5 @@
 *.pbit binary
 *.png binary
 *.jpg binary
+/data export-ignore
+.env.example export-ignore

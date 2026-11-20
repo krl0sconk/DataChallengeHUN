@@ -110,3 +110,7 @@ npm-debug.log*
 # ---------- Herramientas locales ----------
 # Índice de búsqueda local que no forma parte del proyecto
 docs/index.bleve/
+/.codegraph/
+/.atl/
+/odd/
+/Entrega_*.zip
