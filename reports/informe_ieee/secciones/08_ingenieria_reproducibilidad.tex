@@ -1,0 +1,46 @@
+% Sección VIII: Ingeniería de software, reproducibilidad y privacidad
+% evidencia:E24,E25,E29
+
+\section{Ingeniería de software, reproducibilidad y privacidad}
+
+MediFlow sustenta su confiabilidad técnica en separación modular, trazabilidad de dependencias, pruebas automatizadas y salvaguardas de privacidad~\cite{mediflow2026informe,mediflow2026auditoria}.
+
+\subsection{Estructura real del código y dependencias}
+
+La inspección directa del repositorio verifica la distribución efectiva de responsabilidades:
+\begin{itemize}[leftmargin=*,nosep]
+\item \textit{Extracción y calidad} (\texttt{src/hun/data/}): \texttt{conexion.py} (solo lectura), \texttt{extraer.py} (mensual resumible), 24 consultas (\texttt{sql/00\_*}--\texttt{23\_*}), \texttt{agregados.py}, \texttt{auditoria.py}, \texttt{conceptos.py} y \texttt{borrar\_datos.py}.
+\item \textit{Modelado e inferencia} (\texttt{src/hun/models/}): concentra variables, modelos y reportes en \texttt{validacion.py}, \texttt{linea\_base.py}, \texttt{evaluacion\_factores.py}, \texttt{demanda.py}, \texttt{saturacion.py}, \texttt{explicacion.py}, \texttt{largo\_plazo.py}, \texttt{optimizacion.py}, \texttt{empaquetar.py} y \texttt{predict.py}. En contraste, \texttt{src/hun/features/}, \texttt{visualization/} y \texttt{external/} contienen solo \texttt{\_\_init\_\_.py} documentales (\textit{stubs}) sin lógica implementada.
+\item \textit{Factores externos} (\texttt{src/external/}): \texttt{config.py}, \texttt{calendario.py}, \texttt{clima.py}, \texttt{epidemiologia.py} y \texttt{build.py}.
+\item \textit{Web y análisis} (\texttt{app/}, \texttt{dashboards/}, \texttt{notebooks/}): FastAPI en \texttt{app/api/\_\_init\_\_.py} y \texttt{chat.py}; frontend React en \texttt{app/src/} (\texttt{OptimizationPanel.jsx}, \texttt{optimizationPayload.test.js}); PBIP y \texttt{preparar\_modelo.py} en \texttt{dashboards/powerbi/}; cuadernos limpios vía \texttt{nbstripout}.
+\end{itemize}
+
+Existe una desalineación menor entre manifiestos Python: \texttt{pyproject.toml} (Python $\ge 3{,}11$) declara el núcleo analítico (\texttt{pandas}, \texttt{numpy}, \texttt{scikit-learn}, \texttt{lightgbm}, \texttt{shap}, \texttt{pyarrow}, \texttt{holidays}, \texttt{python-dateutil}, \texttt{matplotlib}, \texttt{seaborn}, \texttt{plotly}, \texttt{requests}, \texttt{python-dotenv}) y extras (\texttt{sqlalchemy>=2.0}, \texttt{psycopg[binary]>=3.1}, \texttt{pytest}, \texttt{ruff}, \texttt{pre-commit}, \texttt{nbstripout}), omitiendo \texttt{fastapi} y \texttt{uvicorn}; \texttt{requirements.txt} sí declara \texttt{fastapi>=0.110.0} y \texttt{uvicorn>=0.28.0}, pero conserva \texttt{streamlit} descartado en \texttt{DEC-006}. En \texttt{app/package.json} constan React \texttt{19.3.1}, Recharts \texttt{3.10.1}, Lucide React \texttt{1.61.0}, Tailwind CSS \texttt{4.3.3} y Vite \texttt{8.3.4}.
+
+\subsection{Evidencia de pruebas y tres niveles de reproducibilidad}
+
+La Tabla~\ref{tab:evidencia_pruebas} separa la verificación local comprobada de las corridas archivadas y de la validación clínica inexistente. Según los insumos disponibles, MediFlow admite tres niveles de reproducción~\cite{mediflow2026informe,mediflow2026auditoria}:
+\begin{enumerate}[leftmargin=*,nosep]
+\item \textit{Nivel 1 (fixtures sintéticos)}: ejecutable en cualquier clon GitHub sin credenciales mediante \texttt{pytest -q}, \texttt{node --test app/src/lib/optimizationPayload.test.js} y \texttt{npm --prefix app run build}, cubriendo Etapa~1 (\texttt{v2.1}) con datos sintéticos.
+\item \textit{Nivel 2 (inferencia estricta con bundle autorizado)}: inicia FastAPI y React leyendo solo \texttt{modelos\_web\_bundle.joblib} con \texttt{HUN\_MODO\_PRODUCCION=1}, sin \texttt{data/}; su distribución requiere autorización institucional.
+\item \textit{Nivel 3 (reproducción hospitalaria)}: exige VPN FortiClient, credenciales \texttt{.env} y archivos privados (\texttt{data/raw/*.parquet}, \texttt{data/externos.parquet}) excluidos de Git; no reejecutada para este informe.
+\end{enumerate}
+
+\begin{table*}[t]
+\caption{Niveles de verificación técnica y estado comprobado en el repositorio (\texttt{803c1a1})}
+\label{tab:evidencia_pruebas}
+\centering
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}L{0.21\textwidth} L{0.27\textwidth} L{0.22\textwidth} Y@{}}
+\toprule
+Evidencia & Alcance verificado & Estado en \texttt{803c1a1} & Qué no acredita \\
+\midrule
+Recolección estática local (\texttt{pytest}, Node) & 180 pruebas Python en 13 archivos \texttt{test\_*.py} + 3 pruebas Node & Comprobado por recolección (\texttt{--collect-only}) & No equivale a nueva corrida de modelos ni reejecución \\
+Cierre de integración (\nolinkurl{cierre_auditoria.md}) & 180/180 Python (211,30\,s; corrida de 228,50\,s en \nolinkurl{tests/README.md}), 3/3 Node, build Vite, Ruff, API sin Parquet & Ejecución previa documentada al integrar \texttt{main} & No prueba calibración sobre BD, eficacia clínica ni despliegue público \\
+Validación independiente (\texttt{2026-11-03}) & Revisión interna Sprint 2/3 anti-fuga con 103/103 pruebas & Registro histórico superado por el cierre de 180 pruebas & No es revisión ciega externa ni autorización médica \\
+\bottomrule
+\end{tabularx}
+\ieeenota{Fuentes:~\cite{mediflow2026auditoria},~\cite{mediflow2026validacion} y \texttt{tests/README.md}. Para esta edición editorial no se reejecutó la suite ni se regeneró el archivo \texttt{joblib}.}
+\end{table*}
+
+En privacidad, \texttt{conexion.py} fija \texttt{default\_transaction\_read\_only=on}, \texttt{statement\_timeout=120\,s} y filtro sintáctico exclusivo a \texttt{SELECT}/\texttt{WITH}. \texttt{.gitignore} excluye \texttt{data/raw/}, \texttt{data/processed/}, \texttt{.parquet}, \texttt{.env}, \texttt{.pbix} y cachés Power BI, mientras \texttt{borrar\_datos.py} y \texttt{docs/cierre\_datos.md} formalizan el borrado al cierre~\cite{mediflow2026auditoria}. Estos controles no sustituyen la revisión jurídica ni de riesgo de reidentificación por celdas pequeñas en entornos públicos.

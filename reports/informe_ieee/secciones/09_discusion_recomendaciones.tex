@@ -1,0 +1,61 @@
+% Sección IX: Discusión, recomendaciones accionables y limitaciones
+% evidencia:E16,E17,E18,E19,E20,E23,E27
+
+\section{Discusión, recomendaciones accionables y limitaciones}
+
+El valor práctico de MediFlow no reside en automatizar decisiones clínicas, sino en articular datos administrativos heterogéneos bajo criterios auditables, supuestos explícitos y fronteras claras entre versiones.
+
+\subsection{Interpretación operativa e hipótesis alternativas}
+
+Los pronósticos confirman una frontera nítida entre servicios de alto volumen y conteos bajos o intermitentes. En Urgencias (8,4\,\% WAPE en \texttt{lgbm\_final}; 8,91\,\% en bundle \texttt{v2.0}) y Rehabilitación laboral lunes--viernes (85,6\,\%--90,9\,\%), los rezagos semanales y el calendario anticipan oscilaciones y cierres festivos con error acotado. En Tratamiento Urgencias ($\approx 15{,}2$/día; WAPE 43,5\,\% en \texttt{lgbm\_final} y 42,18\,\% en \texttt{v2.0}) y fines de semana de Rehabilitación (51,3\,\% sábado; 15,6\,\% domingo), el error porcentual combina denominador pequeño con deriva semanal bajo el techo Poisson idealizado (77,0\,\% semanal observado frente a 92,3\,\% teórico)~\cite{mediflow2026demanda}; conviene planificar sobre MAE ($\approx 6{,}4$--$6{,}6$/día) y agregados semanales.
+
+En congestión hospitalaria, la consistencia matemática de Ley de Little en población común (\num{277,52} frente a \num{277,47} pacientes medios) convive con dos matices críticos~\cite{mediflow2026informe}: (1) la correlación ecológica negativa ($r = -0{,}481$) entre censo mensual de Hospitalización y $p_{90}$ ponderado de transición Tratamiento Urgencias $\rightarrow$ Hospitalización (\num{25,13}\,h en meses normales vs. \num{23,70}\,h en censo alto) descarta atribuir las demoras registradas directamente a saturación de piso sin auditar cierres tardíos o solapamientos~\cite{mediflow2026optimizacion}; y (2) adelantar el 35\,\% de altas vespertinas recorta horas rojas de 9,32\,\% a 6,26\,\% ($-32{,}8\,\%$ rel.; $-3{,}06$\,pp) sin alterar el pico máximo de 359 pacientes.
+
+\subsection{Estado consolidado de capacidades y recomendaciones}
+
+La Tabla~\ref{tab:estado_capacidades} delimita código implementado, estado en el artefacto \texttt{v2.0}/PBIP y pendientes al corte \texttt{803c1a1}. La Tabla~\ref{tab:recomendaciones} sintetiza las recomendaciones condicionadas \texttt{REC-01} a \texttt{REC-05}~\cite{mediflow2026optimizacion,mediflow2026informe}; no implican metas aprobadas ni ahorro garantizado. La hoja de ruta contempla: (1) completar el paquete \texttt{v2.1} autorizado con perfiles por corte, Little alineado y cuantiles recalibrados; (2) desarrollar el simulador de recorrido (Etapa~2) con camas, dotación, tiempos reales y tres sellos HIS (\texttt{hora\_\allowbreak decision\_\allowbreak hospitalizar}, \texttt{hora\_\allowbreak asignacion\_\allowbreak cama}, \texttt{hora\_\allowbreak traslado\_\allowbreak efectivo}); y (3) ejecutar un piloto prospectivo en modo sombra (Etapa~3).
+
+\begin{table*}[t]
+\caption{Estado verificado de capacidades entre código, artefacto servido (\texttt{v2.0}) / PBIP y pendientes}
+\label{tab:estado_capacidades}
+\centering
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}L{0.21\textwidth} L{0.25\textwidth} L{0.24\textwidth} Y@{}}
+\toprule
+Capacidad o módulo & Implementación en código & Estado en bundle \texttt{v2.0} / PBIP & Trabajo pendiente \\
+\midrule
+Pronóstico puntual 1--7\,d (\texttt{lgbm\_final}) & Implementado en \texttt{demanda.py} con nivel local y recencia & No es el modelo servido; reporte del \texttt{2026-11-18} & Evaluar nivel local en familia cuantílica \\
+Pronóstico cuantílico web ($p_{10}/p_{50}/p_{90}$ + SHAP) & Implementado en \texttt{explicacion.py} y \texttt{predict.py} & Activo en \texttt{v2.0} (corte \texttt{2026-07-17}) & Recalibrar cobertura (64,3\,\%--78,6\,\%) e incluir Carnaval/Sem. Santa \\
+Largo plazo a 120 días & Implementado en \texttt{largo\_plazo.py} ($p_{05}/p_{95}$ ensanchado) & Activo en \texttt{/api/largo-plazo} (corrida \texttt{v2.0}) & Reconciliar reporte \texttt{2026-11-03} vs. bundle \\
+Erlang~C, Little y altas tempranas & Implementado en \texttt{optimizacion.py} (interpolación API) & Activo en \texttt{v2.0} con Little híbrido (\num{284,01}) & Regenerar con Little alineado (\num{277,52}) y medir $1/\mu$ real \\
+Acoplamiento por corte Etapa~1 & Implementado en \texttt{empaquetar.py} (\texttt{v2.1}) + fixtures & Ausente en \texttt{v2.0}: \texttt{disponible: false} & Regenerar \texttt{v2.1} autorizado con \texttt{perfiles\_horarios} \\
+Asistente \texttt{/api/chat} & 6 herramientas + respaldo offline (\texttt{chat.py}) & Operativo contra salidas del bundle & Validar \textit{end-to-end} con clave autorizada \\
+Tablero Power BI (PBIP) & 7 pág., 12 tab., 18 rel., 43 DAX (\texttt{2026-04-30}) & Definiciones locales corregidas; sin datos & Revisar en Desktop, alinear cortes y republicar \\
+Simulador Etapa~2 y piloto Etapa~3 & Diseño conceptual en \texttt{informe\_final.md} & No implementado ni validado en clínica & Instrumentar 3 marcas HIS, capacidad y piloto sombra \\
+\bottomrule
+\end{tabularx}
+\ieeenota{Consolidación desde~\cite{mediflow2026auditoria},~\cite{mediflow2026bundle},~\cite{mediflow2026pbip} e inspección de \texttt{src/hun/models/} y \texttt{app/}.}
+\end{table*}
+
+\begin{table*}[t]
+\caption{Recomendaciones operacionales condicionadas (\texttt{REC-01} a \texttt{REC-05}) y criterios de validación}
+\label{tab:recomendaciones}
+\centering
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}l L{0.23\textwidth} L{0.31\textwidth} Y@{}}
+\toprule
+ID & Acción propuesta & Resultado modelado o archivado & Condición e indicador de piloto \\
+\midrule
+\texttt{REC-01} & Validar equipos en Urgencias (06--12\,h) & Demanda $p_{90}$ (39,67/h): 15 eq. vs. 12 norm.; esp. 6,09\,min & Medir duración real vs. supuesto 20\,min y plantilla por turno \\
+\texttt{REC-02} & Revisar capacidad en Rehab. (06--12\,h) & Demanda $p_{90}$ (133,33/h): 70 eq. vs. 42 norm.; esp. 5,30\,min & Contrastar agenda, atención supuesta (30\,min) y puestos \\
+\texttt{REC-03} & Investigar demoras de estancia en Hosp. & $-4$\,h libera 13,97 camas eq. (4,92\,\% de Little híbrido) & Auditar demoras administrativas preservando alta clínica \\
+\texttt{REC-04} & Pilotar egreso seguro intradía & Adelantar 35\,\% [14,20)$\rightarrow$[08,12): rojas 9,32\,\%$\rightarrow$6,26\,\% (pico 359) & Evaluar en piloto con umbral $>309$, reingreso y seguridad \\
+\texttt{REC-05} & Auditar sellos Trat. Urg. $\rightarrow$ Hosp. & \num{47670} pasos; $p_{90}$ pond. 24,45\,h; $r = -0{,}481$ con censo & Instrumentar decisión, asignación y traslado en HIS \\
+\bottomrule
+\end{tabularx}
+\ieeenota{Propuestas tomadas de~\cite{mediflow2026optimizacion} y~\cite{mediflow2026informe}; no implican calendario ni compromiso institucional aprobado.}
+\end{table*}
+
+\subsection{Limitaciones consolidadas}
+
+Seis límites acotan el uso actual: (a) ausencia en OMOP de camas físicas, personal y tiempos clínicos reales; (b) carácter estadístico del filtro $p_{99{,}9}$ y exclusión de diagnósticos/procedimientos/laboratorio como predictores; (c) ambigüedad administrativa de \texttt{espera\_h} con solapamientos negativos; (d) cobertura cuantílica de \texttt{v2.0} inferior al 80\,\% nominal y ausencia de \texttt{perfiles\_horarios}; (e) divergencia de cortes entre Power BI (abril 2026 sin republicación verificada) y demanda (julio 2026), y entre corridas de largo plazo; y (f) ausencia de validación prospectiva en vivo o autorización clínica.

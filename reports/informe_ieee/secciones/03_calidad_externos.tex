@@ -1,0 +1,62 @@
+% Sección III: Calidad, preparación e integración de factores externos
+% evidencia:E04,E05,E10,E26
+
+\section{Calidad, preparación e integración de factores externos}
+
+La confiabilidad predictiva y censal exige resolver anomalías administrativas previas en SQL y Python~\cite{mediflow2026calidad,mediflow2026informe}.
+
+\subsection{Auditoría archivada de calidad y consistencia temporal}
+
+La auditoría archivada del 28 de octubre de 2026~\cite{mediflow2026calidad} registró 0,00\,\% de nulos en columnas clave de \texttt{person} (\num{912205} filas), \texttt{visit\_occurrence} (\num{1706001}) y \texttt{visit\_detail} (\num{3281613}). Aunque las claves primarias no se repiten, agrupar por clave de evento reveló duplicidad administrativa en visitas principales y residual en etapas, junto con edades imposibles que distorsionaban el grupo pediátrico.
+
+Para verificar si la anonimización desplazó fechas respecto del calendario colombiano, se midió el volumen relativo en festivos entre semana frente a tres semanas vecinas desplazando la referencia entre $-21$ y $+21$ días~\cite{mediflow2026calidad}. En Rehabilitación Ambulatoria (cierre no laboral), el mínimo global se produjo exactamente en desfase 0 días: volumen relativo de 0,0032 (0,32\,\%) en \texttt{visit\_occurrence} y 0,0033 (0,33\,\%) en \texttt{visit\_detail} (márgenes de 0,50 y 0,49 sobre el segundo menor desplazamiento), con caídas a 0,25\,\% y 0,21\,\% en lunes y martes de Carnaval. Urgencias mantiene operación continua (73,95\,\% en festivos). Esta prueba habilita variables calendáricas reales sin certificar exactitud horaria individual; todas las cifras provienen de registros archivados sin reejecución SQL.
+
+\begin{table*}[t]
+\caption{Reglas de calidad de datos, hallazgos archivados e implementación SQL vigente}
+\label{tab:reglas_calidad}
+\centering
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}L{0.17\textwidth} L{0.31\textwidth} L{0.25\textwidth} Y@{}}
+\toprule
+Dimensión & Hallazgo archivado y población & Implementación vigente & Efecto o límite \\
+\midrule
+Nulos críticos & 0,00\,\% en claves y marcas de \texttt{person}, \texttt{visit\_occurrence} y \texttt{visit\_detail} & No requiere imputación de fechas & Completitud condicionada al extracto \\
+Duplicados visitas & \num{228259} copias sobrantes (13,38\,\%) sobre \num{1706001} filas & \texttt{COUNT(DISTINCT (person\_id, concept, inicio))} en SQL \texttt{04}, \texttt{11}, \texttt{13} & Reduce llegadas totales a \num{1477742} ($-13{,}4\,\%$) \\
+Duplicados etapas & \num{14081} copias sobrantes (0,43\,\%) sobre \num{3281613} etapas & Conteo agregado por etapa; tasa distinta a visitas & No extrapolar 0,43\,\% como tasa de visitas \\
+Edades imposibles & 43 visitas (22 pacientes, 0,0025\,\%): edad $<0$ o $>110$ años & Etiqueta \texttt{invalida} en SQL \texttt{10} y \texttt{13} & Evita inflar el grupo pediátrico \texttt{0-17} \\
+Etapas inválidas y huérfanas & 0\,\% sin fin o fin $<$ inicio; 117 huérfanas globales (91 en \texttt{9201}) & SQL \texttt{14}--\texttt{16}, \texttt{18} excluyen fechas inválidas; \texttt{SQL16} usa \texttt{LEFT JOIN} & Conserva huérfanas; contraste en recorte $p_{99{,}9}$ \\
+Regularización & Ausencia de filas en horas o días sin movimientos & \texttt{grilla\_regular} rellena con 0 en \texttt{agregados.py} & Evita sesgar al alza promedios horarios/diarios \\
+\bottomrule
+\end{tabularx}
+\ieeenota{Síntesis contrastada entre~\cite{mediflow2026calidad},~\cite{mediflow2026informe} (sec.~3) y los SQL \texttt{04}, \texttt{13}--\texttt{16} y \texttt{18} en \texttt{src/hun/data/sql/}.}
+\end{table*}
+
+\subsection{Depuración estadística de estancias extremas (\texorpdfstring{$p_{99{,}9}$}{p99.9}) y regla sobre huérfanas}
+
+La auditoría sin recorte (\nolinkurl{23_duracion_etapas_percentiles.sql}) halló máximos crudos de \num{28070,3}\,h en Tratamiento Urgencias, \num{20730,3}\,h en Urgencias y \num{11213,6}\,h en Hospitalización~\cite{mediflow2026saturacion,mediflow2026informe}. Para evitar inflar la ocupación acumulada por cierres abiertos, las consultas \texttt{14}, \texttt{15} y \texttt{16} filtran por el percentil $p_{99{,}9}$ de cada etapa: \textbf{\num{1176,3}\,h} en Hospitalización (\num{1176,257222}\,h), \textbf{\num{283,7}\,h} en Tratamiento Urgencias, \textbf{\num{17,5}\,h} en Urgencias y \textbf{0,0\,h} en Rehabilitación~\cite{mediflow2026saturacion}.
+
+En Hospitalización (\texttt{9201}), sobre \num{108601} etapas válidas se excluyen 107 superiores a \num{1176,3}\,h (todas con visita padre) y se conservan \textbf{\num{108494} etapas}, incluidas las 91 huérfanas ($<720$\,h)~\cite{mediflow2026informe}. Este filtro reduce $p_{50}/p_{75}/p_{90}$ poscalentamiento de 288 / 306 / 319 (máx. 378) a \textbf{283 / 297 / 309} (máx. \textbf{359}) en Hospitalización, y de 219 / 260 / 300 a \textbf{201 / 239 / 272} en Tratamiento Urgencias~\cite{mediflow2026informe}. Es un recorte estadístico agregado, no una adjudicación clínica. Asimismo, aunque pasajes previos de~\cite{mediflow2026calidad} recomendaban excluir huérfanas, la implementación vigente en \texttt{16\_duracion\_etapas\_diaria.sql} usa \texttt{LEFT JOIN visit\_occurrence} al igual que \texttt{SQL14} y \texttt{SQL15}, fijando la cohorte común de \num{108494} etapas (exigir visita padre reduciría la población a \num{108403}).
+
+\subsection{Integración externa y protocolo de cuatro filtros}
+
+El módulo \texttt{src/external/} construye \texttt{data/externos.parquet} integrando calendario colombiano (librería \texttt{holidays} con festivos, puentes y día posfestivo, Carnaval, Semana Santa, vacaciones y quincenas/primas), clima de Open-Meteo (Soledad) y SIVIGILA semanal (dengue e IRA grave con rezagos anti-fuga \texttt{lag2s} y \texttt{lag3s}). El control \texttt{data/externos\_fuentes.json} (27 de octubre de 2026) marca estado \texttt{ok} para calendario, clima (\texttt{2018-01-01} a \texttt{2026-10-21}) y epidemiología, sin implicar por sí solo aporte predictivo~\cite{mediflow2026informe}.
+
+\begin{table*}[t]
+\caption{Resultados archivados del protocolo de evaluación empírica de factores externos}
+\label{tab:factores_externos}
+\centering
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}L{0.23\textwidth} l r r r r Y@{}}
+\toprule
+Grupo evaluado & Decisión & Mediana & Placebo & Pliegues & $p$-signo & Motivo registrado \\
+\midrule
+\texttt{festivos\_y\_puentes} & Acepta & $+33{,}80\,\%$ & $-1{,}80\,\%$ & 88\,\% & 0,000 & Cumple los 4 criterios \\
+\texttt{carnaval\_y\_semana\_santa} & Acepta & $+3{,}49\,\%$ & $+1{,}26\,\%$ & 73\,\% & 0,014 & Cumple los 4 criterios \\
+\texttt{vacaciones\_escolares} & Descarta & $+4{,}41\,\%$ & $-0{,}13\,\%$ & 65\,\% & 0,084 & $< 70\,\%$ de pliegues y $p > 0{,}05$ \\
+\texttt{quincena\_y\_primas} & Descarta & $+1{,}17\,\%$ & $+0{,}79\,\%$ & 58\,\% & 0,279 & Placebo $> 0{,}5\times$, $< 70\,\%$ pliegues y $p > 0{,}05$ \\
+\bottomrule
+\end{tabularx}
+\ieeenota{Fuente:~\cite{mediflow2026externos} (18 de noviembre de 2026, 26 pliegues \textit{walk-forward}). Criterios: mediana $\ge 1\,\%$, mejora en $\ge 70\,\%$ de pliegues, prueba unilateral de signo $p \le 0{,}05$ y placebo $< 0{,}5\times$ mejora real. \texttt{clima} y \texttt{epidemiologia} fueron descartados en una corrida inicial anterior~\cite{mediflow2026informe} y no tienen cifras en la tabla del 18 de noviembre. Las cifras de \texttt{docs/protocolo\_factores\_externos.md} ($+29{,}6\,\%$, placebo $-0{,}69\,\%$) corresponden a una corrida previa.}
+\end{table*}
+
+Cada grupo externo enfrenta cuatro filtros consecutivos sobre los 26 pliegues~\cite{mediflow2026externos}: ablación frente a base calendárica (día, mes, armónicos anuales), control de estacionalidad, prueba placebo desplazada y estabilidad/prueba de signo. Como resume la Tabla~\ref{tab:factores_externos}, solo \texttt{festivos\_y\_puentes} (6 variables) y \texttt{carnaval\_y\_semana\_santa} (5 variables) son aceptados en \texttt{lgbm\_final}.
