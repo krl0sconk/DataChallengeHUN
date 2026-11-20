@@ -1,0 +1,106 @@
+% Sección 6: Optimización operacional y simulaciones paramétricas
+% evidencia:E15,E16,E17,E18,E19,E20
+
+\section{Optimización operacional y simulaciones paramétricas}
+
+La capa de decisión de MediFlow combina tres modelos analíticos orientados a explorar requerimientos paramétricos de atención, balance promedio de ocupación hospitalaria y redistribución horaria de egresos: teoría de colas M/M/$c$ (Erlang~C), Ley de Little y simulación discreta horaria de altas tempranas \parencite{mediflow2026optimizacion,mediflow2026informe}. En todos los casos, las cifras representan escenarios históricos o paramétricos condicionados a supuestos explícitos, nunca mediciones de dotación contractual ni impacto clínico observado \parencite{green2006queueing}.
+
+\subsection{Dimensionamiento paramétrico de equipos equivalentes con Erlang~C}
+
+El módulo \texttt{src/hun/models/optimizacion.py} modela cada franja de seis horas mediante un sistema M/M/$c$ con llegadas de Poisson de tasa horaria $\lambda$ (calculada sobre grilla horaria regular con ceros dividida entre 6\,h), tiempos de atención exponenciales con media supuesta $1/\mu \in \{15,\, 20,\, 30\}\,\text{min}$ ($\mu = 60 / t_{\text{serv}}$ en pacientes/hora), cola única, tasa estacionaria y ausencia de abandono \parencite{green2006queueing,mediflow2026optimizacion}. Un servidor $c$ representa un \textbf{equipo activo equivalente} y no una plaza contractual individual, dado que el esquema OMOP no contiene tablas de personal.
+
+Definiendo la carga ofrecida $a = \lambda / \mu$ y la utilización $\rho = \lambda / (c\mu)$, el código evita el desbordamiento numérico de los factoriales en la fórmula clásica de Erlang~C calculando primero la probabilidad de bloqueo de Erlang~B por recurrencia estable ($B_0 = 1$, $B_k = a B_{k-1} / (k + a B_{k-1})$ para $k = 1,\dots,c$) y derivando la probabilidad de esperar cuando $\rho < 1$:
+\begin{equation}
+\label{eq:erlang_c}
+C(c, a) = P(\text{esperar}) = \frac{B_c}{1 - \rho + \rho B_c}, \qquad
+W_q = \frac{60 \cdot C(c, a)}{c\mu - \lambda},
+\end{equation}
+donde $W_q$ expresa la espera media en minutos cuando las tasas se miden por hora; si $\rho \ge 1$, la cola es inestable y no existe espera media estacionaria finita \parencite{mediflow2026optimizacion}. El algoritmo selecciona el menor entero $c \ge \lfloor a \rfloor + 1$ que satisface simultáneamente $W_q < 15\,\text{min}$ y $P(\text{espera} \le 15\,\text{min}) = 1 - C(c, a)\exp\!\bigl(-(c\mu - \lambda)\cdot 15 / 60\bigr) \ge 0{,}80$.
+
+\begin{table}[htbp]
+\caption{Dimensionamiento Erlang~C en franja pico y sensibilidad al supuesto de tiempo de atención}
+\label{tab:erlang_sensibilidad}
+{\singlespacing\small
+\begin{tabularx}{\textwidth}{@{}Y r r r r r L{0.16\textwidth}@{}}
+\toprule
+Servicio y franja pico & $1/\mu$ (min) & $\lambda_{\text{norm}}$/h & $\lambda_{p90}$/h & $c_{\text{norm}}$ & $c_{p90}$ & Espera media bajo demanda $p_{90}$ (min) \\
+\midrule
+Urgencias · 06--12\,h (base) & 20 & 29,250 & 39,667 & 12 & 15 & 6,094 \\
+Urgencias · 06--12\,h (sens.) & 15 / 30 & 29,250 & 39,667 & 9 / 17 & 12 / 22 & $\Delta_{p90} = 3 / 5$ eq. \\
+Rehabilitación · 06--12\,h (base) & 30 & 77,584 & 133,333 & 42 & 70 & 5,303 \\
+Rehabilitación · 06--12\,h (sens.) & 15 / 20 & 77,584 & 133,333 & 21 / 28 & 35 / 47 & $\Delta_{p90} = 14 / 19$ eq. \\
+Tratamiento Urg. · 18--24\,h (base) & 20 & 0,819 & 1,667 & 1 & 2 & 1,672 \\
+Tratamiento Urg. · 18--24\,h (sens.) & 15 / 30 & 0,819 & 1,667 & 1 / 2 & 2 / 2 & $\Delta_{p90} = 1 / 0$ eq. \\
+\bottomrule
+\end{tabularx}}
+\apanota{Datos archivados de \textcite{mediflow2026optimizacion}, sección Erlang~C. Las tasas $\lambda$ se calculan sobre llegadas observadas por día y franja divididas por 6\,h en grilla con ceros. El tiempo de servicio $1/\mu$ es un supuesto paramétrico y no una duración clínica medida; la columna de espera reporta el promedio esperado bajo la tasa de demanda $p_{90}$, no el percentil 90 del tiempo de espera de los pacientes. El desglose completo de las 12 franjas y de las tres sensibilidades se detalla en el Anexo~B.}
+\end{table}
+
+La Tabla~\ref{tab:erlang_sensibilidad} muestra los resultados en las franjas pico de cada servicio. En Urgencias (06--12\,h, supuesto base de 20\,min), el requerimiento teórico asciende de 12 equipos equivalentes en régimen normal a 15 en régimen $p_{90}$ (espera media bajo demanda $p_{90}$ de 6,094\,min); en Rehabilitación (06--12\,h, supuesto base de 30\,min), pasa de 42 a 70 equipos equivalentes. La sensibilidad frente a $1/\mu \in \{15, 20, 30\}\,\text{min}$ modifica sustancialmente el número de equipos requeridos (de 12 a 22 en Urgencias $p_{90}$ y de 35 a 70 en Rehabilitación $p_{90}$), confirmando que medir los tiempos clínicos reales de atención precede a cualquier decisión de dotación.
+
+\subsection{Ley de Little en Hospitalización y contraste entre poblaciones}
+
+La Ley de Little \parencite{little1961} establece que en régimen estacionario el número medio en el sistema $L$ iguala el producto de la tasa media de llegada $\lambda$ por la permanencia media $W$ sobre una población y ventana temporales consistentes:
+\begin{equation}
+\label{eq:little}
+L = \frac{\lambda \cdot W}{24},
+\end{equation}
+donde $\lambda$ se expresa en ingresos/día y $W$ en horas. Es imprescindible no intercambiar medias con medianas ni comparar cifras calculadas sobre cohortes diferentes \parencite{mediflow2026informe}.
+
+\begin{table}[htbp]
+\caption{Contraste de Ley de Little por población y ventana temporal en Hospitalización (\texttt{9201})}
+\label{tab:little_poblaciones}
+{\singlespacing\footnotesize
+\begin{tabularx}{\textwidth}{@{}Y r r r r R{2.1cm} R{1.35cm}@{}}
+\toprule
+Régimen / población & Etapas $E,S$ / $W$ & $\lambda$ (/día) & $W$ (h) & $\lambda W/24$ & Media hor. (1.294\,d / +24\,d) & Mediana (+24\,d) \\
+\midrule
+\nolinkurl{sql14_15_16_p999} (con huérfanas) & \num{108494} / \num{108494} & 83,843895 & 79,438491 & 277,52 & 277,47 / 278,61 & 283,0 \\
+\nolinkurl{padre_y_p999} (exige visita padre) & \num{108403} / \num{108403} & 83,773570 & 79,428945 & 277,25 & 277,20 / 278,60 & --- \\
+Híbrido bundle \texttt{v2.0} & \num{108494} / \num{108510} & 83,843895 & 81,297108 & 284,01 & --- & --- \\
+Bruta sin recorte (con huérfanas) & \num{108601} / \num{108601} & 83,926584 & 81,305079 & 284,32 & 284,27 / 285,54 & 288,0 \\
+\bottomrule
+\end{tabularx}}
+\apanota{Consolidación de la verificación documentada en PostgreSQL \parencite{mediflow2026informe}, sección~3, y los metadatos inspeccionados del artefacto \texttt{v2.0} \parencite{mediflow2026bundle}. Los productos exactos reportados en el informe son \num{277,5177}, \num{277,2514}, \num{284,0111} y \num{284,3191} pacientes (recalcular $\lambda W / 24$ directamente desde las columnas redondeadas a seis decimales produce \num{277,5180} y \num{277,2519}, diferencia $< 0{,}001$). Para \texttt{sql14\_15\_16\_p999}, el censo medio continuo en 1.294 días (31.056\,h hasta \texttt{2026-07-18 00:00}) es \num{277,4669}, frente a \num{277,4644} hasta la última salida (31.062\,h en \texttt{2026-07-18 06:00}) y \num{278,6203} tras los 24 días de calentamiento (30.483\,h). La columna de mediana corresponde a la distribución horaria poscalentamiento y no es el término de contraste de Little.}
+\end{table}
+
+La Tabla~\ref{tab:little_poblaciones} documenta simultáneamente ambas referencias vigentes. En la población común filtrada por $p_{99{,}9}$ (\texttt{sql14\_15\_16\_p999}, \num{108494} etapas), la fórmula de Little arroja \textbf{\num{277,52} pacientes}, en estrecha concordancia interna con el censo medio horario de \textbf{\num{277,47}} pacientes durante los 1.294 días (y \num{278,61} tras el calentamiento de 24 días, frente a la mediana horaria de \num{283,0}). En cambio, el artefacto \texttt{v2.0} servido en la web conserva la referencia híbrida de \textbf{\num{284,01} pacientes}, resultante de combinar flujos filtrados por $p_{99{,}9}$ (\num{83,843895}/día) con la duración media de una población previa sin recorte y con visita padre ($W = \num{81,297108}\,\text{h}$). Sobre esa referencia híbrida del bundle, los escenarios de reducción paramétrica de estancia proyectan que acortar la permanencia media en 2, 4, 6 y 8\,h equivale teóricamente a \num{6,987} (2,460\,\%), \num{13,974} (4,920\,\%), \num{20,961} (7,380\,\%) y \num{27,948} (9,840\,\%) camas medias equivalentes menos en ocupación media \parencite{mediflow2026optimizacion,mediflow2026bundle}. Específicamente, reducir 4\,h libera teóricamente \textbf{\num{13,97} camas medias equivalentes} (4,92\,\% de 284,01); ello no representa expansión física ni ahorro clínico garantizado.
+
+\subsection{Simulación horaria de rondas de alta temprana}
+
+Para evaluar el efecto potencial de adelantar egresos intradía en Hospitalización (\texttt{9201}), \texttt{calcular\_ley\_little\_y\_altas\_tempranas} reconstruye el censo horario con entradas y salidas filtradas por $p_{99{,}9}$ y traslada uniformemente una fracción $p \in \{20\,\%, 35\,\%, 50\,\%\}$ de las salidas registradas en la ventana semiabierta vespertina $[14{:}00, 20{:}00)$ hacia la ventana matutina $[08{:}00, 12{:}00)$ del mismo día, conservando intactos los ingresos diarios y manteniendo fijo el umbral rojo histórico $> 309$ \parencite{mediflow2026optimizacion}. La evaluación distingue la variación absoluta en puntos porcentuales ($\Delta_{\text{pp}}$) respecto de la reducción relativa ($\Delta_{\text{rel}}$):
+\begin{equation}
+\label{eq:reduccion_rojas}
+\Delta_{\text{pp}} = H_{\text{base}} - H_{\text{sim}}(p), \qquad
+\Delta_{\text{rel}} = 100 \cdot \frac{H_{\text{base}} - H_{\text{sim}}(p)}{H_{\text{base}}}.
+\end{equation}
+
+\begin{table}[htbp]
+\caption{Simulación horaria agregada de adelanto de altas vespertinas a la mañana en Hospitalización}
+\label{tab:altas_tempranas}
+{\singlespacing\small
+\begin{tabularx}{\textwidth}{@{}Y r r r r r@{}}
+\toprule
+Altas adelantadas & \shortstack[r]{Horas rojas\\base} & \shortstack[r]{Horas rojas\\simuladas} & \shortstack[r]{Reducción\\relativa} & \shortstack[r]{Dif. puntos\\porc.} & \shortstack[r]{Pico base\\/ sim.} \\
+\midrule
+20\,\% & 9,320\,\% & 7,119\,\% & 23,618\,\% & $-2{,}20$\,pp & 359 / 359 \\
+35\,\% & 9,320\,\% & 6,259\,\% & 32,841\,\% & $-3{,}06$\,pp & 359 / 359 \\
+50\,\% & 9,320\,\% & 5,902\,\% & 36,677\,\% & $-3{,}42$\,pp & 359 / 359 \\
+\bottomrule
+\end{tabularx}}
+\apanota{Resultados archivados de \textcite{mediflow2026optimizacion} y verificados en los metadatos de \textcite{mediflow2026bundle} (valores exactos base 9,319949\,\%; simulados 7,118722\,\%, 6,259226\,\% y 5,901650\,\%, calculados con umbral rojo fijo $> 309$ tras calentamiento de 24 días). La simulación redistribuye cantidades fraccionales agregadas y no selecciona pacientes clínicos individuales. No deben sumarse de forma automática las camas equivalentes del escenario Little con la reducción de horas rojas de esta simulación.}
+\end{table}
+
+Como resume la Tabla~\ref{tab:altas_tempranas}, el escenario central de \textbf{35\,\%} reduce el porcentaje de horas en alerta roja de 9,32\,\% a 6,26\,\% ---un descenso de aproximadamente \textbf{3,06 puntos porcentuales} y de \textbf{32,8\,\% relativo}---, sin modificar en ningún escenario el censo pico máximo histórico de \textbf{359 pacientes}. Por lo tanto, no debe afirmarse que el adelanto de altas reduzca el pico máximo de ocupación ni que libere un 32,8\,\% de camas físicas. En la API web, cuando el usuario selecciona porcentajes intermedios en el deslizador del simulador, la función \texttt{\_simular\_estancia\_y\_altas} interpola linealmente entre los escenarios ancla precalculados $\{0, 20, 35, 50, 100\}$ mediante \texttt{numpy.interp} en lugar de ejecutar una nueva simulación horaria por cada movimiento del control \parencite{mediflow2026optimizacion}.
+
+\subsection{Acoplamiento pronóstico--decisión (Etapa 1): alcance archivado frente a artefacto real}
+
+MediFlow contempla además acoplar el pronóstico diario ($p_{10}/p_{50}/p_{90}$) con pesos horarios históricos por franja de seis horas para estimar requerimientos Erlang~C por turno en una fecha dada. Es indispensable separar tres planos de evidencia respecto de esta capacidad:
+
+\begin{enumerate}[leftmargin=*,nosep]
+\item \textit{Ejemplo retrospectivo archivado} \parencite{mediflow2026optimizacion}: documenta la jornada del lunes \texttt{2026-07-06} en Urgencias con pronóstico diario $p_{10}/p_{50}/p_{90} = 418 / 488 / 600$ (contraste observado al cierre de 526 llegadas), referencia paramétrica de 12 equipos equivalentes ($1/\mu = 20\,\text{min}$, meta $<15\,\text{min}$). En la franja de mañana (06--12\,h, peso 38,8\,\%, $\lambda$ prevista 27,00 / 31,52 / 38,76\,/h), 12 equipos cumplen la meta en demanda $p_{50}$ (7,58\,min), pero en demanda $p_{90}$ la cola se vuelve inestable ($\rho = 1{,}077 \ge 1$) y requiere 15 equipos equivalentes para sostener 4,61\,min de espera media (al repartir las 526 llegadas reales con el mismo peso de $p_{90}$, la tasa matutina estimada es $\approx 33{,}98/\text{h}$, $\rho \approx 0{,}94 < 1$, con espera modelada $\approx 23{,}4\,\text{min} > 15\,\text{min}$). Sus pesos no han sido reconciliados con el bundle \texttt{v2.0} actual ni representan una evaluación fuera de muestra.
+\item \textit{Implementación en código (\texttt{v2.1})}: los módulos \texttt{empaquetar.py}, \texttt{optimizacion.py}, \texttt{predict.py} y \texttt{OptimizationPanel.jsx} implementan perfiles horarios por corte sin fuga temporal (\texttt{perfiles\_horarios}) con verificación completa probada únicamente sobre fixtures sintéticos (\texttt{construir\_paquete\_sintetico\_prueba}) \parencite{mediflow2026informe,mediflow2026auditoria}.
+\item \textit{Estado efectivo del artefacto servido (\texttt{v2.0})}: la inspección directa de \texttt{models/\allowbreak modelos\_web\_bundle.joblib} confirma que el paquete actual es versión \texttt{2.0} y \textbf{no contiene \texttt{perfiles\_horarios}}, por lo que en producción el modo por corte responde \texttt{disponible: false} con degradación explícita hacia el modo histórico retrospectivo \parencite{mediflow2026bundle,mediflow2026auditoria}.
+\end{enumerate}
+
+Por consiguiente, la Etapa~1 del acoplamiento no debe presentarse como completamente desplegada sobre el artefacto hospitalario real, y el paso a un simulador de recorrido completo (Etapa~2) permanece pendiente de instrumentar tres marcas temporales del HIS (\texttt{hora\_decision\_hospitalizar}, \texttt{hora\_asignacion\_cama} y \texttt{hora\_traslado\_efectivo}) y de incorporar capacidad física instalada.
