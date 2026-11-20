@@ -1,0 +1,295 @@
+% Sección 11: Anexos técnicos y de trazabilidad
+
+\clearpage
+\section{Anexo A: Trazabilidad de evidencias, discrepancias resueltas y criterios APA~7}
+
+La Tabla~\ref{tab:anexo_matriz} consolida las 29 unidades de evidencia (\texttt{E01}--\texttt{E29}) empleadas como contrato numérico de este informe, indicando la fuente primaria del repositorio, el tipo de evidencia y el límite obligatorio de interpretación aplicado en todo el documento.
+
+{\singlespacing\footnotesize
+\begin{longtable}{@{}L{0.05\textwidth} L{0.25\textwidth} L{0.25\textwidth} L{0.15\textwidth} L{0.24\textwidth}@{}}
+\caption{Matriz completa de evidencias (\texttt{E01}--\texttt{E29}) y límites de interpretación}
+\label{tab:anexo_matriz} \\
+\toprule
+ID & Tema y cifra principal & Fuente del repositorio & Tipo de evidencia & Límite obligatorio \\
+\midrule
+\endfirsthead
+\multicolumn{5}{l}{\textit{Tabla~\ref{tab:anexo_matriz} (continuación)}} \\
+\toprule
+ID & Tema y cifra principal & Fuente del repositorio & Tipo de evidencia & Límite obligatorio \\
+\midrule
+\endhead
+\midrule
+\multicolumn{5}{r}{\textit{Continúa en la página siguiente}} \\
+\endfoot
+\bottomrule
+\endlastfoot
+E01 & Rúbrica 15/15/20/20/15/5/10\,\% y entregables & T\&C p.~4 \S\S13--14; Enunciado p.~3 & Norma oficial & No derivar requisitos del informe del equipo \\
+E02 & Desempates: optimización $\rightarrow$ rigor $\rightarrow$ flujo & T\&C p.~5 \S16 & Norma oficial & No inventar reglas adicionales \\
+E03 & Corte demanda: \texttt{2026-07-16} (excl. \texttt{2026-07-17}) & \nolinkurl{docs/inventario_base.md} & Resultado archivado & No unificar con corte Power BI abril 2026 \\
+E04 & Deduplicación: \num{228259} copias (13,38\,\%) de \num{1706001} & \nolinkurl{docs/calidad_datos.md} & Resultado archivado & No extrapolar 13,38\,\% a etapas (\texttt{visit\_detail}) \\
+E05 & Limpieza vigente $p_{99{,}9}$ y \texttt{LEFT JOIN} huérfanas & \nolinkurl{16_duracion_etapas_diaria.sql} & Implementación SQL & Prevalece sobre texto previo de \nolinkurl{calidad_datos.md} \\
+E06 & Censo y stock $N_0=0$ en 12 cortes & \nolinkurl{reports/informe_final.md} \S3 & Verificación BD doc. & No reejecutada contra PostgreSQL aquí \\
+E07 & Presión: Hosp. 283/297/309; Trat. 201/239/272 & \nolinkurl{docs/resultados/saturacion.md} & Resultado archivado & Pacientes concurrentes, no camas habilitadas \\
+E08 & Escalera Poisson: 26 pl., 18,0$\rightarrow$15,6$\rightarrow$10,5\,\% (41,6\,\%) & \nolinkurl{docs/resultados/modelo_demanda.md} & Resultado archivado & Experimento Poisson; mejoras pre-redondeo \\
+E09 & Poisson por servicio: 8,4 / 11,0 / 43,5\,\% WAPE & \nolinkurl{docs/resultados/modelo_demanda.md} & Resultado archivado & No transferir al modelo cuantílico web \\
+E10 & Externos: acepta festivos y Carnaval/Sem. Santa & \nolinkurl{docs/resultados/factores_externos.md} & Resultado archivado & Sin números de clima/epi en tabla actual \\
+E11 & Anti-fuga: enmascarar $y$ desde origen y lag $\ge 7$\,d & \nolinkurl{src/hun/models/demanda.py} & Implementación & No acredita ausencia de fuga en modo retrospectivo \\
+E12 & Intervalos 3-nov: 83,2\,\% global (85,2/72,0/75,8\,\%) & \nolinkurl{docs/resultados/intervalos_shap.md} & Corrida previa (3-nov) & Incluye \texttt{Otros}; no valida bundle \texttt{v2.0} \\
+E13 & Bundle \texttt{v2.0}: 8,91/11,08/42,18\,\%, cob. 78,57/64,29/73,08\,\% & \nolinkurl{models/modelos_web_bundle.joblib} & Metadatos inspecc. & 182\,d; no reejecutado ni igual a E08 \\
+E14 & Largo plazo: 13 pl. 120\,d; 15,7\,\% (3-nov) y \texttt{v2.0} & \nolinkurl{largo_plazo.md} y bundle \texttt{v2.0} & Corrida archivada / bundle & Pliegues solapados; bandas base $p_{05}/p_{95}$ \\
+E15 & Erlang~C: Urg. 15 eq. ($39{,}67$/h); Reh. 70 eq. ($133{,}33$/h) & \nolinkurl{docs/resultados/optimizacion.md} & Escenario archivado & Equipos equivalentes; $1/\mu$ supuesto \\
+E16 & Little alineado: \num{277,52} vs. media \num{277,47} (1.294\,d) & \nolinkurl{reports/informe_final.md} \S3 & Verificación BD doc. & Mediana 283 no se contrasta contra Little \\
+E17 & Little bundle \texttt{v2.0}: \num{284,01} ($W=81{,}297$\,h); $-4$\,h $\rightarrow$ 13,97 & \nolinkurl{models/modelos_web_bundle.joblib} & Metadatos inspecc. & Población híbrida; no es expansión física \\
+E18 & Altas 35\,\%: rojas 9,32\,\%$\rightarrow$6,26\,\% ($-32{,}8\,\%$ rel.); pico 359 & \nolinkurl{docs/resultados/optimizacion.md} & Simulación histórica & Altas fraccionales; $-3{,}06$\,pp; no clínico \\
+E19 & Transiciones: \num{47670} pasos; $p_{90}$ pond. 24,45\,h; $r=-0{,}481$ & \nolinkurl{docs/resultados/optimizacion.md} & Resultado archivado & No $p_{90}$ global ni prueba causal de cama \\
+E20 & Modo por corte: implementado \texttt{v2.1}; \texttt{v2.0} sin perfiles & \nolinkurl{src/hun/models/predict.py} & Código y bundle & Probado solo con fixtures; \texttt{disponible: false} \\
+E21 & Interfaz selector modo y referencia en panel & \nolinkurl{OptimizationPanel.jsx} & Implementación & Build pasado; no prueba despliegue público \\
+E22 & \texttt{/api/modelo}, 15 rutas reales, HTTP 503 en fallo & \nolinkurl{app/api/__init__.py} & Implementación & Sin \texttt{/api/salud}; CORS $\ne$ autenticación \\
+E23 & Power BI: 12 tab., 18 rel., 43 DAX, 7 pág., corte \texttt{2026-04-30} & \nolinkurl{model.bim} y \nolinkurl{pages.json} & Definición local PBIP & Ediciones locales no prueban republicación \\
+E24 & Pruebas: 180 Python (211,30\,s / 228,50\,s) + 3 Node & \nolinkurl{docs/cierre_auditoria.md} & Ejecución previa & Solo recolección verificada en \texttt{803c1a1} \\
+E25 & Validación histórica 3-nov: 103 pruebas & \nolinkurl{validacion_independiente.md} & Registro histórico & Sin revisión ciega ni autorización clínica \\
+E26 & Fuentes externas al \texttt{2026-10-27} (clima a \texttt{2026-10-21}) & \nolinkurl{data/externos_fuentes.json} & Registro archivado & No garantiza completitud diaria ni aceptación \\
+E27 & Recomendaciones \texttt{REC-01} a \texttt{REC-05} & \nolinkurl{reports/informe_final.md} & Propuestas doc. & Condicionadas; sin metas aprobadas ni piloto \\
+E28 & Cuatro capturas PNG y GIF de interfaz & \nolinkurl{README.md} y \nolinkurl{docs/img/app/} & Evidencia archivada & Captura simulador compuesta; notas de versión \\
+E29 & Privacidad: solo lectura SQL, exclusiones Git & \nolinkurl{src/hun/data/conexion.py} & Control implementado & No sustituye auditoría legal ni celdas pequeñas \\
+\end{longtable}
+}
+\apanota{Matriz adaptada de \texttt{reports/preparacion\_latex/02\_MATRIZ\_EVIDENCIAS.md} sobre el commit \nolinkurl{803c1a1f866a978cce8b4622269ccfb4749ba59e}.}
+
+\subsection{Registro de inconsistencias documentales detectadas y resueltas}
+
+Al contrastar el paquete preparatorio con los archivos originales del repositorio se resolvieron las siguientes inconsistencias adicionales: (1) separación explícita entre la corrida de largo plazo del 3 de noviembre \parencite{mediflow2026largoplazo} y la corrida empaquetada en el bundle \texttt{v2.0}; (2) detección de que el bundle \texttt{v2.0} omite nivel local, pesos por recencia y el grupo \texttt{carnaval\_y\_semana\_santa} presentes en \texttt{lgbm\_final}; (3) exclusión cuantitativa de \texttt{04\_censo\_etapas.png} por representar datos previos al filtro $p_{99{,}9}$; (4) advertencia sobre el artefacto visual de días festivos repetidos del 10 al 16 de julio en \texttt{dashboard\_pronostico.png}; (5) inclusión de \texttt{GET /api/parametros} dentro de las 15 rutas HTTP reales y aclaración sobre rutas obsoletas en \texttt{DEC-007} y \texttt{tests/README.md}; (6) corrección de la fecha de \texttt{saturacion.md} (\texttt{2026-11-19}, no \texttt{2026-11-18}) y registro del ancla desactualizada en \texttt{informe\_final.md} \S5.5; (7) registro de las dos duraciones reportadas para las 180 pruebas Python (211,30\,s frente a 228,50\,s) y del desfase narrativo en \texttt{cierre\_auditoria.md} tras el merge del PR~\#12; (8) identificación real de \texttt{src/hun/features/}, \texttt{visualization/} y \texttt{external/} como \textit{stubs} vacíos y del desfase entre \texttt{pyproject.toml} y \texttt{requirements.txt}; y (9) registro de la discrepancia de fechas entre \texttt{dashboards/README.md} (mayo incompleto) e \texttt{inventario\_base.md} (sin meses vacíos hasta junio).
+
+En el plano editorial, el documento adopta los lineamientos generales de formato, márgenes, doble espaciado, niveles de encabezado sin numeración, tablas, figuras y referencias de la séptima edición de las normas APA \parencite{apa_paper_format}, adaptando la estructura de portada estudiantil mediante la omisión de asignatura, docente y tutor según instrucción expresa de los autores \parencite{apa_title_page}.
+
+\clearpage
+\section{Anexo B: Tablas extensas de backtest, horizonte, Erlang~C y balance horario}
+
+{\singlespacing\footnotesize
+\begin{longtable}{@{}r C{0.18\textwidth} r r r@{}}
+\caption{Estabilidad temporal por pliegue del experimento puntual (26 pliegues \textit{walk-forward})}
+\label{tab:anexo_pliegues} \\
+\toprule
+Pliegue & Origen & WAPE Línea Base & WAPE \texttt{lgbm\_final} & Dif. (pp) \\
+\midrule
+\endfirsthead
+\multicolumn{5}{l}{\textit{Tabla~\ref{tab:anexo_pliegues} (continuación)}} \\
+\toprule
+Pliegue & Origen & WAPE Línea Base & WAPE \texttt{lgbm\_final} & Dif. (pp) \\
+\midrule
+\endhead
+\bottomrule
+\endlastfoot
+0 & \texttt{2025-07-25} & 7,8\,\% & 8,2\,\% & $+0{,}4$ \\
+1 & \texttt{2025-08-08} & 8,9\,\% & 8,4\,\% & $-0{,}5$ \\
+2 & \texttt{2025-08-22} & 8,2\,\% & 8,5\,\% & $+0{,}3$ \\
+3 & \texttt{2025-09-05} & 9,5\,\% & 8,8\,\% & $-0{,}7$ \\
+4 & \texttt{2025-09-19} & 6,8\,\% & 9,9\,\% & $+3{,}1$ \\
+5 & \texttt{2025-10-03} & 8,4\,\% & 7,5\,\% & $-0{,}9$ \\
+6 & \texttt{2025-10-17} & 6,3\,\% & 6,4\,\% & $+0{,}1$ \\
+7 & \texttt{2025-10-31} & 25,2\,\% & 8,2\,\% & $-17{,}0$ \\
+8 & \texttt{2025-11-14} & 22,7\,\% & 5,8\,\% & $-16{,}9$ \\
+9 & \texttt{2025-11-28} & 9,8\,\% & 11,0\,\% & $+1{,}2$ \\
+10 & \texttt{2025-12-12} & 11,5\,\% & 9,2\,\% & $-2{,}3$ \\
+11 & \texttt{2025-12-26} & 137,9\,\% & 28,0\,\% & $-109{,}9$ \\
+12 & \texttt{2026-01-09} & 28,9\,\% & 17,6\,\% & $-11{,}3$ \\
+13 & \texttt{2026-01-23} & 13,0\,\% & 12,0\,\% & $-1{,}0$ \\
+14 & \texttt{2026-02-06} & 12,5\,\% & 10,0\,\% & $-2{,}5$ \\
+15 & \texttt{2026-02-20} & 15,0\,\% & 9,2\,\% & $-5{,}8$ \\
+16 & \texttt{2026-03-06} & 7,0\,\% & 6,4\,\% & $-0{,}6$ \\
+17 & \texttt{2026-03-20} & 23,9\,\% & 5,4\,\% & $-18{,}5$ \\
+18 & \texttt{2026-04-03} & 23,8\,\% & 11,5\,\% & $-12{,}3$ \\
+19 & \texttt{2026-04-17} & 33,0\,\% & 27,6\,\% & $-5{,}4$ \\
+20 & \texttt{2026-05-01} & 24,1\,\% & 12,6\,\% & $-11{,}5$ \\
+21 & \texttt{2026-05-15} & 21,7\,\% & 7,0\,\% & $-14{,}7$ \\
+22 & \texttt{2026-05-29} & 7,4\,\% & 7,5\,\% & $+0{,}1$ \\
+23 & \texttt{2026-06-12} & 26,8\,\% & 8,9\,\% & $-17{,}9$ \\
+24 & \texttt{2026-06-26} & 27,2\,\% & 10,3\,\% & $-16{,}9$ \\
+25 & \texttt{2026-07-10} & 17,5\,\% & 11,2\,\% & $-6{,}3$ \\
+\end{longtable}
+}
+\apanota{Tomado de \textcite{mediflow2026demanda}, sección~5 (corrida del 18 de noviembre de 2026). La última columna indica la diferencia en puntos porcentuales (\texttt{lgbm\_final} menos línea base), calculada sobre las cifras redondeadas del reporte.}
+
+\begin{table}[htbp]
+\caption{Desempeño por día del horizonte y exactitud ($1-\text{WAPE}$) por servicio en \texttt{lgbm\_final}}
+\label{tab:anexo_horizonte}
+{\singlespacing\footnotesize
+\begin{tabularx}{\textwidth}{@{}Y r r r r r r r r@{}}
+\toprule
+Métrica / Servicio & 1 (vie) & 2 (sáb) & 3 (dom) & 4 (lun) & 5 (mar) & 6 (mié) & 7 (jue) & Total \\
+\midrule
+WAPE agregado & 10,3\,\% & 17,0\,\% & 10,2\,\% & 12,4\,\% & 9,5\,\% & 9,6\,\% & 9,4\,\% & 10,5\,\% \\
+MAE agregado (pac.) & 53,34 & 27,39 & 12,11 & 55,73 & 55,28 & 57,04 & 53,73 & 44,94 \\
+Sesgo agregado (pac.) & $-4{,}20$ & $-4{,}86$ & $-2{,}47$ & $-3{,}97$ & $-6{,}59$ & $-9{,}71$ & $-8{,}06$ & $-5{,}70$ \\
+\midrule
+Urgencias ($1-\text{WAPE}$) & 91,7\,\% & 91,9\,\% & 91,6\,\% & 91,7\,\% & 91,3\,\% & 92,4\,\% & 90,9\,\% & 91,6\,\% \\
+Urgencias (prom. real/d) & 441,5 & 379,8 & 344,2 & 496,8 & 504,7 & 469,0 & 466,0 & 443,16 \\
+Rehabilitación ($1-\text{WAPE}$) & 89,4\,\% & 51,3\,\% & 15,6\,\% & 85,6\,\% & 90,6\,\% & 90,0\,\% & 90,9\,\% & 89,0\,\% \\
+Rehabilitación (prom./d) & \num{1095,3} & 87,1 & 2,2 & 835,7 & \num{1219,5} & \num{1306,2} & \num{1239,8} & 826,54 \\
+Tratamiento ($1-\text{WAPE}$) & 56,8\,\% & 48,1\,\% & 44,2\,\% & 63,0\,\% & 54,6\,\% & 68,5\,\% & 56,8\,\% & 56,5\,\% \\
+Tratamiento (prom./d) & 15,8 & 17,4 & 10,0 & 15,1 & 17,0 & 16,3 & 14,4 & 15,17 \\
+\bottomrule
+\end{tabularx}}
+\apanota{Fuente: \textcite{mediflow2026demanda}, secciones 2, 3 y 3.1. Dado que todos los orígenes caen en viernes, día de horizonte y día de semana están confundidos.}
+\end{table}
+
+\begin{table}[htbp]
+\caption{Proyección mensual agosto--noviembre de 2026: reporte histórico frente a bundle servido \texttt{v2.0}}
+\label{tab:anexo_lp_mensual}
+{\singlespacing\footnotesize
+\begin{tabularx}{\textwidth}{@{}Y c r L{0.21\textwidth} r L{0.21\textwidth}@{}}
+\toprule
+Servicio & Mes & \multicolumn{2}{c}{Reporte \texttt{2026-11-03} (prom./d y total)} & \multicolumn{2}{c}{Bundle \texttt{v2.0} (prom./d y banda)} \\
+\midrule
+Urgencias (\texttt{9203}) & \texttt{2026-08} & 215,7 & [173,9; 254,6] · \num{6686} & 422,0 & [343,8; 487,5] · \num{13082} \\
+ & \texttt{2026-09} & 221,0 & [182,3; 263,0] · \num{6631} & 433,2 & [352,6; 510,6] · \num{12995} \\
+ & \texttt{2026-10} & 217,1 & [170,6; 261,0] · \num{6731} & 421,5 & [337,4; 506,4] · \num{13066} \\
+ & \texttt{2026-11} & 216,0 & [159,6; 268,9] · \num{6479} & 415,6 & [318,2; 511,9] · \num{12467} \\
+\midrule
+Rehabilitación (\texttt{581479}) & \texttt{2026-08} & 333,6 & [76,9; 514,5] · \num{10340} & 661,5 & [171,0; 789,3] · \num{20507} \\
+ & \texttt{2026-09} & 385,9 & [60,4; 554,8] · \num{11577} & 789,6 & [150,4; 932,3] · \num{23689} \\
+ & \texttt{2026-10} & 351,4 & [31,0; 550,0] · \num{10894} & 727,5 & [98,4; 877,4] · \num{22553} \\
+ & \texttt{2026-11} & 330,5 & [6,6; 619,9] · \num{9915} & 677,4 & [38,6; 843,7] · \num{20321} \\
+\midrule
+Tratamiento Urg. (\texttt{3045729}) & \texttt{2026-08} & 8,4 & [2,4; 46,7] · 262 & 15,6 & [3,0; 34,3] · 485 \\
+ & \texttt{2026-09} & 8,5 & [0,6; 48,8] · 255 & 16,1 & [0,9; 36,1] · 482 \\
+ & \texttt{2026-10} & 8,5 & [1,0; 51,5] · 263 & 15,9 & [2,3; 38,7] · 494 \\
+ & \texttt{2026-11} & 8,4 & [1,4; 59,0] · 253 & 15,7 & [1,7; 39,9] · 470 \\
+\bottomrule
+\end{tabularx}}
+\apanota{Comparación de las dos corridas comprobadas: \textcite{mediflow2026largoplazo} y \textcite{mediflow2026bundle}. Ninguna constituye demanda real observada para agosto--noviembre de 2026.}
+\end{table}
+
+\begin{table}[htbp]
+\caption{Dimensionamiento Erlang~C completo por servicio y franja de seis horas}
+\label{tab:anexo_erlang_12}
+{\singlespacing\footnotesize
+\begin{tabularx}{\textwidth}{@{}L{0.20\textwidth} Y r r r r r r r@{}}
+\toprule
+Servicio ($1/\mu$) & Franja & $\lambda_{\text{norm}}$ & $\lambda_{p75}$ & $\lambda_{p90}$ & $c_{\text{norm}}$ & $c_{p75}$ & $c_{p90}$ & Esp. $p_{90}$ \\
+\midrule
+Urgencias (20\,min) & Mañana (06--12\,h) & 29,250 & 35,333 & 39,667 & 12 & 14 & 15 & 6,094 \\
+ & Tarde (12--18\,h) & 25,593 & 30,333 & 34,333 & 10 & 12 & 13 & 7,265 \\
+ & Noche (18--24\,h) & 15,392 & 17,667 & 20,367 & 7 & 8 & 9 & 3,062 \\
+ & Madrug. (00--06\,h) & 5,236 & 6,333 & 7,500 & 3 & 4 & 4 & 4,265 \\
+\midrule
+Rehabilitación (30\,min) & Mañana (06--12\,h) & 77,584 & 118,667 & 133,333 & 42 & 62 & 70 & 5,303 \\
+ & Tarde (12--18\,h) & 58,174 & 95,667 & 108,000 & 32 & 51 & 57 & 5,905 \\
+ & Noche (18--24\,h) & 1,442 & 2,333 & 3,333 & 2 & 3 & 3 & 6,745 \\
+ & Madrug. (00--06\,h) & 0,255 & 0,333 & 0,667 & 1 & 1 & 2 & 0,857 \\
+\midrule
+Trat. Urg. (20\,min) & Mañana (06--12\,h) & 0,415 & 0,667 & 1,000 & 1 & 1 & 2 & 0,571 \\
+ & Tarde (12--18\,h) & 0,682 & 1,000 & 1,333 & 1 & 2 & 2 & 1,039 \\
+ & Noche (18--24\,h) & 0,819 & 1,000 & 1,667 & 1 & 2 & 2 & 1,672 \\
+ & Madrug. (00--06\,h) & 0,338 & 0,667 & 1,000 & 1 & 1 & 2 & 0,571 \\
+\bottomrule
+\end{tabularx}}
+\apanota{Fuente: \textcite{mediflow2026optimizacion}. Tasas $\lambda$ en llegadas/h; la última columna indica la espera media en minutos bajo demanda $p_{90}$.}
+\end{table}
+
+\begin{table}[htbp]
+\caption{Balance horario archivado en 12 cortes PostgreSQL para Hospitalización (\texttt{9201}, regla común $p_{99{,}9}$)}
+\label{tab:anexo_cortes_n0}
+{\singlespacing\footnotesize
+\begin{tabularx}{\textwidth}{@{}Y r r r r r@{}}
+\toprule
+Corte horario $t$ & Entradas $E$ & Salidas $S$ & $N_0 + E - S$ & Conteo dir. & Dif. \\
+\midrule
+\texttt{2023-01-01 00:00} (stock inicial) & 0 & 0 & 0 & 0 & 0 \\
+\texttt{2023-01-01 04:00} & 3 & 0 & 3 & 3 & 0 \\
+\texttt{2023-01-01 15:00} & 15 & 1 & 14 & 14 & 0 \\
+\texttt{2023-01-02 00:00} & 37 & 2 & 35 & 35 & 0 \\
+\texttt{2023-01-03 00:00} & 120 & 27 & 93 & 93 & 0 \\
+\texttt{2023-01-25 04:00} (tras calentam.) & \num{2232} & \num{1959} & 273 & 273 & 0 \\
+\texttt{2024-06-15 12:00} & \num{44576} & \num{44282} & 294 & 294 & 0 \\
+\texttt{2025-12-01 18:00} & \num{91583} & \num{91304} & 279 & 279 & 0 \\
+\texttt{2026-07-17 07:00} (últ. entrada) & \num{108494} & \num{108178} & 316 & 316 & 0 \\
+\texttt{2026-07-18 00:00} (cierre d.~1.294) & \num{108494} & \num{108216} & 278 & 278 & 0 \\
+\texttt{2026-07-18 05:00} & \num{108494} & \num{108216} & 278 & 278 & 0 \\
+\texttt{2026-07-18 06:00} (últ. salida) & \num{108494} & \num{108494} & 0 & 0 & 0 \\
+\bottomrule
+\end{tabularx}}
+\apanota{Verificación hospitalaria documentada en \textcite{mediflow2026informe}, sección~3 (\num{108494} etapas tras filtro $p_{99{,}9}$ de \num{1176,3}\,h, incluidas las 91 etapas huérfanas). En los cuatro modos comprobados por el equipo el stock inicial fue $N_0=0$ y en la cohorte bruta (\num{108601} etapas) la diferencia también fue 0 en los 12 cortes.}
+\end{table}
+
+\clearpage
+\section{Anexo C: Contratos HTTP, consultas SQL y modelo semántico Power BI}
+
+\begin{table}[htbp]
+\caption{Inventario completo de los 15 endpoints HTTP implementados en FastAPI}
+\label{tab:anexo_endpoints}
+{\singlespacing\footnotesize
+\begin{tabularx}{\textwidth}{@{}l L{0.29\textwidth} L{0.28\textwidth} Y@{}}
+\toprule
+Método & Ruta HTTP & Función invocada & Contrato y alcance \\
+\midrule
+\texttt{GET} & \texttt{/api/health} & \texttt{health} & Estado del servicio (\texttt{HUN}, \texttt{1.0.0}) \\
+\texttt{GET} & \texttt{/api/modelo} & \texttt{obtener\_estado\_modelo} & Versión, SHA-256, corte, métricas \texttt{v2.0}, perfiles \\
+\texttt{GET} & \texttt{/api/servicios} & \texttt{obtener\_servicios} & Catálogo con \texttt{mediaDiaria}, $p_{75}$, $p_{90}$ \\
+\texttt{GET} & \texttt{/api/parametros} & \texttt{obtener\_parametros} & Parámetros, mapeo OMOP y rango de fechas \\
+\texttt{GET} & \texttt{/api/turnos/\{servicio\}} & \texttt{obtener\_turnos\_reales} & Matriz $4\times 7$ de afluencia por franja y día \\
+\texttt{GET} & \texttt{/api/ocupacion} & \texttt{obtener\_ocupacion\_real} & Demanda diaria relativa a $p_{75}/p_{90}$ (no camas) \\
+\texttt{GET} & \texttt{/api/cuellos-botella} & \nolinkurl{obtener_indicadores_cuellos_botella} & Duración ($p_{50}$, $p_{90}$, $p_{99}$) y umbrales de censo \\
+\texttt{GET} & \texttt{/api/comparacion/\{servicio\}} & \nolinkurl{obtener_comparacion_real} & Serie \textit{walk-forward} de 182\,d y exactitud \\
+\texttt{GET} & \texttt{/api/efectos-eventos/\{servicio\}} & \nolinkurl{obtener_efectos_eventos} & Variación histórica observada por tipo de evento \\
+\texttt{GET} & \texttt{/api/largo-plazo/\{servicio\}} & \nolinkurl{obtener_pronostico_largo_plazo} & Backtest 120\,d y serie ago--nov 2026 del bundle \\
+\texttt{GET} & \texttt{/api/optimizacion} & \texttt{obtener\_optimizacion} & Erlang~C, Little, altas, transición y \texttt{REC-01..05} \\
+\texttt{POST} & \texttt{/api/predecir} & \texttt{predecir} & Mediana $p_{50}$, $[p_{10}, p_{90}]$, alerta y top-5 SHAP \\
+\texttt{POST} & \texttt{/api/predecir-rango} & \texttt{predecir\_rango} & Serie de 1 a 30\,d (no implica backtest a 30\,d) \\
+\texttt{POST} & \texttt{/api/optimizacion/simular} & \texttt{simular\_optimizacion} & Parámetros Erlang/Little/altas y \texttt{modo\_demanda} \\
+\texttt{POST} & \texttt{/api/chat} & \texttt{endpoint\_chat} & 6 herramientas de solo lectura y respaldo offline \\
+\bottomrule
+\end{tabularx}}
+\apanota{Verificado directamente en \texttt{app/api/\_\_init\_\_.py} y \texttt{app/api/chat.py}. El endpoint \texttt{/api/optimizacion/simular} admite \texttt{tiempo\_servicio\_min} (5--120), \texttt{meta\_espera\_min} (1--120), \texttt{reduccion\_estancia\_horas} (0--48), \texttt{pct\_altas\_tempranas} (0--80), \texttt{modo\_demanda} (\texttt{historico} o \texttt{pronostico}), \texttt{fecha}, \texttt{dotacion\_habitual}, \texttt{dotacion\_alternativa} y \texttt{dotacion\_referencia}.}
+\end{table}
+
+\begin{table}[htbp]
+\caption{Catálogo resumido de las 24 consultas SQL agregadas y del modelo semántico PBIP}
+\label{tab:anexo_sql_pbip}
+{\singlespacing\small
+\begin{tabularx}{\textwidth}{@{}L{0.25\textwidth} Y@{}}
+\toprule
+Componente & Inventario verificado en archivos fuente \\
+\midrule
+SQL inventario (\texttt{00}--\texttt{03}, \texttt{06}) & \texttt{00\_tablas\_tamano}, \texttt{01\_cobertura\_mensual}, \texttt{02\_tipos\_visita}, \texttt{03\_tipos\_etapa}, \texttt{06\_precision\_horas} \\
+SQL flujo (\texttt{04}--\texttt{05}) & \texttt{04\_entradas\_por\_hora} (\texttt{COUNT(DISTINCT ...)}), \texttt{05\_salidas\_por\_hora} \\
+SQL auditoría (\texttt{07}--\texttt{12}) & \texttt{07\_auditoria\_nulos}, \texttt{08\_auditoria\_duplicados}, \texttt{09\_auditoria\_etapas}, \texttt{10\_auditoria\_personas}, \texttt{11\_auditoria\_llegadas\_diarias}, \texttt{12\_auditoria\_etapas\_diarias} \\
+SQL agregados (\texttt{13}--\texttt{18}, \texttt{23}) & \texttt{13\_llegadas\_diarias\_perfil}, \texttt{14\_etapas\_entradas\_por\_hora} ($p_{99{,}9}$), \texttt{15\_etapas\_salidas\_por\_hora} ($p_{99{,}9}$), \texttt{16\_duracion\_etapas\_diaria} ($p_{99{,}9}$, \texttt{LEFT JOIN}), \texttt{17\_duracion\_etapas\_por\_franja}, \texttt{18\_transiciones\_etapas}, \texttt{23\_duracion\_etapas\_percentiles} (sin recorte) \\
+SQL conceptos (\texttt{19}--\texttt{22}) & \texttt{19\_conceptos\_visitas}, \texttt{20\_conceptos\_diagnosticos}, \texttt{21\_conceptos\_procedimientos}, \texttt{22\_conceptos\_mediciones} \\
+\midrule
+PBIP tablas (12) y relaciones (18) & 5 dimensiones (\texttt{dim\_etapa}, \texttt{dim\_fecha}, \texttt{dim\_hora}, \texttt{dim\_servicio}, \texttt{dim\_sexo}), 6 hechos (\texttt{fact\_censo\_etapa\_hora}, \texttt{fact\_duracion\_diaria}, \texttt{fact\_duracion\_franja}, \texttt{fact\_llegadas\_hora}, \texttt{fact\_llegadas\_perfil}, \texttt{fact\_transiciones}) y \texttt{\_Medidas} \\
+PBIP medidas DAX (43) y páginas (7) & Medidas de censo/semáforo (17), entradas/salidas/flujo (3), llegadas/perfil (8), duraciones (6), transiciones (4) y puntajes/indicadores resumen (5); páginas: Inicio, 1.~Resumen ejecutivo, 2.~Saturación por área, 3.~Esperas y flujo, 4.~Demanda, 5.~Hallazgos y recomendaciones, 6.~Metodología y glosario; parámetros \texttt{RutaDatos} y \texttt{FechaCorte = 2026-04-30} \\
+\bottomrule
+\end{tabularx}}
+\apanota{Fuentes inspeccionadas: \texttt{src/hun/data/extraer.py}, \texttt{src/hun/data/sql/}, \texttt{dashboards/powerbi/HUN\_CuellosBotella/HUN\_CuellosBotella.SemanticModel/model.bim} y \texttt{pages.json}.}
+\end{table}
+
+\clearpage
+\section{Anexo D: Comandos de reproducción y verificación local}
+
+Los comandos siguientes documentan la verificación de contratos locales y el despliegue estricto de la API sin carpetas de datos privados; los módulos de reentrenamiento y reextracción SQL no se ejecutan sin agregados locales autorizados ni conexión VPN de solo lectura \parencite{mediflow2026informe,mediflow2026auditoria}:
+
+{\singlespacing\footnotesize
+\begin{verbatim}
+# 1. Verificación estática y suite automatizada (fixtures sintéticos y bundle)
+pytest -q
+node --test app/src/lib/optimizationPayload.test.js
+npm --prefix app run build
+
+# 2. Despliegue estricto de la API usando únicamente el artefacto autorizado
+HUN_MODO_PRODUCCION=1 HUN_BUNDLE_PATH=models/modelos_web_bundle.joblib \
+  ALLOWED_ORIGINS=https://mediflow.example.org \
+  uvicorn app.api:app --host 0.0.0.0 --port 8000
+
+# 3. Regeneración de reportes y empaquetado (requiere data/raw/ autorizado)
+python -m hun.models.demanda
+python -m hun.models.saturacion
+python -m hun.models.explicacion
+python -m hun.models.largo_plazo
+python -m hun.models.optimizacion
+python -m hun.models.empaquetar
+
+# 4. Simulación de borrado seguro de datos locales al cierre del certamen
+python -m hun.data.borrar_datos
+\end{verbatim}
+}
