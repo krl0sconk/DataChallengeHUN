@@ -1,0 +1,66 @@
+% Sección IV: Metodología analítica y diseño de validación temporal
+% evidencia:E08,E09,E11,E12,E13,E14
+
+\section{Metodología analítica y diseño de validación temporal}
+
+El diseño predictivo separa tres familias con fines distintos: una escalera experimental puntual (Poisson) para contrastar hipótesis y seleccionar externos; un conjunto cuantílico servido en la web para intervalos y explicabilidad; y un modelo sin rezagos cortos a cuatro meses. Todas prohíben particiones aleatorias y usan validación temporal de origen móvil (\textit{walk-forward})~\cite{hyndman_fpp3}.
+
+\subsection{Validación temporal de origen móvil y política anti-fuga}
+
+Para cada pliegue $k$ con origen $o_k$ y horizonte $h$, \texttt{src/hun/models/validacion.py} impone:
+\begin{equation}
+\label{eq:walk_forward}
+\mathcal{D}_{\text{train}}^{(k)} = \{(s, t) : t < o_k\}, \quad
+\mathcal{D}_{\text{test}}^{(k)} = \{(s, t) : o_k \le t < o_k + h\}.
+\end{equation}
+A corto plazo se emplean \textbf{26 pliegues} entre \texttt{2025-07-25} y \texttt{2026-07-10} con paso de 14 días y $h = 7$ días~\cite{mediflow2026demanda}. Al caer todos los orígenes en viernes, el día 1 del horizonte es siempre viernes y el día 7 jueves; día de horizonte y día de semana quedan confundidos. A largo plazo se usan \textbf{13 pliegues} entre \texttt{2025-03-24} y \texttt{2026-03-19} con paso de 30 días y $h = 120$ días, generando ventanas ampliamente solapadas y no independientes~\cite{mediflow2026largoplazo}.
+
+En \texttt{construir\_features\_demanda} (\texttt{demanda.py}), el objetivo $y_{s,t}$ se enmascara para $t \ge o_k$ antes de calcular rezagos semanales (\texttt{llegadas\_lag\_7} a \texttt{56}, \texttt{rezago\_prom\_4s} y \texttt{rezago\_mediana\_8s}), garantizando que el horizonte $[o_k, o_k+7\,\text{d})$ consulte solo historia previa a $o_k$. SIVIGILA usa rezagos de 2--3 semanas y largo plazo reemplaza clima futuro por medianas históricas previas al corte. Como límite, esta garantía del backtest 1--7 días no se extiende automáticamente cuando la web consulta fechas poscorte con \texttt{medianas\_dw} ni al consultar historia ya vista por el modelo final~\cite{mediflow2026bundle,mediflow2026informe}.
+
+\subsection{Métricas de evaluación y techo Poisson idealizado}
+
+Ante días con conteo nulo o bajo (evitando divergencias del MAPE), la decisión \texttt{DEC-003} adopta WAPE, MAE, RMSE, sesgo y cobertura empírica (excluyendo la serie residual \texttt{Otros}):
+\begin{equation}
+\label{eq:metricas}
+\begin{gathered}
+\text{WAPE} = \frac{\sum_{i=1}^{n} |y_i - \hat{y}_i|}{\sum_{i=1}^{n} |y_i|}, \quad
+\text{Exactitud} = 1 - \text{WAPE}, \\
+\text{MAE} = \frac{1}{n}\sum_{i=1}^{n} |y_i - \hat{y}_i|, \quad
+\text{Sesgo} = \frac{1}{n}\sum_{i=1}^{n} (\hat{y}_i - y_i), \\
+\text{RMSE} = \sqrt{\frac{1}{n}\sum_{i=1}^{n} (y_i - \hat{y}_i)^2}, \\
+\text{Cob.} = \frac{1}{n}\sum_{i=1}^{n} \mathbf{1}\!\left\{\hat{q}_{0{,}10,i} \le y_i \le \hat{q}_{0{,}90,i}\right\}.
+\end{gathered}
+\end{equation}
+Aquí «exactitud» denota estrictamente $1-\text{WAPE}$, un sesgo positivo indica sobreestimación promedio y la meta de 80\,\% es criterio interno del equipo, no requisito de~\cite{hun2026terminos,mediflow2026demanda}. Para series de bajo volumen (como Tratamiento Urgencias, $\approx 15{,}2$/día), \texttt{techo\_exactitud\_poisson} calcula un techo optimista con $X \sim \text{Poisson}(\mu)$, $\mu = \bar{y}\cdot d$ ($d \in \{1,7\}$):
+\begin{equation}
+\label{eq:techo_poisson}
+\text{Techo}(\mu) = 1 - \frac{\mathbb{E}\bigl[|X - \mu|\bigr]}{\mu},
+\end{equation}
+asumiendo tasa verdadera conocida y ruido puro sin deriva semanal~\cite{mediflow2026demanda}.
+
+\subsection{Familia experimental puntual (escalera Poisson y LightGBM)}
+
+En \texttt{src/hun/models/demanda.py} se comparan cuatro escalones sobre los 26 pliegues: (1) \texttt{linea\_base} (mediana del mismo día en las últimas 8 semanas); (2) \texttt{poisson\_calendario} (\texttt{PoissonRegressor}, $\alpha=10^{-4}$) ajustado de forma estratificada por servicio; (3) \texttt{lgbm\_todos\_externos} con LightGBM~\cite{ke2017lightgbm} y pérdida Poisson (\texttt{n\_estimators=200}, \texttt{learning\_rate=0.05}, \texttt{num\_leaves=15}, \texttt{min\_child\_samples=15}); y (4) \texttt{lgbm\_final}, restringido a externos aprobados. Los escalones LightGBM añaden ponderación exponencial $w_i = 0{,}5^{\text{edad}_i / 180}$ (vida media 180 días) y corrección de nivel local en \texttt{ajustar\_predecir\_lgbm\_nivel} vía \texttt{init\_score} $= \log(\max(\text{rezago\_mediana\_8s},\,0{,}5))$, prediciendo multiplicadores logarítmicos sobre el nivel reciente.
+
+\subsection{Familia cuantílica servida en la aplicación web}
+
+El paquete \texttt{models/modelos\_web\_bundle.joblib} (\texttt{v2.0}) no sirve \texttt{lgbm\_final}. En \texttt{explicacion.py}, tres regresores LightGBM independientes ajustan cuantiles $\tau \in \{0{,}10,\, 0{,}50,\, 0{,}90\}$ bajo pérdida \textit{pinball}~\cite{koenker1978quantiles,ke2017lightgbm}:
+\begin{equation}
+\label{eq:pinball}
+\rho_\tau(u) = u\bigl(\tau - \mathbf{1}\{u < 0\}\bigr), \qquad u = y - \hat{q}_\tau(x),
+\end{equation}
+con ordenamiento monotónico y truncamiento en cero:
+\begin{equation}
+\label{eq:orden_cuantiles}
+(\tilde{q}_{0{,}10}, \tilde{q}_{0{,}50}, \tilde{q}_{0{,}90}) = \max\bigl(0,\operatorname{sort}(\hat{q}_{0{,}10}, \hat{q}_{0{,}50}, \hat{q}_{0{,}90})\bigr),
+\end{equation}
+lo cual garantiza coherencia ordinal sin calibrar cobertura. La mediana $\hat{q}_{0{,}50}$ se explica mediante valores SHAP exactos (\texttt{TreeExplainer})~\cite{lundberg2017shap}:
+\begin{equation}
+\label{eq:shap}
+f(x) = \phi_0 + \sum_{j=1}^{M} \phi_j(x),
+\end{equation}
+midiendo contribuciones marginales no causales al pronóstico. La inspección de \texttt{entrenar\_modelos\_cuantiles} y de \texttt{cols} en el bundle \texttt{v2.0} confirma que esta familia \textbf{no} usa \texttt{init\_score} ni pesos por recencia, y sus 21 variables (5 de calendario, 10 de rezago y 6 de \texttt{festivos\_y\_puentes}) omiten las 5 de \texttt{carnaval\_y\_semana\_santa}~\cite{mediflow2026bundle}.
+
+\subsection{Modelo independiente de horizonte extendido}
+
+Para proyectar agosto--noviembre de 2026 más allá de \texttt{2026-07-16}, \texttt{src/hun/models/largo\_plazo.py} entrena un LightGBM Poisson con recencia (180 días, \texttt{min\_child\_samples=20}) sin rezagos cortos, usando 7 variables de calendario, 6 de \texttt{festivos\_y\_puentes}, \texttt{tendencia\_anios}, servicio y medianas climáticas previas al corte. Los intervalos parten de regresores en $p_{05}$ y $p_{95}$ (\texttt{CUANTIL\_BAJO=0,05}, \texttt{CUANTIL\_ALTO=0,95}) escalados alrededor de $\hat{y}$ según el mes $m \in \{1..4\}$ por $1 + 0{,}10\,(m-1)$, aunque el JSON los rotule como \texttt{min\_diario}/\texttt{max\_diario} o $[p_{10}, p_{90}]$~\cite{mediflow2026largoplazo}.
